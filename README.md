@@ -1,7 +1,7 @@
 # Igfoot
 ### Scalably infer immune-specific allelic variation for genetic association testing 
 
-bigfoot is heavily influenced/relies on certain methods developed for <a href="https://bitbucket.org/jbaaijens/vg-flow/src/master/">VG-Flow</a>.
+igfoot is heavily influenced/relies on certain methods developed for <a href="https://bitbucket.org/jbaaijens/vg-flow/src/master/">VG-Flow</a>.
 
 A computational method to perform immunoglobulin allele-level genotyping and identification of sample specific variation via flow variation graphs.
 
@@ -10,50 +10,34 @@ Note: This graph-based workflow and scripts currently allow for inference of IG/
 - Current version: 0.0.1
 
 # set up conda environment
-IG flow relies on the excellent VG-Flow method developed to infer the relative abundance of individual viral strains. Development of IG Flow builds upon version: 0.0.4
-1) Please clone the environment from: https://bitbucket.org/jbaaijens/vg-flow/src/master/
-2) follow the install instructions - with some additional conda packages we'll be needing
-	mamba create --name vg-flow-env
-	mamba activate vg-flow-env
-	mamba install -c bioconda -c conda-forge -c gurobi python=3 graph-tool minimap2 gurobi biopython numpy seqkit odgi bbmap bazam fastp gfaffix fastq-dl kmc blend-bio seqwish wfmash
-
-3) Download the Iw scripts from this repo
-
-
-
-
-
-
-# conda environment with everything we need + R and some tools
-tools_dir=~/tools # [choose directory where you normally install/store tools]
-PATH=$PATH:${tools_dir}
-#
-cd ${tools_dir}
-mkdir -p ${tools_dir}/bigfoot
-# you need an executable VG - potentially worth using latest version
-wget https://github.com/vgteam/vg/releases/download/v1.54.0/vg; chmod +x vg
-# initial setup
-#git clone https://bitbucket.org/jbaaijens/vg-flow.git
-#git clone https://github.com/rrwick/Assembly-dereplicator
-#git clone https://github.com/harvardinformatics/NGmerge.git #need to cd NGmerge && make - optional
-# if on AWS / cloud - need to also install gcc
-# moving graph files to EC2
-#scp -i ~/.ssh/dylangraph.pem /Volumes/DylanDuo/comp_immuno/immunovar_graph_materials.tar.gz dylan@ec2-3-226-244-128.compute-1.amazonaws.com:/home/dylan/tools/ig_flow/
-# sign in --> ~/tools/ig_flow
-#tar -xvf immunovar_graph_materials.tar.gz
-# ig_flow conda environment:
-#mamba 
-#mamba create --name ig_flow -c bioconda -c conda-forge -c gurobi python=3 graph-tool bazam minimap2 gurobi biopython numpy odgi gfaffix seqkit minimap2 seqwish blend-bio wfmash r-base samtools pyseer unitig-caller
-conda activate ig_flow
-# ensure active gurobi licence via 'gurobi_cl'
-# also should have the following R packages installed:
+Igfoot relies on the excellent VG-Flow method developed to infer the relative abundance of individual viral strains. Development of Igfoot builds upon VG-Flow v0.0.4
+1) Please clone the environment from: https://github.com/dduchen/igfoot.git
+2) follow the install instructions - with some additional conda packages we'll be needing -- can move some of these after the '#' if they're already in your path (e.g., samtools, we assume you have R)
+#mamba create --name igfoot -c bioconda -c conda-forge -c gurobi python=3 graph-tool bazam minimap2 gurobi biopython numpy odgi gfaffix seqkit bbmap minimap2 seqwish blend-bio wfmash samtools pyseer unitig-caller #fastq-dl kmc fastp r-base
+conda activate igfoot
+### ensure active gurobi licence:
+gurobi_cl
+### We also use the following R/bioconductor packages:
 --> data.table
 --> dplyr
+--> Biostrings
 --> DECIPHER
 
-vg_flow_dir=${tools_dir}/vg-flow/scripts
-#
-tools_dir=~/tools
-immunovar_bed=${tools_dir}/ig_flow/grch38_custom_immunovar_coords.bed
+3) Download additional tools needed to be installed/accessible in your PATH
+tools_dir=~/tools # [choose directory where you normally install/store tools]
+PATH=$PATH:${tools_dir}
+cd ${tools_dir}
+mkdir -p ${tools_dir}/igfoot
+### download igfoot graph materials from zenodo:
+   [.....]
+We need the VG executable
+wget https://github.com/vgteam/vg/releases/download/v1.54.0/vg; chmod +x vg
+We use the Ryan Wick's Assembly-dereplicator package during haplotype selection <a href="https://github.com/rrwick/Assembly-Dereplicator">Assembly-dereplicator</a>.
+- git clone https://github.com/rrwick/Assembly-dereplicator.git
+We can use merged paired-end reads from NGmerge for alignment/inference (optional, not necessarily recommended) <a href="https://github.com/harvardinformatics/NGmerge">NGmerge</a>.
+- git clone https://github.com/harvardinformatics/NGmerge.git #need to cd NGmerge && make - optional
+
+igfoot_dir=${tools_dir}/igfoot_dir/scripts
+immunovar_bed=${tools_dir}/igfoot/grch38_custom_immunovar_coords.bed
 
 
