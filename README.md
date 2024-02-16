@@ -1,2 +1,3 @@
-# IG_flow
-computational method to peprform immunoglobulin allele-level genotyping and identification of sample specific variation via flow variation graphs.
+# bIgfoot - Scalably infer immune-specific allelic variation for genetic association testing 
+
+bigfoot is heavily influenced/relies on certain methods developed for <a href="https://bitbucket.org/jbaaijens/vg-flow/src/master/">VG-Flow</a>.
