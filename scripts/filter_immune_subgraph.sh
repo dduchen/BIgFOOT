@@ -3,7 +3,7 @@
 #
 # for slurm-based batch job
 #SBATCH --ntasks=1
-#SBATCH --job-name=prep_ig_flow
+#SBATCH --job-name=prep_bigfoot
 #SBATCH --time=8:00:00
 #SBATCH --mem=36GB
 #SBATCH --mail-user=dylan.duchen@yale.edu
@@ -34,7 +34,7 @@ elif [[ $graph == "franken" ]]; then
 #    graph_base=${graphdir}/grch38_chm13_immunovar.sort
 elif [[ $graph == "wg_immunovar" ]]; then
     echo "Using IGenotyper GRCh38 + CHM13 + IG/MHC Haplotypes + IMGT/OGRDB/IPD alleles"
-    graphdir=${tools_dir}/ig_flow
+    graphdir=${tools_dir}/bigfoot
     graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar
 elif [[ $graph == "ig_hla_kir" ]]; then
     echo "Using IGenotyper GRCh38 + CHM13 + IG Haplotypes + IMGT-IPD alleles - Deprecated"

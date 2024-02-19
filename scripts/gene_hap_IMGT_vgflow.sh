@@ -2,7 +2,7 @@
 
 # for slurm-based batch job
 #SBATCH --ntasks=1
-#SBATCH --job-name=run_ig_flow
+#SBATCH --job-name=run_bigfoot
 #SBATCH --time=8:00:00
 #SBATCH --mem=36GB
 #SBATCH --mail-user=dylan.duchen@yale.edu
@@ -16,8 +16,8 @@ OUTPATH=$workdir
 datadir=$workdir
 cd ${datadir}
 workdir=${PWD}
-# make $vg_flow_dir python scripts findable
-export PYTHONPATH=$PYTHONPATH:$vg_flow_dir
+# make $bigfoot_dir python scripts findable
+export PYTHONPATH=$PYTHONPATH:$bigfoot_dir
 export gam_file=${i}
 echo "Performing VG-Flow at gene level for the ${gam_file} alignment"
 #
@@ -38,9 +38,9 @@ elif [[ $graph == "franken" ]]; then
     genotyping_nodes_dir=${graphdir}/genotyping_nodes/
 elif [[ $graph == "wg_immunovar" ]]; then
     echo "Using IGenotyper GRCh38 + CHM13 + IG/MHC Haplotypes + IMGT/OGRDB/IPD alleles"
-    graphdir=${tools_dir}/ig_flow
+    graphdir=${tools_dir}/bigfoot
     graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar
-    genotyping_nodes_dir=${tools_dir}/ig_flow/wg_ig_hla_kir_immunovar_genotyping_nodes/
+    genotyping_nodes_dir=${tools_dir}/bigfoot/wg_ig_hla_kir_immunovar_genotyping_nodes/
 elif [[ $graph == "ig_hla_kir" ]]; then
     echo "Using IGenotyper GRCh38 + CHM13 + IG Haplotypes + IMGT-IPD alleles - Deprecated"
 #    graphdir=~/project/grch38_chm13_immunovar
@@ -67,8 +67,8 @@ else
     vg gamsort ${gam_file} -i ${gam_file%.gam}.sorted.gam.gai -p > ${gam_file%.gam}.sorted.gam
 fi
 # run HLA / KIR inference -- only uncomment this line in IMGT script
-#sbatch --export=i=$i,sample_id=$sample_id,graph=$graph,aln_type='pe',workdir=${PWD} ${vg_flow_dir}/gene_hap_HLA_vgflow.sh
-#sbatch --export=i=$i,sample_id=$sample_id,graph=$graph,aln_type='pe',workdir=${PWD} ${vg_flow_dir}/gene_hap_KIR_vgflow.sh
+#sbatch --export=i=$i,sample_id=$sample_id,graph=$graph,aln_type='pe',workdir=${PWD} ${bigfoot_dir}/gene_hap_HLA_vgflow.sh
+#sbatch --export=i=$i,sample_id=$sample_id,graph=$graph,aln_type='pe',workdir=${PWD} ${bigfoot_dir}/gene_hap_KIR_vgflow.sh
 #
 #-- global initial pairwise percent identity filtering: 0%
 perc_id_filter="0.00"; echo "Using a final pairwise filter of $perc_id_filter for reads aligned to locus";
@@ -200,30 +200,30 @@ if [[ "$loci" =~ ^(IMGT)$ ]]; then
     echo "Minimum strain depth required: $min_strain_depth"
     cd ${outdir}
 # allele inference:
-    python3 ${vg_flow_dir}/parse_graph_vgflow.py --sample ${outdir}/${sample_id}.${graph}.${gene}.vgflow -m 0
+    python3 ${bigfoot_dir}/parse_graph_vgflow.py --sample ${outdir}/${sample_id}.${graph}.${gene}.vgflow -m 0
     for opt in {2..2}; do #relative difference performs best on average
         echo "basing inference on haplotypes + alleles embedded in graph, for inference based on full set of alleles set downsampled=FALSE (this might be much slower for certain HLA genes)"
-        python3 ${vg_flow_dir}/vg-flow_immunovar.py --careful --optimization_approach ${opt} --min_depth 0 --trim 0 -m 0 -c ${min_strain_depth} --remove_included_paths 0 ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
-#       python3 ${vg_flow_dir}/vg-flow_immunovar_long_contigs.py --careful --min_depth 0 --trim 0 -m 0 -c ${min_strain_depth} --remove_included_paths 0 ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
+        python3 ${bigfoot_dir}/vg-flow_immunovar.py --careful --optimization_approach ${opt} --min_depth 0 --trim 0 -m 0 -c ${min_strain_depth} --remove_included_paths 0 ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
+#       python3 ${bigfoot_dir}/vg-flow_immunovar_long_contigs.py --careful --min_depth 0 --trim 0 -m 0 -c ${min_strain_depth} --remove_included_paths 0 ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
         if [[ "$opt" =~ 1 ]]; then
             echo "optimization_approach = absolute difference"
             mv trimmed_contigs.fasta ${outdir}/${sample_id}.${graph}.${gene}.abs.contigs.fasta ; mv haps.final.fasta ${outdir}/${sample_id}.${graph}.${gene}.abs.haps.final.fasta ; mv genome_graph.gfa ${outdir}/${sample_id}.${graph}.${gene}.abs.genome_graph.gfa
             rm genome_graph.gt; rm haps.fasta; rm overlaps.minimap2.paf; rm trimmed_contigs.paths ; rm trimmed_contigs.gfa
-            Rscript ${vg_flow_dir}/parse_vgflow_output.R ${outdir}/${sample_id}.${graph}.${gene}.abs.contigs.fasta
+            Rscript ${bigfoot_dir}/parse_vgflow_output.R ${outdir}/${sample_id}.${graph}.${gene}.abs.contigs.fasta
             echo "Allele-level abundance estimation completed for ${gene} ::"
             grep ">" ${outdir}/${sample_id}.${graph}.${gene}.abs.haps.final.annot.fasta
         elif [[ "$opt" =~ 2 ]]; then
             echo "optimization_approach = relative difference"
             mv trimmed_contigs.fasta ${outdir}/${sample_id}.${graph}.${gene}.rel.contigs.fasta ; mv haps.final.fasta ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.fasta ; mv genome_graph.gfa ${outdir}/${sample_id}.${graph}.${gene}.rel.genome_graph.gfa
             rm genome_graph.gt; rm haps.fasta; rm overlaps.minimap2.paf; rm trimmed_contigs.paths ; rm trimmed_contigs.gfa
-            Rscript ${vg_flow_dir}/parse_vgflow_output.R ${outdir}/${sample_id}.${graph}.${gene}.rel.contigs.fasta
+            Rscript ${bigfoot_dir}/parse_vgflow_output.R ${outdir}/${sample_id}.${graph}.${gene}.rel.contigs.fasta
             echo "Allele-level abundance estimation completed for ${gene} ::"
             grep ">" ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta
         elif [[ "$opt" =~ 3 ]]; then
             echo "optimization_approach = relative absolute differences sqrt approach"
             mv trimmed_contigs.fasta ${outdir}/${sample_id}.${graph}.${gene}.relabs.contigs.fasta ; mv haps.final.fasta ${outdir}/${sample_id}.${graph}.${gene}.relabs.haps.final.fasta ; mv genome_graph.gfa ${outdir}/${sample_id}.${graph}.${gene}.relabs.genome_graph.gfa
             rm genome_graph.gt; rm haps.fasta; rm overlaps.minimap2.paf; rm trimmed_contigs.paths ; rm trimmed_contigs.gfa
-            Rscript ${vg_flow_dir}/parse_vgflow_output.R ${outdir}/${sample_id}.${graph}.${gene}.relabs.contigs.fasta
+            Rscript ${bigfoot_dir}/parse_vgflow_output.R ${outdir}/${sample_id}.${graph}.${gene}.relabs.contigs.fasta
             echo "Allele-level abundance estimation completed for ${gene} ::"
             grep ">" ${outdir}/${sample_id}.${graph}.${gene}.relabs.haps.final.annot.fasta
         else
@@ -365,11 +365,11 @@ elif [[ "$loci" =~ ^(HLA)$ ]]; then
             min_strain_depth=0.1
         fi
         cd ${outdir}
-        python3 ${vg_flow_dir}/parse_graph_vgflow.py --sample ${outdir}/${sample_id}.${graph}.${gene}.vgflow -m 0
-        time python3 ${vg_flow_dir}/vg-flow_immunovar_long_contigs.py --min_depth 0 --trim 0 --greedy_mode all --ilp --max_strains 2 -m 0 -c ${min_strain_depth} --remove_included_paths 0 --threads 16 --wfmash_param ${wfmash_param} ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
+        python3 ${bigfoot_dir}/parse_graph_vgflow.py --sample ${outdir}/${sample_id}.${graph}.${gene}.vgflow -m 0
+        time python3 ${bigfoot_dir}/vg-flow_immunovar_long_contigs.py --min_depth 0 --trim 0 --greedy_mode all --ilp --max_strains 2 -m 0 -c ${min_strain_depth} --remove_included_paths 0 --threads 16 --wfmash_param ${wfmash_param} ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
         mv trimmed_contigs.fasta ${outdir}/${sample_id}.${graph}.${gene}.contigs.fasta ; mv haps.final.fasta ${outdir}/${sample_id}.${graph}.${gene}.haps.final.fasta ; mv genome_graph.gfa ${outdir}/${sample_id}.${graph}.${gene}.genome_graph.gfa
         rm genome_graph.gt; rm haps.fasta; rm overlaps.minimap2.paf; rm trimmed_contigs.paths ; rm trimmed_contigs.gfa
-        Rscript ${vg_flow_dir}/parse_vgflow_output.R ${outdir}/${sample_id}.${graph}.${gene}.contigs.fasta
+        Rscript ${bigfoot_dir}/parse_vgflow_output.R ${outdir}/${sample_id}.${graph}.${gene}.contigs.fasta
         echo "Allele-level abundance estimation completed for ${gene} ::"
         grep ">" ${outdir}/${sample_id}.${graph}.${gene}.haps.final.annot.fasta
     else
@@ -388,18 +388,18 @@ elif [[ "$loci" =~ ^(HLA)$ ]]; then
         echo "Minimum strain depth required: ${min_strain_depth}"
         vg convert -fW ${genotyping_nodes_dir}${loci}_${gene}.haplotypes.xg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa
         vg view -a ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.aln.json
-        python3 ${vg_flow_dir}/parse_graph_vgflow.py --sample ${outdir}/${sample_id}.${graph}.${gene}.vgflow -m 0
+        python3 ${bigfoot_dir}/parse_graph_vgflow.py --sample ${outdir}/${sample_id}.${graph}.${gene}.vgflow -m 0
         gene_min_len=$(vg paths -Ex ${genotyping_nodes_dir}${loci}_${gene}.haplotypes.xg | grep "HLA" | cut -f2 | sort | uniq | head -1)
         wfmash_param=$(bc -l <<< "scale=2;${gene_min_len}/10" | awk '{printf("%d\n",$1 + 0.5)}')
         if [ "${wfmash_param}" -lt 100 ]; then
             wfmash_param=100
         fi
-        time python3 ${vg_flow_dir}/vg-flow_immunovar_long_contigs.py --min_depth 0 --trim 0 --greedy_mode all --ilp --max_strains 2 -m 0 -c ${min_strain_depth} --remove_included_paths 0 --threads 16 --wfmash_param ${wfmash_param} ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
+        time python3 ${bigfoot_dir}/vg-flow_immunovar_long_contigs.py --min_depth 0 --trim 0 --greedy_mode all --ilp --max_strains 2 -m 0 -c ${min_strain_depth} --remove_included_paths 0 --threads 16 --wfmash_param ${wfmash_param} ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
         mv trimmed_contigs_long.fasta ${outdir}/${sample_id}.${graph}.${gene}.contigs.fasta
         mv haps_long.final.fasta ${outdir}/${sample_id}.${graph}.${gene}.haps.final.fasta
         mv genome_graph_long.gfa ${outdir}/${sample_id}.${graph}.${gene}.genome_graph.gfa
         rm genome_graph_long.gt; rm haps_long.fasta; rm overlaps_long.minimap2.paf; rm trimmed_contigs_long.paths ; rm trimmed_contigs_long.gfa; rm trimmed_contigs_long.fasta.fai
-        Rscript ${vg_flow_dir}/parse_vgflow_output.R ${outdir}/${sample_id}.${graph}.${gene}.contigs.fasta
+        Rscript ${bigfoot_dir}/parse_vgflow_output.R ${outdir}/${sample_id}.${graph}.${gene}.contigs.fasta
         echo "Allele-level abundance estimation completed for ${gene} ::"
         grep ">" ${outdir}/${sample_id}.${graph}.${gene}.haps.final.annot.fasta
 # 2) augment annotated post-flow inference graph with reads for association testing
