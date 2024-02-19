@@ -22,12 +22,15 @@ Genetic loci we recommend using BIgFOOT for:
 
 1) Clone me! https://github.com/dduchen/BIgFOOT.git
 2) set up conda/mamba environment we'll be needing -- can move some of these after the '#' if they're already in your path (e.g., samtools, we assume you have R)
+
 <code> mamba create --name bigfoot -c bioconda -c conda-forge -c gurobi python=3 graph-tool bazam minimap2 gurobi biopython numpy odgi gfaffix seqkit bbmap minimap2 seqwish blend-bio wfmash samtools pyseer unitig-caller #fastq-dl kmc fastp r-base
 conda activate bigfoot </code>
-Ensure yuo have an active gurobi licence:
-gurobi_cl
 
-<i> We also use the following R/bioconductor packages:
+Ensure yuo have an active gurobi licence:
+<code> gurobi_cl </code>
+
+<i> We also use the following R/bioconductor packages: </i>
+
 <code> data.table;
 dplyr;
 Biostrings/DECIPHER </code>
