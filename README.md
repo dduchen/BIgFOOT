@@ -1,7 +1,7 @@
 # BIgFOOT: software to infer Biological Immunovariation via Graph FOOTprinting
 ### Current version: 0.0.1
 
-This workflow infers alleles, calls novel variation, and prepares input for loci-specific genetic association tests via a combination of sequence-to-graph alignments, flow decomposition, and unitig calling.<br>
+This workflow infers alleles, calls novel variation, and constructs sample-specific sequence variation graphs for immunoglobulin(Ig)/other immune-related loci which can be used to perform genetic association tests. The workflow inolves a combination of various graph-construction steps, sequence-to-graph alignment, flow graph decomposition, and unitig calling.<br>
 I hope to expand this workflow to enable genome-to-genome analyses/assessing genetic associations between host germline immunovariation and pathogen/metagenomic genetic variation/diversity (i.e., searching for immunological <b>FOOTprints</b> using joint host-pathogen genomic data).
 
 Genetic loci where BIgFOOT performs accurate allele calling:
