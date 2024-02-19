@@ -1,14 +1,13 @@
-# BIgFOOT
-## software to infer Biological Immunovariation via Graph FOOTprinting
+# BIgFOOT: software to infer Biological Immunovariation via Graph FOOTprinting
 ### Current version: 0.0.1
 
-This workflow infers alleles and calls novel variation via a combination of sequence-to-graph alignment and flow decomposition.
+This workflow infers alleles, calls novel variation, and prepares input for loci-specific genetic association tests via a combination of sequence-to-graph alignments, flow decomposition, and unitig calling. I hope to expand this approach - assessing associations between host germline immunovariation and pathogen/metagenomic genetic variation/diversity/genome-to-genome analyses (i.e., searching for immunological <u>footprints</u> in join host-pathogen genomic data).
 
-Genetic loci we recommend using BIgFOOT for:
-- IGHV
-- IGLV
+Genetic loci where BIgFOOT provides accurate allele calls:
+- IGH
+- IGL
 - HLA (DQA1/DQB1/... more to come)
- <i> possible but unvalidated/untuned parameters: </i>
+ <i>Calls possible - but unvalidated/untuned parameters - WiP:</i>
 - IGKV
 - TR
 - KIR
