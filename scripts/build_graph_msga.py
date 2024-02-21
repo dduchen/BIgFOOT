@@ -2,7 +2,6 @@
 
 import sys, os
 import json
-#sys.path.append('~/tools/vg-flow/scripts/') # use 'export PYTHONPATH=$PYTHONPATH:$vg_flow_dir'
 from graph_tool.all import Graph
 from graph_tool.search import dfs_iterator
 from graph_tool.topology import is_DAG, topological_sort
@@ -10,40 +9,171 @@ import subprocess
 import argparse
 # from tqdm import tqdm # progress tracker
 import time
-from graph_functions import has_simple_paths, reorder_graph, compress_graph#, get_node_abundances
+
+from graph_functions import has_simple_paths, reorder_graph, compress_graph
 from graph_functions import write_gfa, read_gfa, cyclic, check_parallel_nodes
 from graph_functions import filter_edges
 
-
-__author__ = "Adaptations by Dylan Duchen - Original code by Jasmijn Baaijens"
+__author__ = "Jasmijn Baaijens"
 __license__ = "MIT"
 
-usage = "Parse contig variation graph and compute node abundances."
+usage = "Build contig variation graph using vg msga and compute node abundances."
 
 
 def main():
-    parser = argparse.ArgumentParser(prog='parse_graph_vgflow.py', description=usage)
-    parser.add_argument("--sample", default="SRR14814127", help="sample ID and core component of filenames")
+    parser = argparse.ArgumentParser(prog='build_graph_msga.py', description=usage)
+    parser.add_argument('-f', '--forward', dest='forward', type=str, required=True, help='Forward reads in fastq format')
+    parser.add_argument('-r', '--reverse', dest='reverse', type=str, help='Reverse reads in fastq format')
+    parser.add_argument('-c', '--contigs', dest='contigs', type=str, required=True, help='Input contigs in fastq format')
+    parser.add_argument('-vg', '--vg_path', dest='vg', type=str, required=True, help="Path to vg executable")
+    parser.add_argument('-t', '--threads', default=8, help="Set number of threads used for vg.")
+    parser.add_argument('-w', '--msga_w', dest='msga_w', default=128, help="Set alignment band width parameter for vg msga.")
     parser.add_argument('-m', '--min_edge_ab', dest='min_edge_ab', type=int, default=0, help="Minimal number of reads spanning an edge; edges with abundance below this threshold are removed from the contig variation graph")
-    parser.add_argument('--filter_branches_only', action='store_true', default=True, help="Only apply edge abundance filter to branching edges")
+    parser.add_argument('--filter_branches_only', action='store_true', help="Only apply edge abundance filter to branching edges")
+    parser.add_argument('--reuse_graph', dest='reuse_graph', action='store_true', help="Use contig variation graph stored in 'contig_graph.norm.vg'")
+    parser.add_argument('--reuse_index', dest='reuse_index', action='store_true', help="Use contig variation graph indexes stored in 'contig_graph.norm.xg' and 'contig_graph.norm.gcsa'")
+    parser.add_argument('--reuse_aln', dest='reuse_aln', action='store_true', help="Use read alignments in 'contig_graph.norm.aln.filtered.json'")
+    parser.add_argument('--quick', action='store_true', help="sort contigs in quick mode; use this option if sorting contigs is a bottleneck")
     args = parser.parse_args()
 
+    global_t1_start = time.perf_counter()
+    global_t2_start = time.process_time()
 
     filepath = os.path.dirname(os.path.abspath(__file__))
-    graph_name = args.sample
-    gfa_file = "{}.gfa".format(graph_name)
-    aln_name = "{}.aln".format(graph_name)
-    aln_file = "{}.json".format(aln_name)
+    graph_name = "contig_graph"
+    gfa_file = "{}.norm.gfa".format(graph_name)
+    aln_name = "{}.norm.aln".format(graph_name)
+    aln_file = "{}.filtered.json".format(aln_name)
+    vg = args.vg
+    
+    if not args.reuse_graph:
+        t1_start = time.perf_counter()
+        t2_start = time.process_time()
+        # sort contigs
+        sorted_contigs = "sorted_contigs.fasta"
+        if args.quick:
+            subprocess.check_call(
+                "python {}/sort_contigs.py --quick -t {} {} {}".format(
+                    filepath, args.threads, args.contigs, sorted_contigs),
+                shell=True
+            )
+        else:
+            subprocess.check_call(
+                "python {}/sort_contigs.py -t {} {} {}".format(filepath,
+                                                               args.threads,
+                                                               args.contigs,
+                                                               sorted_contigs),
+                shell=True
+            )
+        with open(sorted_contigs, 'r') as f:
+            line = f.readline()
+            base_seq = line.lstrip('>').rstrip()
 
+        # build initial graph
+        print("Building initial graph")
+        subprocess.check_call("mkdir -p tmp", shell=True)
+        subprocess.check_call("export TMPDIR=tmp && " + vg +
+            " msga -f {} -b {} -t {} -a -w {} > {}.vg".format(
+                sorted_contigs, base_seq, args.threads, args.msga_w, graph_name),
+            shell=True
+        )
+
+        # normalize graph
+        print("Normalizing graph")
+        subprocess.check_call( vg +
+            " mod -n {0}.vg | {1} mod -X 32 - | {1} ids -c - > {0}.norm.vg".format(
+                graph_name, vg),
+            shell=True
+        )
+
+        # convert vg to gfa
+        print("Convert graph to GFA")
+        subprocess.check_call( vg +
+            " view {}.norm.vg > {}".format(graph_name, gfa_file),
+            shell=True
+        )
+
+        t1_stop = time.perf_counter()
+        t2_stop = time.process_time()
+        print("Variation graph is ready")
+        print("Elapsed time: {:.1f} seconds".format(t1_stop-t1_start))
+        print("CPU process time: {:.1f} seconds".format(t2_stop-t2_start))
+        print()
+
+    if not args.reuse_index:
+        # index graph
+        t1_start = time.perf_counter()
+        t2_start = time.process_time()
+        print("Building index for graph")
+        subprocess.check_call("mkdir -p tmp", shell=True)
+        subprocess.check_call( "export TMPDIR=tmp && " + vg +
+            " index -x {0}.norm.xg -g {0}.norm.gcsa -k 16 -X 2 -Z 500 -t {1} {0}.norm.vg".format(
+                graph_name, args.threads),
+            shell=True
+        )
+        t1_stop = time.perf_counter()
+        t2_stop = time.process_time()
+        print("Graph index is ready")
+        print("Elapsed time: {:.1f} seconds".format(t1_stop-t1_start))
+        print("CPU process time: {:.1f} seconds".format(t2_stop-t2_start))
+        print()
+
+    if not args.reuse_aln:
+        # align reads to graph
+        t1_start = time.perf_counter()
+        t2_start = time.process_time()
+        print("Mapping reads to graph")
+        if args.reverse:
+            subprocess.check_call( vg +
+                " map -f {0} -f {1} -x {2}.norm.xg -g {2}.norm.gcsa -k 16 -t {4} > {3}.gam".format(
+                    args.forward, args.reverse, graph_name, aln_name, args.threads),
+                shell=True
+            )
+        else:
+            subprocess.check_call( vg +
+                " map -f {0} -x {2}.norm.xg -g {2}.norm.gcsa -k 16 -t {4} > {3}.gam".format(
+                    args.forward, args.reverse, graph_name, aln_name, args.threads),
+                shell=True
+            )
+
+        # filter for primary alignments
+        print("Filtering alignments...")
+        try:
+            subprocess.check_call( vg +
+                " filter -r 0.90 -s 2 -fu -t {1} {0}.gam > {0}.filtered.gam".format(
+                aln_name, args.threads),
+                shell=True)
+        except CalledProcessError as e:
+            print("WARNING: vg filter failed, continuing with unfiltered reads")
+            subprocess.check_call("cp {0}.gam {0}.filtered.gam".format(aln_name))
+        t1_stop = time.perf_counter()
+        t2_stop = time.process_time()
+        print("Alignments ready")
+        print("Elapsed time: {:.1f} seconds".format(t1_stop-t1_start))
+        print("CPU process time: {:.1f} seconds".format(t2_stop-t2_start))
+        print()
+
+        # output json
+        print("Converting gam to json format")
+        subprocess.check_call( vg +
+            " view -a {0}.filtered.gam > {1}".format(aln_name, aln_file),
+            shell=True)
+
+        # clean up vg tmpdir
+        subprocess.check_call("rm -rf tmp", shell=True)
+
+    # read graph and check for cycles
     contig_graph, paths, node_dict = read_gfa(gfa_file)
+    # # check for parallel sequences in graph
+    # check_parallel_nodes(contig_graph)
+
+    # compute node abundances corresponding to the GFA file
     print("Computing node/edge abundances...",)
-
     node_abundances, vertex_pair_abundances = get_node_abundances(
-        contig_graph, node_dict, aln_file)
-
+            contig_graph, node_dict, aln_file)
     # write edge abundances to file
     edge_abundances = {}
-    with open('{}.edge_abundances.txt'.format(graph_name), 'w') as f:
+    with open('edge_abundances.txt', 'w') as f:
         for e in contig_graph.edges():
             v1 = e.source()
             v2 = e.target()
@@ -53,7 +183,6 @@ def main():
                 edge_ab = 0
             edge_abundances[e] = edge_ab
             f.write("{},{}\t{}\n".format(v1, v2, edge_ab))
-
     # remove edges of low abundance and break contigs accordingly
     write_gfa(contig_graph, '{}.tmp1.gfa'.format(graph_name), paths=paths)
     contig_graph, paths = filter_edges(contig_graph, paths, edge_abundances,
@@ -80,7 +209,7 @@ def main():
     # write final graph and node abundances to file
     write_gfa(final_graph, '{}.final.gfa'.format(graph_name), paths=final_paths)
     final_graph.save('{}.final.gt'.format(graph_name))
-    abundance_file = open('{}.node_abundance.txt'.format(graph_name), 'w')
+    abundance_file = open('node_abundance.txt', 'w')
     for node in final_graph.vertices():
         v = int(node)
         if final_graph.vp.seq[node] == "N":
@@ -89,14 +218,16 @@ def main():
         else:
             ab = final_graph.vp.ab[node]
         abundance_file.write("{}:{}\n".format(v, ab))
-
     abundance_file.close()
-
-    print("\ngraph processing completed")
+    t1_stop = time.perf_counter()
+    t2_stop = time.process_time()
+    print("\nbuild_graph_msga completed")
+    print("Elapsed time: {:.1f} seconds".format(t1_stop-global_t1_start))
+    print("CPU process time: {:.1f} seconds".format(t2_stop-global_t2_start))
     print()
     return
 
-#####################################################
+######################
 
 def get_node_abundances(graph, node_dict, aln_file):
     """
@@ -205,6 +336,7 @@ def get_node_abundances(graph, node_dict, aln_file):
         # print(node, ":", node_abundance)
         # f.write("{0}:{1}\n".format(node-1, node_abundance))
     return node_abundance_list, connection_counts
+
 
 
 if __name__ == '__main__':

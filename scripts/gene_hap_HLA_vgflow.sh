@@ -288,7 +288,7 @@ if [[ "$loci" =~ ^(HLA)$ ]]; then
         echo "Minimum strain depth required: ${min_strain_depth}"
         vg convert -fW ${genotyping_nodes_dir}${loci}_${gene}.haplotypes.xg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa
         vg view -a ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.aln.json
-        python3 ${bigfoot_dir}parse_graph_vgflow.py --sample ${outdir}/${sample_id}.${graph}.${gene}.vgflow -m 0
+        python3 ${bigfoot_dir}/parse_graph_vgflow.py --sample ${outdir}/${sample_id}.${graph}.${gene}.vgflow -m 0
 #   skip some overlapping path-related QC + wfmash instead of minimap - segment length 33% shortest allele, % pairwise identity = 95%
 # -- premake overlaps file etc?
 #   python3 ${bigfoot_dir}/vg-flow_immunovar.py --min_depth 0 --trim 0 --greedy_mode all -m 0 -c ${min_strain_depth} --remove_included_paths 0 --threads 16 ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
