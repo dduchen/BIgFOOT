@@ -1,0 +1,6 @@
+
+Gurobi 11.0.0 (linux64, gurobi_cl) logging started Fri Mar  1 15:15:06 2024
+
+Set parameter LogFile to value "gurobi.log"
+Using license file /home/dylan/miniconda3/envs/bigfoot/bin/../lib/gurobi.lic
+Restricted license - for non-production use only - expires 2025-11-24
