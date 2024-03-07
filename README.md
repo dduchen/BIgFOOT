@@ -32,15 +32,6 @@ Ensure yuo have an active gurobi licence:<br>
 - Biostrings/DECIPHER </code>
 
 3) We also use some external tools which need to be accessible in your PATH<br>
-<<<<<<< HEAD
-<code>tools_dir=~/Documents/tools; # [wherever you normally install+store software]
-PATH=$PATH:${tools_dir};
-cd ${tools_dir};
-mkdir -p ${tools_dir}/BIgFOOT </code><br>
-### download BIgFOOT graph materials from zenodo <a href="https://doi.org/10.5281/zenodo.10674696"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.10674696.svg" alt="DOI"></a><br>
-#### note: this is a large compressed file: ~23GB
-<code>wget -P ${tools_dir}/BIgFOOT/ https://zenodo.org/records/10674696/files/immunovar_graph_materials.tar.gz?download=1 </code><br>
-=======
 <code>tools_dir=~/tools;</code> # [wherever you normally install+store software]<br>
 <code>PATH=$PATH:${tools_dir};</code><br>
 <code>cd ${tools_dir};</code><br>
@@ -57,7 +48,6 @@ src="https://zenodo.org/badge/DOI/10.5281/zenodo.10674696.svg" alt="DOI"></a><br
 <code>cd ${bigfoot_source} ; tar -xvf ${bigfoot_source}/immunovar_graph_materials.tar.gz*<br>
 # make distance indexes read only<br>
 chmod 0444 *.dist<br>
->>>>>>> 44ad02a (updated readme)
 We also need the VG executable<br>
 <code>wget -P ${tools_dir}/ https://github.com/vgteam/vg/releases/download/v1.55.0/vg; chmod +x ${tools_dir}/vg </code><br>
 We use the Ryan Wick's Assembly-dereplicator package during haplotype selection <a href="https://github.com/rrwick/Assembly-Dereplicator">Assembly-dereplicator</a>.<br>
@@ -65,12 +55,6 @@ We use the Ryan Wick's Assembly-dereplicator package during haplotype selection 
 We provide the option of using merged paired-end reads from NGmerge for alignment/inference (optional, not always recommended) <a href="https://github.com/harvardinformatics/NGmerge">NGmerge</a>.<br>
 - <code>git clone https://github.com/harvardinformatics/NGmerge.git ${tools_dir}/ </code><br>
 
-<<<<<<< HEAD
-### Running BIgFOOT
-- Assuming BAM input
-bigfoot_dir=${tools_dir}/BIgFOOT/scripts
-immunovar_bed=${tools_dir}/BIgFOOT/grch38_custom_immunovar_coords.bed
-=======
 ### Running bigfoot - Example using WES data from ISGR: HG00138
 #### British in England and Scotland, European Ancestry
 <code>bigfoot_dir=${bigfoot_source}/scripts # or change this if you've got the large graph+annotations+scripts saved elsewere<br>
@@ -86,6 +70,5 @@ bigfoot_dir=${tools_dir}/bigfoot/scripts</code><br>
 
 export sample="ERR031935" outdir=${PWD} bigfoot_dir=${bigfoot_dir} merged="FALSE" graph="wg_immunovar"
 . ${bigfoot_dir}/preprocess_wg_immunovar_alignment.sh
->>>>>>> 44ad02a (updated readme)
 
 
