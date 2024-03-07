@@ -48,15 +48,16 @@ else
     echo "Define graph"
 fi
 echo "Alignment to immunovariation graph-accounting for duplicate IMGT alleles"
-cp ${graph_base}.dist ${sample}_${graph}_pe_prep_aln.dist
+#write protected distance file
+#cp ${graph_base}.dist ${sample}_${graph}_pe_prep_aln.dist
 
 echo "Aligning QC-passed PE reads"
-time vg giraffe -Z ${graph_base}.gbz -H ${graph_base}.gbwt -m ${graph_base}.min -d ${sample}_${graph}_pe_prep_aln.dist -f ${sample}_qc_1.fastq.gz -f ${sample}_qc_2.fastq.gz -p --watchdog-timeout 60 > ${sample}.${graph_base##*/}.gam
-rm ${sample}_${graph}_pe_prep_aln.dist
+time vg giraffe -Z ${graph_base}.gbz -H ${graph_base}.gbwt -m ${graph_base}.min -d ${graph_base}.dist -f ${sample}_qc_1.fastq.gz -f ${sample}_qc_2.fastq.gz -p --watchdog-timeout 60 > ${sample}.${graph_base##*/}.gam
+#rm ${sample}_${graph}_pe_prep_aln.dist
 # feed completed gam to next stage of workflow
 #sbatch --export=i=${sample}.${graph_base##*/}.gam,graph=$graph,outdir=${PWD} /home/dd392/project/filter_immune_subgraph.sh;
-export i=${sample}.${graph_base##*/}.gam outdir=${PWD} graph=$graph vg_flow_dir=${vg_flow_dir}
-. ${vg_flow_dir}/filter_immune_subgraph.sh
+export i=${sample}.${graph_base##*/}.gam outdir=${PWD} graph=$graph bigfoot_dir=${bigfoot_dir}
+. ${bigfoot_dir}/filter_immune_subgraph.sh
 #
 if [[ $merged == "TRUE" ]]; then
     FILE=${sample}.NGmerge.fastq.gz
