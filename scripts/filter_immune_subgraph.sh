@@ -34,7 +34,7 @@ elif [[ $graph == "franken" ]]; then
 #    graph_base=${graphdir}/grch38_chm13_immunovar.sort
 elif [[ $graph == "wg_immunovar" ]]; then
     echo "Using IGenotyper GRCh38 + CHM13 + IG/MHC Haplotypes + IMGT/OGRDB/IPD alleles"
-    graphdir=${tools_dir}/bigfoot
+    graphdir=${bigfoot_source}
     graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar
 elif [[ $graph == "ig_hla_kir" ]]; then
     echo "Using IGenotyper GRCh38 + CHM13 + IG Haplotypes + IMGT-IPD alleles - Deprecated"
@@ -121,7 +121,7 @@ if [[ $aln_type == *"pe"* ]]; then
 # finished!
     echo "fin";
     #sbatch --export=i=${sample_immune_graph}.gam,sample_id=$sample,graph=$graph,aln_type='pe',use_augmented=FALSE,workdir=${PWD} /home/dd392/project/gene_hap_IMGT_vgflow.sh
-    export i=${sample_immune_graph}.gam workdir=${PWD} sample_id=$sample graph=$graph aln_type='pe' use_augmented=FALSE bigfoot_dir=${bigfoot_dir} merged=FALSE graph=wg_immunovar
+    export i=${sample_immune_graph}.gam workdir=${PWD} sample_id=${sample} graph=${graph} aln_type='pe' use_augmented=FALSE bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged=FALSE graph=wg_immunovar
     . ${bigfoot_dir}/gene_hap_IMGT_vgflow.sh
 
 else echo "fin - performing depth estimates and cleaning up after myself";

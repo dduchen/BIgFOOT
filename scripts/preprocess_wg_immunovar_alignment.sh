@@ -38,7 +38,7 @@ elif [[ $graph == "franken" ]]; then
 #    graph_base=${graphdir}/grch38_chm13_immunovar.sort
 elif [[ $graph == "wg_immunovar" ]]; then
     echo "Using IGenotyper GRCh38 + CHM13 + IG/MHC Haplotypes + IMGT/OGRDB/IPD alleles"
-    graphdir=${tools_dir}/bigfoot
+    graphdir=${bigfoot_source}
     graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar
 elif [[ $graph == "ig_hla_kir" ]]; then
     echo "Using IGenotyper GRCh38 + CHM13 + IG Haplotypes + IMGT-IPD alleles - Deprecated"
@@ -56,7 +56,7 @@ time vg giraffe -Z ${graph_base}.gbz -H ${graph_base}.gbwt -m ${graph_base}.min 
 #rm ${sample}_${graph}_pe_prep_aln.dist
 # feed completed gam to next stage of workflow
 #sbatch --export=i=${sample}.${graph_base##*/}.gam,graph=$graph,outdir=${PWD} /home/dd392/project/filter_immune_subgraph.sh;
-export i=${sample}.${graph_base##*/}.gam outdir=${PWD} graph=$graph bigfoot_dir=${bigfoot_dir}
+export i=${sample}.${graph_base##*/}.gam outdir=${PWD} graph=${graph} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir}
 . ${bigfoot_dir}/filter_immune_subgraph.sh
 #
 if [[ $merged == "TRUE" ]]; then

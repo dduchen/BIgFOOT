@@ -33,9 +33,9 @@ elif [[ $graph == "franken" ]]; then
     genotyping_nodes_dir=${graphdir}/genotyping_nodes/
 elif [[ $graph == "wg_immunovar" ]]; then
     echo "Using IGenotyper GRCh38 + CHM13 + IG/MHC Haplotypes + IMGT/OGRDB/IPD alleles"
-    graphdir=${tools_dir}/bigfoot
+    graphdir=${bigfoot_source}
     graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar
-    genotyping_nodes_dir=${tools_dir}/bigfoot/wg_ig_hla_kir_immunovar_genotyping_nodes/
+    genotyping_nodes_dir=${bigfoot_source}/wg_ig_hla_kir_immunovar_genotyping_nodes/
 elif [[ $graph == "ig_hla_kir" ]]; then
     echo "Using IGenotyper GRCh38 + CHM13 + IG Haplotypes + IMGT-IPD alleles - Deprecated"
 #    graphdir=~/project/grch38_chm13_immunovar

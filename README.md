@@ -38,7 +38,7 @@ Ensure yuo have an active gurobi licence:<br>
 
 ### download BIgFOOT graph materials from zenodo <a href="https://doi.org/10.5281/zenodo.10674696"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.10674696.svg" alt="DOI"></a><br>
 
-<code>bigfoot_source=~/pi_kleinstein/bigfoot</code><br>
+<code>bigfoot_source=~/pi_kleinstein/bigfoot</code><br> # where are we planning on storing all of the reference graph files?
 <code>bigfoot_source=${tools_dir}/bigfoot</code><br>
 <code>mkdir -p ${bigfoot_source} </code><br>
 
@@ -56,8 +56,8 @@ We provide the option of using merged paired-end reads from NGmerge for alignmen
 ### Running bigfoot - Example using WES data from ISGR: HG00138
 #### British in England and Scotland, European Ancestry
 
-<code>bigfoot_dir=${bigfoot_source}/scripts # or change this if you've got the scripts saved elsewere<br>
-    bigfoot_dir=~/Documents/github/BIgFOOT/scripts/<br>
+<code>bigfoot_dir=${bigfoot_source}/scripts # Change this if you've downloaded the github repo somewhere else/have the bigfoot analysis scripts saved elsewere<br>
+bigfoot_dir=${tools_dir}/BIgFOOT/scripts<br>
 immunovar_bed=${bigfoot_source}/grch38_custom_immunovar_coords.bed<br>
 conda activate bigfoot<br>
 test_dir=${bigfoot_source}/example/<br>
@@ -67,8 +67,10 @@ wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR031/ERR031935/ERR0319
 wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR031/ERR031935/ERR031935_2.fastq.gz<br>
 
 #### Process + Align raw reads
-
-export sample="ERR031935" outdir=${PWD} bigfoot_dir=${bigfoot_dir} merged="FALSE" graph="wg_immunovar"
+cd ${test_dir}
+export sample="ERR031935" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged="FALSE" graph="wg_immunovar"
 . ${bigfoot_dir}/preprocess_wg_immunovar_alignment.sh
+
+
 
 

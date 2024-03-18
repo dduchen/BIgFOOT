@@ -38,9 +38,9 @@ elif [[ $graph == "franken" ]]; then
     genotyping_nodes_dir=${graphdir}/genotyping_nodes/
 elif [[ $graph == "wg_immunovar" ]]; then
     echo "Using IGenotyper GRCh38 + CHM13 + IG/MHC Haplotypes + IMGT/OGRDB/IPD alleles"
-    graphdir=${tools_dir}/bigfoot
+    graphdir=${bigfoot_source}
     graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar
-    genotyping_nodes_dir=${tools_dir}/bigfoot/wg_ig_hla_kir_immunovar_genotyping_nodes/
+    genotyping_nodes_dir=${bigfoot_source}/wg_ig_hla_kir_immunovar_genotyping_nodes/
 elif [[ $graph == "ig_hla_kir" ]]; then
     echo "Using IGenotyper GRCh38 + CHM13 + IG Haplotypes + IMGT-IPD alleles - Deprecated"
 #    graphdir=~/project/grch38_chm13_immunovar
@@ -67,8 +67,8 @@ else
     vg gamsort ${gam_file} -i ${gam_file%.gam}.sorted.gam.gai -p > ${gam_file%.gam}.sorted.gam
 fi
 # run HLA / KIR inference -- only uncomment this line in IMGT script
-#sbatch --export=i=$i,sample_id=$sample_id,graph=$graph,aln_type='pe',workdir=${PWD} ${bigfoot_dir}/gene_hap_HLA_vgflow.sh
-#sbatch --export=i=$i,sample_id=$sample_id,graph=$graph,aln_type='pe',workdir=${PWD} ${bigfoot_dir}/gene_hap_KIR_vgflow.sh
+#sbatch --export=i=$i,sample_id=$sample_id,graph=$graph,aln_type='pe',workdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} ${bigfoot_dir}/gene_hap_HLA_vgflow.sh
+#sbatch --export=i=$i,sample_id=$sample_id,graph=$graph,aln_type='pe',workdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} ${bigfoot_dir}/gene_hap_KIR_vgflow.sh
 #
 #-- global initial pairwise percent identity filtering: 0%
 perc_id_filter="0.00"; echo "Using a final pairwise filter of $perc_id_filter for reads aligned to locus";
