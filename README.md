@@ -1,15 +1,15 @@
-# BIgFOOT: software to infer Biological Immunoglobulins/Immunovariation Graph FOOTprints
+# BIgFOOT: inference of Biological I(g)mmunovariation via Graph FOOTprinting
 ### Current version: 0.0.1
 
 This workflow infers alleles, calls novel variation, and constructs sample-specific sequence variation graphs for immunoglobulin(Ig)/other immune-related loci which can be used to perform genetic association tests. The workflow inolves a combination of various graph-construction steps, sequence-to-graph alignment, flow graph decomposition, and unitig calling.<br>
 I hope to expand this workflow to enable genome-to-genome analyses/assessing genetic associations between host germline immunovariation and pathogen/metagenomic genetic variation/diversity (i.e., searching for immunological <b>FOOTprints</b> using joint host-pathogen genomic data).
 
-Genetic loci where BIgFOOT performs accurate allele calling:
+<i>Genetic loci where BIgFOOT performs accurate allele calling:</i>
 - IGH
 - IGL
-- HLA (DQA1/DQB1/... more to come)
- <i>Calls possible - but unvalidated/untuned parameters - WiP:</i>
-- IGKV
+- HLA (DQA1/DQB1/... more to come)<br>
+<i>Infers alleles - but, like bigoot, I have no proof if they're real (WiP):</i><br>
+- IGK
 - TR
 - KIR
 
@@ -18,7 +18,7 @@ Genetic loci where BIgFOOT performs accurate allele calling:
 - BAM/CRAM alignment
 
 ## set up conda environment
-<b> BIgFOOT is heavily influenced/relies on certain methods developed for <a href="https://bitbucket.org/jbaaijens/vg-flow/src/master/">VG-Flow</a>. </b> Development of BIgFOOT based on VG-Flow v0.0.4
+<b> BIgFOOT is heavily influenced/relies on methods developed for <a href="https://bitbucket.org/jbaaijens/vg-flow/src/master/">VG-Flow</a>. </b> Development of BIgFOOT based on VG-Flow v0.0.4
 
 1) Clone me! <code> git clone https://github.com/dduchen/BIgFOOT.git </code>
 2) set up conda/mamba environment we'll be needing -- can move some of these after the '#' if they're already in your path (e.g., samtools, we assume you have R)<br>
@@ -64,13 +64,18 @@ test_dir=${bigfoot_source}/example/<br>
 mkdir -p ${test_dir}<br>
 #fastq-dl -a ERR031935 -o ${test_dir}/<br>
 wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR031/ERR031935/ERR031935_1.fastq.gz<br>
-wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR031/ERR031935/ERR031935_2.fastq.gz<br>
+wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR031/ERR031935/ERR031935_2.fastq.gz<br> wget -P ${test_dir}/ ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/HG00138/exome_alignment/HG00138.unmapped.ILLUMINA.bwa.GBR.exome.20120522.bam<br>
+wget -P ${test_dir}/ ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/HG00138/exome_alignment/HG00138.mapped.ILLUMINA.bwa.GBR.exome.20120522.bam<br>
 
 #### Process + Align raw reads
 cd ${test_dir}
+##### from raw reads:
 export sample="ERR031935" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged="FALSE" graph="wg_immunovar"
 . ${bigfoot_dir}/preprocess_wg_immunovar_alignment.sh
 
+##### from indexed BAM:
+export sample="ERR031935" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged="FALSE" graph="wg_immunovar"
+. ${bigfoot_dir}/preprocess_wg_immunovar_alignment.sh
 
 
 
