@@ -18,7 +18,7 @@ I hope to expand this workflow to enable genome-to-genome analyses/assessing gen
 - BAM/CRAM alignment
 
 ## set up conda environment
-<b> BIgFOOT is heavily influenced/relies on methods developed for <a href="https://bitbucket.org/jbaaijens/vg-flow/src/master/">VG-Flow</a>. </b> Development of BIgFOOT based on VG-Flow v0.0.4
+<b> BIgFOOT is heavily influenced/relies on methods developed for <a href="https://bitbucket.org/jbaaijens/vg-flow/src/master/">VG-Flow (v0.0.4)</a>. </b>
 
 1) Clone me! <code> git clone https://github.com/dduchen/BIgFOOT.git </code>
 2) set up conda/mamba environment we'll be needing -- can move some of these after the '#' if they're already in your path (e.g., samtools, we assume you have R)<br>
@@ -62,20 +62,23 @@ immunovar_bed=${bigfoot_source}/grch38_custom_immunovar_coords.bed<br>
 conda activate bigfoot<br>
 test_dir=${bigfoot_source}/example/<br>
 mkdir -p ${test_dir}<br>
+cd ${test_dir}<br>
 #fastq-dl -a ERR031935 -o ${test_dir}/<br>
 wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR031/ERR031935/ERR031935_1.fastq.gz<br>
 wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR031/ERR031935/ERR031935_2.fastq.gz<br> wget -P ${test_dir}/ ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/HG00138/exome_alignment/HG00138.unmapped.ILLUMINA.bwa.GBR.exome.20120522.bam<br>
-wget -P ${test_dir}/ ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/HG00138/exome_alignment/HG00138.mapped.ILLUMINA.bwa.GBR.exome.20120522.bam<br>
+wget -P ${test_dir}/ ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/HG00138/exome_alignment/HG00138.mapped.ILLUMINA.bwa.GBR.exome.20120522.bam<br></code>
+samtools merge -o HG00138.bam HG00138.mapped.ILLUMINA.bwa.GBR.exome.20120522.bam HG00138.unmapped.ILLUMINA.bwa.GBR.exome.20120522.bam
+rm HG00138.*ILLUMINA*bam
 
-#### Process + Align raw reads
-cd ${test_dir}
-##### from raw reads:
-export sample="ERR031935" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged="FALSE" graph="wg_immunovar"
-. ${bigfoot_dir}/preprocess_wg_immunovar_alignment.sh
+#### Process + Align raw reads<br>
+<code>export sample="ERR031935" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged="FALSE" graph="wg_immunovar"</br>
+. ${bigfoot_dir}/preprocess_wg_immunovar_alignment.sh<br></code>
 
 ##### from indexed BAM:
-export sample="ERR031935" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged="FALSE" graph="wg_immunovar"
-. ${bigfoot_dir}/preprocess_wg_immunovar_alignment.sh
+<code>export bam_file="HG00138.bam" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} ref_build="grch38" ref="/home/dd392/tools/refs/annots/GRCh38_full_analysis_set_plus_decoy_hla.fa" merged="FALSE" graph="wg_immunovar"<br>
+. ${bigfoot_dir}/process_from_bam_wg_immunovar_alignment.sh
 
+<i>Support for CHM13 available in the next release</i>
 
+####################################################
 
