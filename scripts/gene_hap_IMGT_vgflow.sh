@@ -469,11 +469,10 @@ else
     ls ${outdir}/${sample_id}.${graph}.${gene}\.* | grep -v  "${gene}.genome_graph_ref.augmented.gfa\|${gene}.genome_graph_ref.gfa\|${gene}.haplotypes.xg\|${gene}.haplotypes.gam\|annot.fasta\|annot.gfa\|final.gfa\|node_abundance\|depth" > ${outdir}/${sample_id}_${gene}_files.txt
     xargs rm < ${outdir}/${sample_id}_${gene}_files.txt
 fi
-
-#
 done
 #
 ls ${outdir}/*_files.txt > ${outdir}/${sample_id}_files_rm.txt
-xargs rm < ${outdir}/${sample_id}_files_rm.txt
+ls -d ${outdir}/seqwish* >> ${outdir}/${sample_id}_files_rm.txt
+xargs rm -rf < ${outdir}/${sample_id}_files_rm.txt
 # clean up:
 echo "All cleaned up!"

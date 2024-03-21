@@ -53,8 +53,8 @@ We use the Ryan Wick's Assembly-dereplicator package during haplotype selection 
 We provide the option of using merged paired-end reads from NGmerge for alignment/inference (optional, not always recommended) <a href="https://github.com/harvardinformatics/NGmerge">NGmerge</a>.<br></code>
 - <code>git clone https://github.com/harvardinformatics/NGmerge.git ${tools_dir}/ </code><br>
 
-### Running bigfoot - Example using WES data from ISGR: HG00138
-#### British in England and Scotland, European Ancestry
+### Running bigfoot - Example using raw WES data from ISGR: <a href="https://www.internationalgenome.org/data-portal/sample/NA19240">NA19240</a><br>
+#### Yoruba in Ibadan, Nigeria, African Ancestry
 
 <code>bigfoot_dir=${bigfoot_source}/scripts # Change this if you've downloaded the github repo somewhere else/have the bigfoot analysis scripts saved elsewere<br>
 bigfoot_dir=${tools_dir}/BIgFOOT/scripts<br>
@@ -63,19 +63,20 @@ conda activate bigfoot<br>
 test_dir=${bigfoot_source}/example/<br>
 mkdir -p ${test_dir}<br>
 cd ${test_dir}<br>
-#fastq-dl -a ERR031935 -o ${test_dir}/<br>
-wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR031/ERR031935/ERR031935_1.fastq.gz<br>
-wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/ERR031/ERR031935/ERR031935_2.fastq.gz<br> wget -P ${test_dir}/ ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/HG00138/exome_alignment/HG00138.unmapped.ILLUMINA.bwa.GBR.exome.20120522.bam<br>
-wget -P ${test_dir}/ ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/phase3/data/HG00138/exome_alignment/HG00138.mapped.ILLUMINA.bwa.GBR.exome.20120522.bam<br></code>
-samtools merge -o HG00138.bam HG00138.mapped.ILLUMINA.bwa.GBR.exome.20120522.bam HG00138.unmapped.ILLUMINA.bwa.GBR.exome.20120522.bam
-rm HG00138.*ILLUMINA*bam
 
-#### Process + Align raw reads<br>
-<code>export sample="ERR031935" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged="FALSE" graph="wg_immunovar"</br>
+#### Starting from raw reads (WES)<br>
+<i>Illumina chemistry: V2<br>
+array: Agilent Sure Select Whole exome capture 50 Mb</i><br>
+<code>#fastq-dl -a SRR507323 -o ${test_dir}/<br>
+wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR507/SRR507323/SRR507323_1.fastq.gz<br>
+wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR507/SRR507323/SRR507323_2.fastq.gz<br> 
+export sample="SRR507323" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged="FALSE" graph="wg_immunovar"<br>
 . ${bigfoot_dir}/preprocess_wg_immunovar_alignment.sh<br></code>
 
-##### from indexed BAM:
-<code>export bam_file="HG00138.bam" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} ref_build="grch38" ref="/home/dd392/tools/refs/annots/GRCh38_full_analysis_set_plus_decoy_hla.fa" merged="FALSE" graph="wg_immunovar"<br>
+##### Starting from BAM/CRAM (WGS)<br>
+<code>wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989410/NA19240.final.cram<br>
+wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989410/NA19240.final.cram
+export bam_file="NA19240.bam" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} ref_build="grch38" ref="/home/dd392/tools/refs/annots/GRCh38_full_analysis_set_plus_decoy_hla.fa" merged="FALSE" graph="wg_immunovar"<br>
 . ${bigfoot_dir}/process_from_bam_wg_immunovar_alignment.sh
 
 <i>Support for CHM13 available in the next release</i>

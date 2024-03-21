@@ -107,7 +107,7 @@ odgi view -i ${output_graph}.norm.og -g -a -P >${output_graph}.norm.gfa
 gfaffix ${output_graph}.norm.gfa -o ${output_graph}.fix.gfa
 #
 # cleaning assumes ngmerged route takes sufficiently longer - pe workflow has completed
-if [[ $aln_type == *"pe"* ]]; then
+if [[ ${aln_type} == *"pe"* ]]; then
 # perform some depth estimates:
     vg depth --gam ${sample_immune_graph}.gam ${immune_graph}.xg > ${sample}.${graph}_immune.pe.depth;
     depth_immune=$(awk -F ' ' '{print $1}' ${sample}.${graph}_immune.pe.depth)

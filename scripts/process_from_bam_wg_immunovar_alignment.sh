@@ -30,7 +30,7 @@ elif [[ $graph == "wg_immunovar" ]]; then
     echo "Using IGenotyper GRCh38 + CHM13 + IG/MHC Haplotypes + IMGT/OGRDB/IPD alleles"
     graphdir=${bigfoot_source}
     graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar
-    graph=${graph_base}".subgraph"
+    immune_graph=${graph_base}".subgraph"
 elif [[ $graph == "ig_hla_kir" ]]; then
     echo "Using IGenotyper GRCh38 + CHM13 + IG Haplotypes + IMGT-IPD alleles - Deprecated"
 else
