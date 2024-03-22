@@ -17,7 +17,13 @@ datadir=$workdir
 cd ${datadir}
 workdir=${PWD}
 # make ${bigfoot_dir} python scripts findable
-export PYTHONPATH=$PYTHONPATH:$bigfoot_dir
+if [[ ${PYTHONPATH} == *"BIgFOOT"* ]]; then
+    echo "bigfoot scripts in correct path";
+else
+    echo "adding BIgFOOT scripts dir to path";
+    export PYTHONPATH=$PYTHONPATH:$bigfoot_dir;
+fi
+#
 echo "Processing BAM: ${bam_file}"
 #
 if [[ $graph == "minimal" ]]; then
@@ -48,9 +54,9 @@ else
 fi
 echo "Extracting candidate reads from BAM"
 input_aln=${bam_file##*/};
-sample=${input_aln%.bam};
-# check if BAM or CRAM
 aln_linear=$(echo ${input_aln} | sed s/.*\\.//g)
+sample=${input_aln%.${aln_linear}}
+# check if BAM or CRAM
 FILE=${input_aln%.${aln_linear}}.unmapped.fastq.gz
 if test -f "$FILE"; then
     echo "${i##*/} has been processed already - using it"
@@ -70,13 +76,16 @@ else
     fi
     echo "Extracting reads via BAZAM";
     if [[ ${aln_linear} == *"bam"* ]]; then
+        echo "BAM input";
         time bazam -bam ${input_aln} -L ${immunovar_bed} | gzip > ${input_aln%.${aln_linear}}.bazam.fastq.gz
         time bazam -bam ${input_aln} -L chr2:179424038-179441143 | gzip > ${input_aln%.${aln_linear}}.bazam.TTN.fastq.gz
-    else
-        echo "Assuming we're working with a cram file";
+    elif [[ ${aln_linear} == *"cram"* ]]; then
+        echo "CRAM input";
         bazam_path=$(which bazam);bazam_path=${bazam_path%bin/*}share/bazam*;bazam_path=${bazam_path}"/bazam.jar"
-        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L ${immunovar_bed} | gzip > ${input_aln%.${aln_linear}}.bazam.fastq.gz
-        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L chr2:179424038-179441143 | gzip > ${input_aln%.${aln_linear}}.bazam.TTN.fastq.gz
+        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L ${immunovar_bed} -n 6 | gzip > ${input_aln%.${aln_linear}}.bazam.fastq.gz
+        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L chr2:179424038-179441143 -n 6 | gzip > ${input_aln%.${aln_linear}}.bazam.TTN.fastq.gz
+    else
+        echo "Unknown alignment format - convert to GRCh38 BAM/CRAM and rerun"
     fi
     samtools view -@8 -C ${input_aln} -T ${ref} -f 4 | samtools fastq | gzip > ${input_aln%.${aln_linear}}.unmapped.fastq.gz
 fi
