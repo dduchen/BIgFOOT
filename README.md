@@ -8,6 +8,7 @@ I hope to expand this workflow to enable genome-to-genome analyses/assessing gen
 - IGH
 - IGL
 - HLA (DQA1/DQB1/... more to come)<br>
+
 <i>Infers alleles - but, like bigoot, I have no proof if they're real (WiP):</i><br>
 - IGK
 - TR
@@ -17,7 +18,7 @@ I hope to expand this workflow to enable genome-to-genome analyses/assessing gen
 - Raw fastq(.gz)
 - BAM/CRAM alignment
 
-## set up conda environment
+## Set up conda environment
 <b> BIgFOOT is heavily influenced/relies on methods developed for <a href="https://bitbucket.org/jbaaijens/vg-flow/src/master/">VG-Flow (v0.0.4)</a>. </b>
 
 1) Clone me! <code> git clone https://github.com/dduchen/BIgFOOT.git </code>
@@ -53,33 +54,32 @@ We use the Ryan Wick's Assembly-dereplicator package during haplotype selection 
 We provide the option of using merged paired-end reads from NGmerge for alignment/inference (optional, not always recommended) <a href="https://github.com/harvardinformatics/NGmerge">NGmerge</a>.<br></code>
 - <code>git clone https://github.com/harvardinformatics/NGmerge.git ${tools_dir}/ </code><br>
 
-### Running bigfoot - Example using raw WES data from ISGR: <a href="https://www.internationalgenome.org/data-portal/sample/NA19240">NA19240</a><br>
+### Running bigfoot - Example using sequencing/alignment files from ISGR: <a href="https://www.internationalgenome.org/data-portal/sample/NA19240">NA19240</a><br>
 #### Yoruba in Ibadan, Nigeria, African Ancestry
 
-<code>bigfoot_dir=${bigfoot_source}/scripts # Change this if you've downloaded the github repo somewhere else/have the bigfoot analysis scripts saved elsewere<br>
-bigfoot_dir=${tools_dir}/BIgFOOT/scripts<br>
-immunovar_bed=${bigfoot_source}/grch38_custom_immunovar_coords.bed<br>
-conda activate bigfoot<br>
-test_dir=${bigfoot_source}/example/<br>
-mkdir -p ${test_dir}<br>
-cd ${test_dir}<br>
+Set up example directory, download relevant files, and then run BIgFOOT pipeline
+<code>conda activate bigfoot<br>
+bigfoot_dir=${bigfoot_source}/scripts</code> (Change this if you've downloaded the github repo somewhere else/have the bigfoot analysis scripts saved elsewere)<br>
+<code>bigfoot_dir=${tools_dir}/BIgFOOT/scripts ; immunovar_bed=${bigfoot_source}/grch38_custom_immunovar_coords.bed<br>
+test_dir=${bigfoot_source}/example/ ; mkdir -p ${test_dir}; cd ${test_dir}<br></code>
 
 #### Starting from raw reads (WES)<br>
-<i>Illumina chemistry: V2<br>
-array: Agilent Sure Select Whole exome capture 50 Mb</i><br>
+<i>Illumina chemistry: V2, Array: Agilent Sure Select Whole exome capture 50 Mb</i><br>
 <code>#fastq-dl -a SRR507323 -o ${test_dir}/<br>
 wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR507/SRR507323/SRR507323_1.fastq.gz<br>
 wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR507/SRR507323/SRR507323_2.fastq.gz<br> 
 export sample="SRR507323" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged="FALSE" graph="wg_immunovar"<br>
+################################################################
 . ${bigfoot_dir}/preprocess_wg_immunovar_alignment.sh<br></code>
+################################################################
 
 ##### Starting from BAM/CRAM (WGS)<br>
 <code>wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989410/NA19240.final.cram<br>
 wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989410/NA19240.final.cram<br>
 export bam_file="NA19240.final.cram" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} ref_build="grch38" ref="/home/dd392/tools/refs/annots/GRCh38_full_analysis_set_plus_decoy_hla.fa" merged="FALSE" graph="wg_immunovar"<br>
+################################################################
 . ${bigfoot_dir}/process_from_bam_wg_immunovar_alignment.sh
-
+################################################################</code>
 <i>Support for CHM13 available in the next release</i>
 
-####################################################
 
