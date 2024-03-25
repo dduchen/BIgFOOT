@@ -17,23 +17,24 @@ I hope to expand this workflow to enable genome-to-genome analyses/assessing gen
 ### Input: 
 - Raw fastq(.gz)
 - BAM/CRAM alignment
+<i>Note: you'll need ~65GB of RAM to sucessfully perform sequence-to-graph alignment against the full genome immunovariation graph
 
 ## Set up conda environment
-<b> BIgFOOT is heavily influenced/relies on methods developed for <a href="https://bitbucket.org/jbaaijens/vg-flow/src/master/">VG-Flow (v0.0.4)</a>. </b>
+<b>BIgFOOT is heavily influenced/relies on methods developed for <a href="https://bitbucket.org/jbaaijens/vg-flow/src/master/">VG-Flow (v0.0.4)</a>. </b>
 
-1) Clone me! <code> git clone https://github.com/dduchen/BIgFOOT.git </code>
+1) Clone me! <code>git clone https://github.com/dduchen/BIgFOOT.git</code>
 2) set up conda/mamba environment we'll be needing -- can move some of these after the '#' if they're already in your path (e.g., samtools, we assume you have R)<br>
 <code>mamba create --name bigfoot -c bioconda -c conda-forge -c gurobi python=3 fastp graph-tool bazam minimap2 gurobi biopython numpy odgi gfaffix seqkit bbmap minimap2 seqwish blend-bio wfmash samtools pyseer unitig-caller #fastq-dl kmc r-base
 conda activate bigfoot </code><br>
 Ensure yuo have an active gurobi licence:<br>
 <code>gurobi_cl</code><br>
-<i> We also use the following R/bioconductor packages: </i><br>
+<i>We also use the following R/bioconductor packages: </i><br>
 - data.table;
 - dplyr;
 - Biostrings/DECIPHER </code>
 
 3) We also use some external tools which need to be accessible in your PATH<br>
-<code>tools_dir=~/tools;</code> # [wherever you normally install+store software]<br>
+<code>tools_dir=~/tools;</code> # (wherever you normally install+store software)<br>
 <code>PATH=$PATH:${tools_dir};</code><br>
 <code>cd ${tools_dir};</code><br>
 
@@ -47,10 +48,11 @@ Ensure yuo have an active gurobi licence:<br>
 <code>cd ${bigfoot_source} ; tar -xvf ${bigfoot_source}/immunovar_graph_materials.tar.gz*</code><br>
 #### make distance indexes read only<br>
 chmod 0444 *.dist<br>
-We also need the VG executable<br>
-<code>wget -P ${tools_dir}/ https://github.com/vgteam/vg/releases/download/v1.55.0/vg; chmod +x ${tools_dir}/vg </code><br>
+We also need the variation graph toolkit (VG) executable<br>
+<code>wget -P ${tools_dir}/ https://github.com/vgteam/vg/releases/download/v1.55.0/vg; chmod +x ${tools_dir}/vg <br>
+PATH=${tools_dir}:$PATH</code><br>
 We use the Ryan Wick's Assembly-dereplicator package during haplotype selection <a href="https://github.com/rrwick/Assembly-Dereplicator">Assembly-dereplicator</a>.<br>
-- <code> git clone https://github.com/rrwick/Assembly-dereplicator.git ${tools_dir}/Assembly-dereplicator </code><br>
+- <code>git clone https://github.com/rrwick/Assembly-dereplicator.git ${tools_dir}/Assembly-dereplicator </code><br>
 We provide the option of using merged paired-end reads from NGmerge for alignment/inference (optional, not always recommended) <a href="https://github.com/harvardinformatics/NGmerge">NGmerge</a>.<br></code>
 - <code>git clone https://github.com/harvardinformatics/NGmerge.git ${tools_dir}/ </code><br>
 
@@ -70,8 +72,8 @@ wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR507/SRR507323/SRR5073
 wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR507/SRR507323/SRR507323_2.fastq.gz<br> 
 export sample="SRR507323" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged="FALSE" graph="wg_immunovar"<br>
 ################################################################
-. ${bigfoot_dir}/preprocess_wg_immunovar_alignment.sh<br></code>
-################################################################
+. ${bigfoot_dir}/preprocess_wg_immunovar_alignment.sh<br>
+################################################################</code>
 
 ##### Starting from BAM/CRAM (WGS)<br>
 <code>wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989410/NA19240.final.cram<br>
@@ -79,7 +81,20 @@ wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989410/NA19240.
 export bam_file="NA19240.final.cram" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} ref_build="grch38" ref="/home/dd392/tools/refs/annots/GRCh38_full_analysis_set_plus_decoy_hla.fa" merged="FALSE" graph="wg_immunovar"<br>
 ################################################################
 . ${bigfoot_dir}/process_from_bam_wg_immunovar_alignment.sh
-################################################################</code>
-<i>Support for CHM13 available in the next release</i>
+################################################################</code><br>
+<i>Support for CHM13-based BAM/CRAM available in the next release</i>
+
+##### Starting from subset of reads ######<br>
+<code>graphdir=${bigfoot_source};graph="wg_immunovar";graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar;immune_graph=${graph_base}".subgraph";<br>
+bazam_reads=${i};
+sample_id=${bazam_reads%.bazam.fastq.gz};sample_id=${sample_id##*\/};
+vg giraffe -i -f ${bazam_reads} -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.bazam.grch38.wg.gam
+vg giraffe -f ${sample_id}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.unmapped.grch38.wg.gam
+cat ${sample_id}.bazam.grch38.wg.gam ${sample_id}.unmapped.grch38.wg.gam > ${sample_id}.bazam.grch38.combined.gam
+echo "${sample_id} ready for VG Flow filtering-->inference"
+#######################
+export i=${sample_id}.bazam.grch38.combined.gam outdir=${PWD} graph=${graph} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir}
+. ${bigfoot_dir}/filter_immune_subgraph.sh
+
 
 

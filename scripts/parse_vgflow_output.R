@@ -4,7 +4,6 @@ args<-commandArgs(TRUE)
 #.libPaths( c( .libPaths(), "/vast/palmer/home.mccleary/dd392/R/x86_64-pc-linux-gnu-library/4.2", "/vast/palmer/apps/avx2/software/R-bundle-Bioconductor/3.15-foss-2020b-R-4.2.0") )
 if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
-BiocManager::install()
 list.of.packages <- c("DECIPHER", "data.table","dplyr","Biostrings")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) BiocManager::install(new.packages)

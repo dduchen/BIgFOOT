@@ -100,7 +100,7 @@ if [[ $merged == "TRUE" ]]; then
 #
         echo "feeding completed ngmerge-based gam to next stage of workflow - immunovariation filtering"
 #        sbatch --export=i=${sample}.${graph_base##*/}.ngmerge.gam,graph=$graph,outdir=${PWD} /home/dd392/project/filter_immune_subgraph.sh;
-        export i=${sample}.${graph_base##*/}.ngmerge.gam outdir=${PWD} graph=$graph vg_flow_dir=${vg_flow_dir}
+        export i=${sample}.${graph_base##*/}.ngmerge.gam outdir=${PWD} graph=$graph vg_flow_dir=${vg_flow_dir} tools_dir=${tools_dir}
         . ${vg_flow_dir}/filter_immune_subgraph.sh
     fi
 # carry on with rest of pipeline
