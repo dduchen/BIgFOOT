@@ -97,6 +97,6 @@ cat ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam ${input_aln%.${aln_linear}}.
 echo "${input_aln%.${aln_linear}} ready for VG Flow filtering-->inference"
 #######################
 #
-export i=${input_aln%.${aln_linear}}.bazam.grch38.combined.gam outdir=${PWD} graph=${graph} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} tools_dir=${tools_dir}
+export i=${input_aln%.${aln_linear}}.bazam.grch38.combined.gam outdir=${PWD} graph=${graph} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} tools_dir=${tools_dir} valid_alleles=${valid_alleles}
 . ${bigfoot_dir}/filter_immune_subgraph.sh
 

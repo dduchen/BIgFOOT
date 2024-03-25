@@ -70,7 +70,7 @@ test_dir=${bigfoot_source}/example/ ; mkdir -p ${test_dir}; cd ${test_dir}<br></
 <code>#fastq-dl -a SRR507323 -o ${test_dir}/<br>
 wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR507/SRR507323/SRR507323_1.fastq.gz<br>
 wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR507/SRR507323/SRR507323_2.fastq.gz<br> 
-export sample="SRR507323" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged="FALSE" graph="wg_immunovar"<br>
+export sample="SRR507323" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged="FALSE" graph="wg_immunovar" valid_alleles=true<br>
 ################################################################
 . ${bigfoot_dir}/preprocess_wg_immunovar_alignment.sh<br>
 ################################################################</code>
@@ -78,7 +78,7 @@ export sample="SRR507323" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot
 ##### Starting from BAM/CRAM (WGS)<br>
 <code>wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989410/NA19240.final.cram<br>
 wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989410/NA19240.final.cram<br>
-export bam_file="NA19240.final.cram" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} ref_build="grch38" ref="/home/dd392/tools/refs/annots/GRCh38_full_analysis_set_plus_decoy_hla.fa" merged="FALSE" graph="wg_immunovar"<br>
+export bam_file="NA19240.final.cram" outdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} ref_build="grch38" ref="/home/dd392/tools/refs/annots/GRCh38_full_analysis_set_plus_decoy_hla.fa" merged="FALSE" graph="wg_immunovar" valid_alleles=true<br>
 ################################################################
 . ${bigfoot_dir}/process_from_bam_wg_immunovar_alignment.sh
 ################################################################</code><br>
@@ -93,8 +93,9 @@ vg giraffe -f ${sample_id}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base
 cat ${sample_id}.bazam.grch38.wg.gam ${sample_id}.unmapped.grch38.wg.gam > ${sample_id}.bazam.grch38.combined.gam
 echo "${sample_id} ready for VG Flow filtering-->inference"
 #######################
-export i=${sample_id}.bazam.grch38.combined.gam outdir=${PWD} graph=${graph} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir}
+export i=${sample_id}.bazam.grch38.combined.gam outdir=${PWD} graph=${graph} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} valid_alleles=true
 . ${bigfoot_dir}/filter_immune_subgraph.sh
 
-
+</code>
+<i>To do: set default values for all parameters (graph/valid alleles/pe...)
 

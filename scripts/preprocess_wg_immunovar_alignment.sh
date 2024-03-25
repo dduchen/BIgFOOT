@@ -56,7 +56,7 @@ time vg giraffe -Z ${graph_base}.gbz -H ${graph_base}.gbwt -m ${graph_base}.min 
 #rm ${sample}_${graph}_pe_prep_aln.dist
 # feed completed gam to next stage of workflow
 #sbatch --export=i=${sample}.${graph_base##*/}.gam,graph=$graph,outdir=${PWD} /home/dd392/project/filter_immune_subgraph.sh;
-export i=${sample}.${graph_base##*/}.gam outdir=${PWD} graph=${graph} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir}
+export i=${sample}.${graph_base##*/}.gam outdir=${PWD} graph=${graph} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} valid_alleles=${valid_alleles}
 . ${bigfoot_dir}/filter_immune_subgraph.sh
 #
 if [[ $merged == "TRUE" ]]; then

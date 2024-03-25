@@ -131,9 +131,33 @@ else
             # haplotype graph:
             vg paths -v ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.vg -F -p ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.txt > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta
             seqkit rmdup -s < ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta
-            seqkit grep -r -p ${gene} ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta | \
-                seqkit grep -v -r -p "${gene}-" - | \
-                seqkit grep -v -r -p "${gene}D" - >  ${outdir}/${gene}.alleles.fasta
+            # if variable gene -- limit to OGRDB validated set of alleles?
+            if [ "${valid_alleles}" = true ]; then
+                echo "Limiting variable genes to OGRDB validated set";
+                if [[ ${gene} == *["IGHV"]* ]]; then
+                    ogrdb_refs=$bigfoot_dir../custom_beds/ogrdb_IGH_*fasta
+                    grep ${gene}\\* $ogrdb_refs | sed s/'>'//g | sed s/'\*'/'\\*'/g > ${outdir}/${sample_id}.${graph}.${gene}.ogrdb_alleles
+                    seqkit grep -r -f ${outdir}/${sample_id}.${graph}.${gene}.ogrdb_alleles ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${gene}.alleles.fasta
+                elif [[ ${gene} == *["IGKV"]* ]]; then
+                    ogrdb_refs=$bigfoot_dir../custom_beds/ogrdb_IGK_*fasta
+                    grep ${gene}\\* $ogrdb_refs | sed s/'>'//g | sed s/'\*'/'\\*'/g > ${outdir}/${sample_id}.${graph}.${gene}.ogrdb_alleles
+                    grep ">" ${outdir}/${gene}.alleles.fasta | sed s/'>'//g | grep -f ${outdir}/${sample_id}.${graph}.${gene}.ogrdb_alleles > ${outdir}/${sample_id}.${graph}.${gene}.tmp.fasta && mv ${outdir}/${sample_id}.${graph}.${gene}.tmp.fasta ${outdir}/${gene}.alleles.fasta
+                elif [[ ${gene} == *["IGLV"]* ]]; then
+                    ogrdb_refs=$bigfoot_dir../custom_beds/ogrdb_IGL_*fasta
+                    grep ${gene}\\* $ogrdb_refs | sed s/'>'//g | sed s/'\*'/'\\*'/g > ${outdir}/${sample_id}.${graph}.${gene}.ogrdb_alleles
+                    grep ">" ${outdir}/${gene}.alleles.fasta | sed s/'>'//g | grep -f ${outdir}/${sample_id}.${graph}.${gene}.ogrdb_alleles > ${outdir}/${sample_id}.${graph}.${gene}.tmp.fasta && mv ${outdir}/${sample_id}.${graph}.${gene}.tmp.fasta ${outdir}/${gene}.alleles.fasta
+                else
+                    echo "OGRDB-based allele checking currently limited to variable (IGH/IGK/IGL) genes";
+                seqkit grep -r -p ${gene} ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta | \
+                    seqkit grep -v -r -p "${gene}-" - | \
+                    seqkit grep -v -r -p "${gene}D" - >  ${outdir}/${gene}.alleles.fasta
+                fi
+            else
+                echo "If you want to limit variable gene inference to OGRDB set - set 'valid_alleles=true'"
+                seqkit grep -r -p ${gene} ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta | \
+                    seqkit grep -v -r -p "${gene}-" - | \
+                    seqkit grep -v -r -p "${gene}D" - >  ${outdir}/${gene}.alleles.fasta
+            fi
             # set min length of haplotypes = 100, max length should scale with allele length --> then downsample haplotypes
             seqkit stats ${outdir}/${gene}.alleles.fasta > ${outdir}/${gene}.alleles.stats
             gene_min_len=$(sed -n 2p ${outdir}/${gene}.alleles.stats | tr -s ' ' | cut -f6 -d' ')
@@ -200,11 +224,6 @@ else
         # 1) should perform inference on haplotype graph with non-allele paths removed?
             echo "Limiting inference to alleles of interest"
             vg paths -Lv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg | grep "IMGT\|IGv2\|OGRDB" > ${outdir}/${sample_id}.${graph}.${gene}.alleles
-        # if IGHV -- limit to OGRDB validated set of alleles
-            if [[ ${gene} == *["IGHV"]* ]]; then
-                vg paths -Lv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg | grep "IMGT\|IGv2\|OGRDB" > ${outdir}/${sample_id}.${graph}.${gene}.alleles
-
-
             vg paths -r -p ${outdir}/${sample_id}.${graph}.${gene}.alleles -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg > ${outdir}/${sample_id}.${graph}.${gene}.vg
             vg view -a ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.aln.json
             vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.vg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa
