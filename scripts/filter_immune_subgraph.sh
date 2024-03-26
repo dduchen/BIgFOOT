@@ -121,7 +121,7 @@ if [[ ${aln_type} == *"pe"* ]]; then
 # finished!
     echo "fin";
     #sbatch --export=i=${sample_immune_graph}.gam,sample_id=$sample,graph=$graph,aln_type='pe',use_augmented=FALSE,workdir=${PWD} /home/dd392/project/gene_hap_IMGT_vgflow.sh
-    export i=${sample_immune_graph}.gam workdir=${PWD} sample_id=${sample} aln_type='pe' tools_dir=${tools_dir} use_augmented=FALSE bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged=FALSE graph=wg_immunovar
+    export i=${sample_immune_graph}.gam workdir=${PWD} sample_id=${sample} aln_type='pe' tools_dir=${tools_dir} use_augmented=FALSE bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged=FALSE graph=${graph} valid_alleles=${valid_alleles}
     . ${bigfoot_dir}/gene_hap_IMGT_vgflow.sh
 
 else echo "fin - performing depth estimates and cleaning up after myself";
@@ -142,7 +142,7 @@ else echo "fin - performing depth estimates and cleaning up after myself";
 #    sbatch --export=i=${i%.gam},sample_id=$sample,graph=$graph,aln_type='ngmerged',use_augmented=FALSE,workdir=${PWD} /home/dd392/project/familywise_vgflow.sh;
 # need to update merged script - but deprecated for now
 #    sbatch --export=i=${sample_immune_graph}.gam,sample_id=$sample,graph=$graph,aln_type='ngmerged',use_augmented=FALSE,workdir=${PWD} /home/dd392/project/gene_hap_simple_vgflow.sh;
-    export i=${sample_immune_graph}.gam workdir=${PWD} sample_id=$sample graph=$graph aln_type='ngmerged' use_augmented=FALSE bigfoot_dir=${bigfoot_dir} merged=FALSE graph=${graph} valid_alleles=${valid_alleles}
+    export i=${sample_immune_graph}.gam workdir=${PWD} sample_id=$sample graph=$graph aln_type='ngmerged' use_augmented=FALSE bigfoot_dir=${bigfoot_dir} merged=FALSE valid_alleles=${valid_alleles}
     . ${bigfoot_dir}/gene_hap_IMGT_vgflow.sh
 fi
 #

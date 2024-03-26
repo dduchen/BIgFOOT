@@ -17,7 +17,7 @@ I hope to expand this workflow to enable genome-to-genome analyses/assessing gen
 ### Input: 
 - Raw fastq(.gz)
 - BAM/CRAM alignment
-<i>Note: you'll need ~65GB of RAM to sucessfully perform sequence-to-graph alignment against the full genome immunovariation graph
+<i>Note: you'll need ~65GB of RAM to sucessfully perform sequence-to-graph alignment against the full genome immunovariation graph</i>
 
 ## Set up conda environment
 <b>BIgFOOT is heavily influenced/relies on methods developed for <a href="https://bitbucket.org/jbaaijens/vg-flow/src/master/">VG-Flow (v0.0.4)</a>. </b>
@@ -38,14 +38,14 @@ Ensure yuo have an active gurobi licence:<br>
 <code>PATH=$PATH:${tools_dir};</code><br>
 <code>cd ${tools_dir};</code><br>
 
-### download BIgFOOT graph materials from zenodo <a href="https://doi.org/10.5281/zenodo.10674696"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.10674696.svg" alt="DOI"></a><br>
+### download BIgFOOT graph materials from zenodo <a href="https://doi.org/10.5281/zenodo.10869771"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.10869771.svg" alt="DOI"></a><br>
 
 <code>bigfoot_source=~/pi_kleinstein/bigfoot</code><br> # where are we planning on storing all of the reference graph files?
 <code>bigfoot_source=${tools_dir}/bigfoot</code><br>
 <code>mkdir -p ${bigfoot_source} </code><br>
 
-<code>wget -P ${bigfoot_source} "https://zenodo.org/records/10674696/files/immunovar_graph_materials.tar.gz?download=1" </code><br>
-<code>cd ${bigfoot_source} ; tar -xvf ${bigfoot_source}/immunovar_graph_materials.tar.gz*</code><br>
+<code>wget -P ${bigfoot_source} "https://zenodo.org/records/10869771/files/immunovar_graph_materials.tar.gz?download=1" </code><br>
+<code>cd ${bigfoot_source} ; tar -xvf ${bigfoot_source}/immunovar_graph_materials.tar.gz* --keep-newer-files</code><br>
 #### make distance indexes read only<br>
 chmod 0444 *.dist<br>
 We also need the variation graph toolkit (VG) executable<br>
