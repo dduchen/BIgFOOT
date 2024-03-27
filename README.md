@@ -81,7 +81,7 @@ wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989410/NA19240.
 ################################################################
 . ${bigfoot_dir}/process_from_bam_wg_immunovar_alignment.sh
 ################################################################</code><br>
-<i>Support for CHM13-based BAM/CRAM available in the next release</i>
+<i>Support for CHM13-based BAM/CRAM is planned</i>
 
 ##### Starting from subset of reads ######<br>
 - <code>graphdir=${bigfoot_source};graph="wg_immunovar";graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar;immune_graph=${graph_base}".subgraph";<br>
