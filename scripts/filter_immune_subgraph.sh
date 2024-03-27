@@ -153,8 +153,8 @@ else echo "fin - performing depth estimates and cleaning up after myself";
     . ${bigfoot_dir}/gene_hap_IMGT_vgflow.sh
 fi
 #
-rm ${output_graph}.gfa
-rm ${output_graph}.vg
-rm ${output_graph}.og
-rm ${output_graph}.norm*
+rm ${datadir}/${output_graph}.gfa
+rm ${datadir}/${output_graph}.vg
+rm ${datadir}/${output_graph}.og
+rm ${datadir}/${output_graph}.norm*
 echo "fin!"
