@@ -9,7 +9,7 @@ I hope to expand this workflow to enable genome-to-genome analyses/assessing gen
 - IGL
 - HLA (DQA1/DQB1/... more to come)<br>
 
-<i>Infers alleles - but, like bigoot, I have no proof if they're real (WiP):</i><br>
+<i>Infers alleles - but, like bigoot, I have no evidence they're real (WiP):</i><br>
 - IGK
 - TR
 - KIR

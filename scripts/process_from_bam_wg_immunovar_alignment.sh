@@ -89,12 +89,16 @@ else
     fi
     samtools view -@8 -C ${input_aln} -T ${ref} -f 4 | samtools fastq | gzip > ${input_aln%.${aln_linear}}.unmapped.fastq.gz
 fi
-echo "Alignment to whole genome immunovariation graph";
-cat $(ls ${input_aln%.${aln_linear}}.*.fastq.gz | grep -v "mapped") > ${input_aln%.${aln_linear}}.mapped.fastq.gz
-time vg giraffe -i -f ${input_aln%.${aln_linear}}.mapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam
-time vg giraffe -f ${input_aln%.${aln_linear}}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam
-cat ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam > ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
-echo "${input_aln%.${aln_linear}} ready for VG Flow filtering-->inference"
+if [ -s ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam ]; then
+    echo "Alignment completed - using: ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam for inference";
+else
+    echo "Alignment to whole genome immunovariation graph";
+    cat $(ls ${input_aln%.${aln_linear}}.*.fastq.gz | grep -v "mapped") > ${input_aln%.${aln_linear}}.mapped.fastq.gz
+    time vg giraffe -i -f ${input_aln%.${aln_linear}}.mapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam
+    time vg giraffe -f ${input_aln%.${aln_linear}}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam
+    cat ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam > ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
+    echo "${input_aln%.${aln_linear}} ready for VG Flow filtering-->inference"
+fi
 #######################
 #
 export i=${input_aln%.${aln_linear}}.bazam.grch38.combined.gam outdir=${PWD} graph=${graph} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} tools_dir=${tools_dir} valid_alleles=${valid_alleles}
