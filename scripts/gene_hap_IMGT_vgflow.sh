@@ -81,7 +81,7 @@ mkdir -p ${outdir}/HLA
 # note: coeliac succesptibility genes - DQA1/DQB1/HLA-C/IGHV gene
 # IG/TR inference
 #for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^DQA1\|^DQB1\|^C\\." | grep -v "__\|IGHD\|IGHJ");do echo $each;
-for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV" | grep -v "__\|IGHD\|IGHJ");do echo $each;
+for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV" | grep -v "__\|IGHD\|IGHJ" | grep "IGHG2");do echo $each;
 #for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^DQA1\|^DQB1\|^C\\." | grep -v "__\|IGHD\|IGHJ" | grep "IGHV3-66");do echo $each;
 cd ${datadir}
 gene=${each%.nodes.txt}
@@ -159,7 +159,7 @@ else
                     echo "Fuzzy allele:haplotype matching"
                     minimap2 -x sr -c ${outdir}/${gene}.alleles.fasta ${outdir}/${gene}.haps.fasta | egrep "NM:i:0|NM:i:[0-9]$" | cut -f1 | sort | uniq > ${outdir}/${gene}_haps/haps.matching.txt
                 fi
-                echo "$(cut -f1 ${outdir}/${gene}_haps/haps.matching.txt | wc -l) out of $(grep ">" ${outdir}/${gene}.haps.fasta | cut -f1 | wc -l) haplotypes with an exact $gene (or ASC cluster member) allele mapping"
+                echo "$(cut -f1 ${outdir}/${gene}_haps/haps.matching.txt | wc -l) out of $(grep ">" ${outdir}/${gene}.haps.fasta | cut -f1 | wc -l) haplotypes with a $gene (or ASC cluster member) allele mapping"
                 if [ -s ${outdir}/${gene}_haps/haps.matching.txt ]; then
                     seqkit grep -r -f $outdir/${gene}_haps/haps.matching.txt ${outdir}/${gene}.haps.fasta > $outdir/${gene}_haps/${gene}.haps.fasta
                     seqkit split --quiet -i $outdir/${gene}_haps/${gene}.haps.fasta -f
@@ -172,6 +172,7 @@ else
                     seqkit stats ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta
                 else
                     echo "No haplotypes containing the alleles"
+                    rm -rf $outdir/${gene}_haps
                 fi
             else
                 echo "No local haplotypes found for ${gene_actual}"
@@ -244,8 +245,8 @@ else
             vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.vg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa
         #   gene-specific read depth for minimum strain-level coverage
             depth_locus=$(awk -F ' ' '{print $1}' ${outdir}/${sample_id}.${graph}.${gene}.filtered.depth)
-            min_strain_depth=$(bc -l <<< "scale=2;${depth_locus}*0.05"| awk '{printf("%d\n",$1 + 0.5)}')
-            if [ "${min_strain_depth}" -lt 1 ]; then
+            min_strain_depth=$(bc -l <<< "scale=3;${depth_locus}/${gene_min_len}")
+            if [ "${min_strain_depth}" -lt 0.1 ]; then
                 min_strain_depth=0.1
             fi
             echo "Minimum strain depth required: $min_strain_depth"
