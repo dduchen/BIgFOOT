@@ -81,7 +81,7 @@ mkdir -p ${outdir}/HLA
 # note: coeliac succesptibility genes - DQA1/DQB1/HLA-C/IGHV gene
 # IG/TR inference
 #for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^DQA1\|^DQB1\|^C\\." | grep -v "__\|IGHD\|IGHJ");do echo $each;
-for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV" | grep -v "__\|IGHD\|IGHJ");do echo $each;
+for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV" | grep -v "__\|IGHD\|IGHJ" | grep "IGHA1");do echo $each;
 #for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^DQA1\|^DQB1\|^C\\." | grep -v "__\|IGHD\|IGHJ" | grep "IGHV3-66");do echo $each;
 cd ${datadir}
 gene=${each%.nodes.txt}
@@ -141,7 +141,7 @@ else
             seqkit grep -r -p "IMG|IGv|OGR" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta >  ${outdir}/${gene}.alleles.fasta
             # set min length of haplotypes = 100, max length should scale with allele length --> then downsample haplotypes
             seqkit stats ${outdir}/${gene}.alleles.fasta > ${outdir}/${gene}.alleles.stats
-            gene_min_len=$(sed -n 2p ${outdir}/${gene}.alleles.stats | tr -s ' ' | cut -f6 -d' ')
+            gene_min_len=$(sed -n 2p ${outdir}/${gene}.alleles.stats | tr -s ' ' | cut -f6 -d' ' | sed s/","//g)
             #gene_max_len=$(sed -n 2p ${outdir}/${gene}.alleles.stats | tr -s ' ' | cut -f8 -d' ')
         ##############################
         # use local haplotypes #
@@ -208,7 +208,8 @@ else
             vg paths -Lv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg | grep "IMGT\|IGv2\|OGRDB" > ${outdir}/${sample_id}.${graph}.${gene}.alleles
             if [ "${valid_alleles}" = true ]; then
                 echo "Where possible - retaining path labels only for OGRDB validated set of ${gene_actual} alleles";
-                if [[ ${gene} == *["IGHV"]* ]]; then
+                if [[ "$gene" =~ ^(IGHV)$ ]]; then
+                    echo "IGHV";
                     ogrdb_refs="${bigfoot_dir}/../custom_beds/ogrdb_IGH_*fasta"
                     grep ${gene}\\* $ogrdb_refs | sed s/'>'//g | sed s/'\*'/'\\*'/g > ${outdir}/${sample_id}.${graph}.${gene}.ogrdb_alleles
                     if [ -s  ${outdir}/${sample_id}.${graph}.${gene}.ogrdb_alleles ]; then
@@ -216,7 +217,8 @@ else
                     else
                         grep "${gene}\*" ${outdir}/${sample_id}.${graph}.${gene}.alleles > ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp ${outdir}/${sample_id}.${graph}.${gene}.alleles
                     fi
-                elif [[ ${gene} == *["IGKV"]* ]]; then
+                elif [[ "$gene" =~ ^(IGKV)$ ]]; then
+                    echo "IGKV";
                     ogrdb_refs=${bigfoot_dir}../custom_beds/ogrdb_IGK_*fasta
                     grep ${gene}\\* $ogrdb_refs | sed s/'>'//g | sed s/'\*'/'\\*'/g > ${outdir}/${sample_id}.${graph}.${gene}.ogrdb_alleles
                     if [ -s  ${outdir}/${sample_id}.${graph}.${gene}.ogrdb_alleles ]; then
@@ -224,7 +226,8 @@ else
                     else
                         grep "${gene}\*" ${outdir}/${sample_id}.${graph}.${gene}.alleles > ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp ${outdir}/${sample_id}.${graph}.${gene}.alleles
                     fi
-                elif [[ ${gene} == *["IGLV"]* ]]; then
+                elif [[ "$gene" =~ ^(IGLV)$ ]]; then
+                    echo "IGLV";
                     ogrdb_refs=${bigfoot_dir}../custom_beds/ogrdb_IGL_*fasta
                     grep ${gene}\\* $ogrdb_refs | sed s/'>'//g | sed s/'\*'/'\\*'/g > ${outdir}/${sample_id}.${graph}.${gene}.ogrdb_alleles
                     if [ -s  ${outdir}/${sample_id}.${graph}.${gene}.ogrdb_alleles ]; then
