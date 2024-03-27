@@ -56,7 +56,7 @@ if [-s ${sample}.${graph_base##*/}.gam ]; then
     echo "Alignment completed - using: ${sample}.${graph_base##*/}.gam";
 else
     time vg giraffe -Z ${graph_base}.gbz -H ${graph_base}.gbwt -m ${graph_base}.min -d ${graph_base}.dist -f ${sample}_qc_1.fastq.gz -f ${sample}_qc_2.fastq.gz -p --watchdog-timeout 60 > ${sample}.${graph_base##*/}.gam
-
+fi
 #rm ${sample}_${graph}_pe_prep_aln.dist
 # feed completed gam to next stage of workflow
 #sbatch --export=i=${sample}.${graph_base##*/}.gam,graph=$graph,outdir=${PWD} /home/dd392/project/filter_immune_subgraph.sh;
