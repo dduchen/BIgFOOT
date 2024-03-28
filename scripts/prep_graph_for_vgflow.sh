@@ -8,8 +8,8 @@
 #SBATCH --partition=pi_kleinstein
 #SBATCH --output=slurm-%x.%j.out
 
-DATAPATH=$outdir
-OUTPATH=$outdir
+DATAPATH=$workdir
+OUTPATH=$workdir
 cd $OUTPATH
 
 sample=${i%%.*}

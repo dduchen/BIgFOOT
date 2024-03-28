@@ -11,11 +11,10 @@
 #SBATCH --output=slurm-%x.%j.out
 #
 #
-DATAPATH=$workdir
-OUTPATH=$workdir
-datadir=$workdir
+DATAPATH=${workdir}
+OUTPATH=${workdir}
+datadir=${workdir}
 cd ${datadir}
-workdir=${PWD}
 # make $bigfoot_dir python scripts findable
 export PYTHONPATH=$PYTHONPATH:$bigfoot_dir
 export gam_file=${i}
@@ -60,8 +59,7 @@ else echo "Alignment of non-merged reads";
 fi
 # 
 # sort and index only once...
-FILE=${gam_file%.gam}.sorted.gam
-if test -f "$FILE"; then
+if [ -s ${gam_file%.gam}.sorted.gam ]; then
     echo "Sorted gam file for ${sample_id} already exists - using it (${gam_file%.gam}.sorted.gam)"
 else
     vg gamsort ${gam_file} -i ${gam_file%.gam}.sorted.gam.gai -p > ${gam_file%.gam}.sorted.gam
@@ -81,7 +79,7 @@ mkdir -p ${outdir}/HLA
 # note: coeliac succesptibility genes - DQA1/DQB1/HLA-C/IGHV gene
 # IG/TR inference
 #for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^DQA1\|^DQB1\|^C\\." | grep -v "__\|IGHD\|IGHJ");do echo $each;
-for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV" | grep -v "__\|IGHD\|IGHJ");do echo $each;
+for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV" | grep -v "__\|IGHD\|IGHJ" | grep "IGLV" | head -1);do echo $each;
 #for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^DQA1\|^DQB1\|^C\\." | grep -v "__\|IGHD\|IGHJ" | grep "IGHV3-66");do echo $each;
 cd ${datadir}
 gene=${each%.nodes.txt}
@@ -103,18 +101,26 @@ elif [[ "$loci" =~ ^(IMGT)$ ]]; then
     echo "IG/TR inference"
     outdir=${workdir}/${sample_id}_${graph}_genotyping/familywise_${aln_type}_haplotype_inference
     mkdir -p ${outdir}/seqwish_${sample_id}.${graph}
-    # ASC cluster - if included in metadata table - use ASC clustering-based gene for graph construction:
+    # ASC cluster - if more than 1 gene included in ASC cluster - use clustering-based gene ID for graph construction:
     grep "${gene}\*" ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv > ${outdir}/potential_asc_for_${gene}
     if [ -s ${outdir}/potential_asc_for_${gene} ]; then
+    # if n_genes > 1 then use asc cluster
         asc_cluster=$(cut -f4 ${outdir}/potential_asc_for_${gene} | sed s/'\*.*'//g | sort | uniq)
-        each="ig_asc/${asc_cluster}.immune_subset.nodes.txt"
+        grep "${asc_cluster}" ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv | cut -f1 > ${outdir}/potential_asc_for_${gene}
+        grep -v ${gene}"\*" ${outdir}/potential_asc_for_${gene} | grep -v "${gene}_\|${gene}D"  > ${outdir}/asc_additional_${gene}_fams.txt
+        if [ -s ${outdir}/asc_additional_${gene}_fams.txt ]; then
+            echo "Complex locus - using ASC-based allele";
+            each="ig_asc/${asc_cluster}.immune_subset.nodes.txt"
+        else
+            echo "Using core gene+haplotype graph for ${gene}";
+
+        fi
     fi
 else 
     echo "Unknown locus for ${gene}"
 fi
 # check if we've completed analysis for this gene already
-FILE=${outdir}/${sample_id}_${gene}_files.txt
-if test -f "$FILE"; then
+if [ -s ${outdir}/${sample_id}_${gene}_files.txt ]; then
     echo "Analysis completed for ${gene} - did you restart or fail to cleanup? (File=${outdir}/${sample_id}_${gene}_files.txt)"
 else
     echo "subsetting graph and alignment to region surrounding locus of interest: $gene"
@@ -137,6 +143,10 @@ else
             echo "IMGT: Immunoglobulin/T-cell receptor gene inference"
             # haplotype graph:
             vg paths -v ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.vg -F -p ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.txt > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta
+            # removing duplicates - ensuring 'gene' matches are at top of fasta
+            seqkit grep -r -p ${gene}"\*" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.match.fasta
+            seqkit grep -r -v -p ${gene}"\*" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.unmatch.fasta
+            cat ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.match.fasta ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.unmatch.fasta > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta
             seqkit rmdup -s < ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta
             seqkit grep -r -p "IMG|IGv|OGR" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta >  ${outdir}/${gene}.alleles.fasta
             # set min length of haplotypes = 100, max length should scale with allele length --> then downsample haplotypes
@@ -248,9 +258,14 @@ else
             vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.vg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa
         #   gene-specific read depth for minimum strain-level coverage
             depth_locus=$(awk -F ' ' '{print $1}' ${outdir}/${sample_id}.${graph}.${gene}.filtered.depth)
-            min_strain_depth=$(bc -l <<< "scale=3;${depth_locus}/${gene_min_len}")
-            if (( $(awk 'BEGIN {print ("'"$min_strain_depth"'" < 0.1) ? "1" : "0"}') )); then
+#            min_strain_depth=$(bc -l <<< "scale=3;${depth_locus}/$gene_min_len")
+            if [[ ${each} == *"ig_asc"* ]]; then
                 min_strain_depth=0.1
+            else
+                min_strain_depth=$(bc -l <<< "scale=2;${depth_locus}*0.05"| awk '{printf("%d\n",$1 + 0.5)}')
+                if (( $(awk 'BEGIN {print ("'"$min_strain_depth"'" < 0.1) ? "1" : "0"}') )); then
+                    min_strain_depth=0.1
+                fi
             fi
             echo "Minimum strain depth required: $min_strain_depth"
             cd ${outdir}
@@ -262,14 +277,22 @@ else
         #       python3 ${bigfoot_dir}/vg-flow_immunovar_long_contigs.py --careful --min_depth 0 --trim 0 -m 0 -c ${min_strain_depth} --remove_included_paths 0 ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
                 if [[ "$opt" =~ 1 ]]; then
                     echo "optimization_approach = absolute difference"
-                    mv trimmed_contigs.fasta ${outdir}/${sample_id}.${graph}.${gene}.abs.contigs.fasta ; mv haps.final.fasta ${outdir}/${sample_id}.${graph}.${gene}.abs.haps.final.fasta ; mv genome_graph.gfa ${outdir}/${sample_id}.${graph}.${gene}.abs.genome_graph.gfa
+                    mv trimmed_contigs.fasta ${outdir}/${sample_id}.${graph}.${gene}.abs.contigs.fasta ; mv haps.final.fasta ${outdir}/${sample_id}.${graph}.${gene}.abs.haps.final.fasta ; 
+                    mv genome_graph.gfa ${outdir}/${sample_id}.${graph}.${gene}.abs.genome_graph.gfa
                     rm genome_graph.gt; rm haps.fasta; rm overlaps.minimap2.paf; rm trimmed_contigs.paths ; rm trimmed_contigs.gfa
                     Rscript ${bigfoot_dir}/parse_vgflow_output.R ${outdir}/${sample_id}.${graph}.${gene}.abs.contigs.fasta
                     echo "Allele-level abundance estimation completed for ${gene} ::"
                     grep ">" ${outdir}/${sample_id}.${graph}.${gene}.abs.haps.final.annot.fasta
                 elif [[ "$opt" =~ 2 ]]; then
-                    echo "optimization_approach = relative difference"
-                    mv trimmed_contigs.fasta ${outdir}/${sample_id}.${graph}.${gene}.rel.contigs.fasta ; mv haps.final.fasta ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.fasta ; mv genome_graph.gfa ${outdir}/${sample_id}.${graph}.${gene}.rel.genome_graph.gfa
+                    echo "optimization_approach = relative difference";
+                    if [ -s haps.final.fasta ]; then
+                        echo "test";
+                    else
+                        echo "No strains with estimated allele coverage >= ${min_strain_depth} - using basal threshold (0.01) to rescue inference";
+                        python3 ${bigfoot_dir}/vg-flow_immunovar.py --careful --optimization_approach ${opt} --min_depth 0 --trim 0 -m 0 -c 0.1 --remove_included_paths 0 ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
+                    fi
+                    mv trimmed_contigs.fasta ${outdir}/${sample_id}.${graph}.${gene}.rel.contigs.fasta ; mv haps.final.fasta ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.fasta ;
+                    mv genome_graph.gfa ${outdir}/${sample_id}.${graph}.${gene}.rel.genome_graph.gfa;
                     rm genome_graph.gt; rm haps.fasta; rm overlaps.minimap2.paf; rm trimmed_contigs.paths ; rm trimmed_contigs.gfa
                     if [ -s ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.fasta ]; then
                         Rscript ${bigfoot_dir}/parse_vgflow_output.R ${outdir}/${sample_id}.${graph}.${gene}.rel.contigs.fasta
@@ -280,7 +303,8 @@ else
                     fi
                 elif [[ "$opt" =~ 3 ]]; then
                     echo "optimization_approach = relative absolute differences sqrt approach"
-                    mv trimmed_contigs.fasta ${outdir}/${sample_id}.${graph}.${gene}.relabs.contigs.fasta ; mv haps.final.fasta ${outdir}/${sample_id}.${graph}.${gene}.relabs.haps.final.fasta ; mv genome_graph.gfa ${outdir}/${sample_id}.${graph}.${gene}.relabs.genome_graph.gfa
+                    mv trimmed_contigs.fasta ${outdir}/${sample_id}.${graph}.${gene}.relabs.contigs.fasta ; mv haps.final.fasta ${outdir}/${sample_id}.${graph}.${gene}.relabs.haps.final.fasta ; 
+                    mv genome_graph.gfa ${outdir}/${sample_id}.${graph}.${gene}.relabs.genome_graph.gfa
                     rm genome_graph.gt; rm haps.fasta; rm overlaps.minimap2.paf; rm trimmed_contigs.paths ; rm trimmed_contigs.gfa
                     Rscript ${bigfoot_dir}/parse_vgflow_output.R ${outdir}/${sample_id}.${graph}.${gene}.relabs.contigs.fasta
                     echo "Allele-level abundance estimation completed for ${gene} ::"
@@ -290,7 +314,7 @@ else
                 fi
             done
             echo "2) Augmenting annotated post-flow inference graph with reads for association testing";
-            if test -f "${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta"; then
+            if [ -s "${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta" ]; then
                 seqkit grep -r -p "chm" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta
                 cat ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.fasta
                 echo "Embedding novel variation with adequate support (~strain depth) to inferred flow graph + local CHM13 reference sequence"
@@ -317,7 +341,7 @@ else
                 else
                     augment_cov=3
                 fi
-                echo "Minimum coverage to add breakpoint: ${augment_cov} (3 <--> strain depth @ gene)"
+                echo "Minimum coverage to add breakpoint: ${augment_cov} (3 <--> 10% of strain depth)"
             #
                 vg augment -m ${augment_cov} -q 5 -Q 60 ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.pg ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.filt.gam -A ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gam > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.vg;
                 vg convert -p ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.vg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pg
@@ -518,5 +542,22 @@ done
 ls ${outdir}/*_files.txt > ${outdir}/${sample_id}_files_rm.txt
 ls -d ${outdir}/seqwish* >> ${outdir}/${sample_id}_files_rm.txt
 xargs rm -rf < ${outdir}/${sample_id}_files_rm.txt
+# parse results
+grep ">" ${outdir%haplotype_inference*}"haplotype_inference"/*annot.fasta | sed s/"^.*>"/''/ | sed s/' or '/'_or_'/g > "${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.results_raw.txt";
+echo -e ${sample_id} "mean" "sd" | sed s/" "/'\t'/g > ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.txt;
+for each in $(ls ${outdir%haplotype_inference*}"haplotype_inference"/*.filtered.depth); do echo -e $(echo -ne ${each%.filtered.depth} ' ' |
+    sed s/"__"/"\/"/; echo $(cut -f1,2 $each)) | sed s/" "/'\t'/g | sed s/".*wg_immunovar."//g >> ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.txt;
+done
+# append HLA results if they exist
+if [ -s ${outdir%haplotype_inference*}"haplotype_inference"/HLA/*annot.fasta ]; then
+    grep ">" ${outdir%haplotype_inference*}"haplotype_inference"/HLA/*annot.fasta | sed s/"^.*>"/''/ >> ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.results_raw.txt;
+    for each in $(ls ${outdir%haplotype_inference*}"haplotype_inference/HLA"/*.filtered.depth); do echo -e $(echo -ne ${each%.filtered.depth} ' ' |
+        sed s/"__"/"\/"/; echo $(cut -f1,2 $each)) | sed s/" "/'\t'/g | sed s/".*\\/"//g | sed s/".*wg_immunovar."//g >> ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.txt;
+    done
+else
+    echo "No HLA allelic inference for ${sample_id}";
+fi
+Rscript ${bigfoot_dir}/clean_genewise_results.R
 # clean up:
 echo "All cleaned up!"
+cd ${workdir}

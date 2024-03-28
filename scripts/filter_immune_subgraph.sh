@@ -15,8 +15,8 @@
 echo "gam is ${i}"
 echo "graph is ${graph}"
 
-DATAPATH=$outdir
-OUTPATH=$outdir
+DATAPATH=$workdir
+OUTPATH=$workdir
 cd $OUTPATH
 workdir=${PWD}
 #
@@ -96,20 +96,21 @@ output_graph=${sample_id}_graph.${graph}.${aln_type}
 if [ -s ${output_graph}.fix.gfa ]; then
     echo "Alignment completed - using: ${sample}.${graph_base##*/}.gam";
 else
-    echo "Embedding sample-specific variation into the whole immune subgraph"
+    echo "Embedding sample-specific variation within immunovariation loci"
     # More conservative filtering at the gene level based on vg map - v liberal thresh here using pairwise identity to locus + graph augmentation using reads with base quality > 5 and breakpoints with coverage > 2
     vg filter -r 0.9 -s 1 -fu -t 4 ${sample_immune_graph}.gam -D 0 -v > ${sample_immune_graph}.filtered.gam
-    vg augment -s -m 2 -q 5 ${immune_graph}.vg ${sample_immune_graph}.filtered.gam > ${output_graph}.vg
-    echo "normalizing, condensing, sorting augmented graph"
-    vg mod ${output_graph}.vg -n -U 100 -c -X 256 - | vg ids -c - > ${sample_id}.tmp && mv ${sample_id}.tmp ${output_graph}.vg
-    vg convert -fW ${output_graph}.vg > ${output_graph}.gfa
-    odgi build -g ${output_graph}.gfa -OP -o ${output_graph}.og
-    odgi normalize -i ${output_graph}.og -o ${output_graph}.norm.og -P
-    #odgi sort -i ${output_graph}.norm.og -p Ygs -P -O -o ${output_graph}.sort.og
-    odgi view -i ${output_graph}.norm.og -g -a -P >${output_graph}.norm.gfa
-    gfaffix ${output_graph}.norm.gfa -o ${output_graph}.fix.gfa
+    echo "Retaining reads specific to graph-specific immunovariable loci";
+    vg view -X ${sample_immune_graph}.filtered.gam | gzip > ${sample_immune_graph}.filtered.fastq.gz
+    echo "Generating an augmented immunovariation graph representing non-ambiguous sample-specific alignments"
+    vg convert ${immune_graph}.vg -p > ${immune_graph}.pg
+    vg augment -s -m 2 -q 5 -Q 5 ${immune_graph}.pg ${sample_immune_graph}.filtered.gam -A ${output_graph}.aug.gam > ${output_graph}.pg
+    vg find -x ${output_graph}.pg -G ${output_graph}.aug.gam  > ${output_graph}.sub.pg
+    vg paths -x ${output_graph}.pg -X >${output_graph}.paths.gam
+    vg augment -iSs ${output_graph}.sub.pg ${output_graph}.paths.gam > ${output_graph}.sub.pg.tmp && mv ${output_graph}.sub.pg.tmp ${output_graph}.sub.pg
+    vg convert -fW ${output_graph}.sub.pg > ${output_graph}.sub.gfa
+    rm ${output_graph}.paths.gam; rm ${output_graph}.sub.pg; rm ${output_graph}.aug.gam;
+    # vg deconstruct or https://github.com/vgteam/vg/wiki/SV-Genotyping-and-variant-calling
 fi
-#
 # cleaning assumes ngmerged route takes sufficiently longer - pe workflow has completed
 if [[ ${aln_type} == *"pe"* ]]; then
 # perform some depth estimates:
@@ -153,8 +154,10 @@ else echo "fin - performing depth estimates and cleaning up after myself";
     . ${bigfoot_dir}/gene_hap_IMGT_vgflow.sh
 fi
 #
-rm ${datadir}/${output_graph}.gfa
-rm ${datadir}/${output_graph}.vg
-rm ${datadir}/${output_graph}.og
-rm ${datadir}/${output_graph}.norm*
+cd ${workdir}
+#
+rm ${workdir}/${output_graph}.gfa
+rm ${workdir}/${output_graph}.vg
+rm ${workdir}/${output_graph}.og
+rm ${workdir}/${output_graph}.norm*
 echo "fin!"

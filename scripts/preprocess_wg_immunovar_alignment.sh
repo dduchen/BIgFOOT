@@ -3,13 +3,13 @@
 # NOTE - PROCESSING FROM BAM IS MUCH EASIER...
 
 # sample=$each # prefix of fastq files  ${each}_1.fastq.gz
-# outdir=${PWD} # working directory
+# workdir=${PWD} # working directory
 # merged=FALSE # pe alignment only
 # graph=wg_immunovar # correct graph
 #
 
-DATAPATH=$outdir
-OUTPATH=$outdir
+DATAPATH=$workdir
+OUTPATH=$workdir
 cd $OUTPATH
 
 # ffq approach fastq are bgzip'd and appended correctly
@@ -60,7 +60,7 @@ fi
 #rm ${sample}_${graph}_pe_prep_aln.dist
 # feed completed gam to next stage of workflow
 #sbatch --export=i=${sample}.${graph_base##*/}.gam,graph=$graph,outdir=${PWD} /home/dd392/project/filter_immune_subgraph.sh;
-export i=${sample}.${graph_base##*/}.gam outdir=${PWD} graph=${graph} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} valid_alleles=${valid_alleles}
+export i=${sample}.${graph_base##*/}.gam workdir=${PWD} graph=${graph} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} valid_alleles=${valid_alleles}
 . ${bigfoot_dir}/filter_immune_subgraph.sh
 #
 if [[ $merged == "TRUE" ]]; then
@@ -104,7 +104,7 @@ if [[ $merged == "TRUE" ]]; then
 #
         echo "feeding completed ngmerge-based gam to next stage of workflow - immunovariation filtering"
 #        sbatch --export=i=${sample}.${graph_base##*/}.ngmerge.gam,graph=$graph,outdir=${PWD} /home/dd392/project/filter_immune_subgraph.sh;
-        export i=${sample}.${graph_base##*/}.ngmerge.gam outdir=${PWD} graph=$graph vg_flow_dir=${vg_flow_dir} tools_dir=${tools_dir}
+        export i=${sample}.${graph_base##*/}.ngmerge.gam workdir=${PWD} graph=$graph vg_flow_dir=${vg_flow_dir} tools_dir=${tools_dir}
         . ${vg_flow_dir}/filter_immune_subgraph.sh
     fi
 # carry on with rest of pipeline

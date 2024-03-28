@@ -101,6 +101,6 @@ else
 fi
 #######################
 #
-export i=${input_aln%.${aln_linear}}.bazam.grch38.combined.gam outdir=${PWD} graph=${graph} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} tools_dir=${tools_dir} valid_alleles=${valid_alleles}
+export i=${input_aln%.${aln_linear}}.bazam.grch38.combined.gam workdir=${PWD} graph=${graph} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} tools_dir=${tools_dir} valid_alleles=${valid_alleles}
 . ${bigfoot_dir}/filter_immune_subgraph.sh
 
