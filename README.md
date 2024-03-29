@@ -183,3 +183,18 @@ done
 
 <i>To do: set default values for all parameters (graph/valid alleles/pe...)
 
+
+
+
+grep "#1#IGH.*D" ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv | cut -f1 | sed s/.*#1#//g | sed s/D.*//g | sort | uniq > test_remove.txt
+IGHV1-68
+IGHV1-69
+IGHV2-70
+IGHV3-23
+IGHV3-43
+IGHV3-64
+IGHV7-40
+for i in $(cat test_remove.txt);do echo $i;
+    ls *_wg_immunovar_genotyping/familywise_pe_haplotype_inference/*${i}* >> gene_to_remove.txt
+done
+xargs rm -rf < gene_to_remove.txt

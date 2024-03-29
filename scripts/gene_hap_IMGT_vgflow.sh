@@ -79,7 +79,7 @@ mkdir -p ${outdir}/HLA
 # note: coeliac succesptibility genes - DQA1/DQB1/HLA-C/IGHV gene
 # IG/TR inference
 #for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^DQA1\|^DQB1\|^C\\." | grep -v "__\|IGHD\|IGHJ");do echo $each;
-for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV|^IGKV" | grep -v "__\|IGHD\|IGHJ");do echo $each;
+for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV" | grep -v "__\|IGHD\|IGHJ");do echo $each;
 #for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^DQA1\|^DQB1\|^C\\." | grep -v "__\|IGHD\|IGHJ" | grep "IGHV3-66");do echo $each;
 cd ${datadir}
 gene=${each%.nodes.txt}
@@ -536,7 +536,7 @@ else
 fi
 done
 #
-ls ${outdir}/*_files.txt > ${outdir}/${sample_id}_files_rm.txt
+#ls ${outdir}/*_files.txt > ${outdir}/${sample_id}_files_rm.txt # keep in dir to avoid re-analyzing samples
 ls -d ${outdir}/seqwish* >> ${outdir}/${sample_id}_files_rm.txt
 xargs rm -rf < ${outdir}/${sample_id}_files_rm.txt
 # parse results
