@@ -57,8 +57,7 @@ input_aln=${bam_file##*/};
 aln_linear=$(echo ${input_aln} | sed s/.*\\.//g)
 sample=${input_aln%.${aln_linear}}
 # check if BAM or CRAM
-FILE=${input_aln%.${aln_linear}}.unmapped.fastq.gz
-if test -f "$FILE"; then
+if test [ -s "${input_aln%.${aln_linear}}.unmapped.fastq.gz" ]; then
     echo "${i##*/} has been processed already - using it"
 else
     echo "Processing: ${input_aln##*/}"

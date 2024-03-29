@@ -79,7 +79,7 @@ mkdir -p ${outdir}/HLA
 # note: coeliac succesptibility genes - DQA1/DQB1/HLA-C/IGHV gene
 # IG/TR inference
 #for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^DQA1\|^DQB1\|^C\\." | grep -v "__\|IGHD\|IGHJ");do echo $each;
-for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV" | grep -v "__\|IGHD\|IGHJ" | grep "IGLV" | head -1);do echo $each;
+for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV|^IGKV" | grep -v "__\|IGHD\|IGHJ" | grep "IGLV" | head -1);do echo $each;
 #for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^DQA1\|^DQB1\|^C\\." | grep -v "__\|IGHD\|IGHJ" | grep "IGHV3-66");do echo $each;
 cd ${datadir}
 gene=${each%.nodes.txt}
@@ -89,7 +89,7 @@ gene_actual=$(echo $gene | sed 's!__!/!g')
 loci=$(vg paths -Lv ${graph_base}.xg | grep "#1#${gene}\*" | cut -f1 -d"#" | sort | uniq | grep "IMGT\|HLA\|KIR")
 echo "$gene --> $loci"
 #
-if [[ "$loci" =~ ^(HLA)$ ]]; then 
+if [[ "$loci" =~ ^(HLA)$ ]]; then
     echo "HLA inference"
     outdir=${workdir}/${sample_id}_${graph}_genotyping/familywise_${aln_type}_haplotype_inference/HLA
     mkdir -p ${outdir}/seqwish_${sample_id}.${graph}
@@ -107,7 +107,7 @@ elif [[ "$loci" =~ ^(IMGT)$ ]]; then
     # if n_genes > 1 then use asc cluster
         asc_cluster=$(cut -f4 ${outdir}/potential_asc_for_${gene} | sed s/'\*.*'//g | sort | uniq)
         grep "${asc_cluster}" ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv | cut -f1 > ${outdir}/potential_asc_for_${gene}
-        grep -v ${gene}"\*" ${outdir}/potential_asc_for_${gene} | grep -v "${gene}_\|${gene}D"  > ${outdir}/asc_additional_${gene}_fams.txt
+        grep -v ${gene}"\*" ${outdir}/potential_asc_for_${gene} | grep -v "${gene}_"  > ${outdir}/asc_additional_${gene}_fams.txt
         if [ -s ${outdir}/asc_additional_${gene}_fams.txt ]; then
             echo "Complex locus - using ASC-based allele";
             each="ig_asc/${asc_cluster}.immune_subset.nodes.txt"
@@ -286,7 +286,8 @@ else
                 elif [[ "$opt" =~ 2 ]]; then
                     echo "optimization_approach = relative difference";
                     if [ -s haps.final.fasta ]; then
-                        echo "test";
+                        echo "$(grep ">" haps.final.fasta | wc -l) alleles > threshold";
+                        echo "Matching inferred alleles to allele set + constructing allele-specific ${gene} graph"
                     else
                         echo "No strains with estimated allele coverage >= ${min_strain_depth} - using basal threshold (0.01) to rescue inference";
                         python3 ${bigfoot_dir}/vg-flow_immunovar.py --careful --optimization_approach ${opt} --min_depth 0 --trim 0 -m 0 -c 0.1 --remove_included_paths 0 ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
@@ -310,7 +311,7 @@ else
                     echo "Allele-level abundance estimation completed for ${gene} ::"
                     grep ">" ${outdir}/${sample_id}.${graph}.${gene}.relabs.haps.final.annot.fasta
                 else
-                    echo "select an acceptable optimization approach (1-3)"
+                    echo "Select an acceptable optimization approach (1: absolute diff, 2: relative diff, 3: sqrt(relative abs diff)"
                 fi
             done
             echo "2) Augmenting annotated post-flow inference graph with reads for association testing";

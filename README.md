@@ -138,7 +138,7 @@ export graphdir=${bigfoot_source}; export graph="wg_immunovar";
 export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar;
 export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
 #
-for i in $(cat run_pipeline_sample_ids.txt | head -1);do echo ${i};
+for i in $(cat run_pipeline_sample_ids.txt | head -10 );do echo ${i};
 . ${bigfoot_dir}/filter_immune_subgraph.sh
 done
 
@@ -147,9 +147,9 @@ done
 
 # try things in parallel
 cd /home/dd392/palmer_scratch/data/1kgenomes/crams/igl_samples
-#split -l 20 process_sample_ids.txt process_sample_split_
+split -l 20 process_sample_ids.txt process_sample_split_
 conda activate bigfoot
-for i in $(ls process_sample_split_* | tail -1);do echo $i;
+for i in $(ls process_sample_split_*);do echo $i;
     time parallel -j 3 'export workdir=${PWD}; export tools_dir=~/tools;
     export PATH=${tools_dir}:$PATH ; \
     export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
@@ -176,7 +176,7 @@ for i in $(ls process_sample_split_* | tail -1);do echo $i;
         echo "Graph alignment of unmapped reads completed";
     else
         cat ${sample_id}.bazam.grch38.wg.gam ${sample_id}.unmapped.grch38.wg.gam > ${sample_id}.bazam.grch38.combined.gam
-    fi' :::: <(cat ${i});
+    fi' :::: <(cat ${i} | grep -v "NA19091");
 done
 
 

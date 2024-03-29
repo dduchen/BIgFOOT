@@ -17,7 +17,7 @@ cd $OUTPATH
 #reformat.sh in=${sample}.fastq out=${sample}_#.fastq overwrite=t
 
 FILE=${sample}_qc_1.fastq.gz
-if test -f "$FILE"; then
+if test [ -s "$FILE" ]; then
     echo "QC'd ${sample} fastq files exist, skipping fastp QC"
 else
     echo "Performing QC via fastp - no base correction but minimal read length=36bp"
