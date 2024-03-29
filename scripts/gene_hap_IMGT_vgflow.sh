@@ -259,13 +259,9 @@ else
         #   gene-specific read depth for minimum strain-level coverage
             depth_locus=$(awk -F ' ' '{print $1}' ${outdir}/${sample_id}.${graph}.${gene}.filtered.depth)
 #            min_strain_depth=$(bc -l <<< "scale=3;${depth_locus}/$gene_min_len")
-            if [[ ${each} == *"ig_asc"* ]]; then
+            min_strain_depth=$(bc -l <<< "scale=2;${depth_locus}*0.05"| awk '{printf("%d\n",$1 + 0.5)}')
+            if (( $(awk 'BEGIN {print ("'"$min_strain_depth"'" < 0.1) ? "1" : "0"}') )); then
                 min_strain_depth=0.1
-            else
-                min_strain_depth=$(bc -l <<< "scale=2;${depth_locus}*0.05"| awk '{printf("%d\n",$1 + 0.5)}')
-                if (( $(awk 'BEGIN {print ("'"$min_strain_depth"'" < 0.1) ? "1" : "0"}') )); then
-                    min_strain_depth=0.1
-                fi
             fi
             echo "Minimum strain depth required: $min_strain_depth"
             cd ${outdir}
