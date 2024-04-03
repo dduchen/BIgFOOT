@@ -1,3 +1,5 @@
+/home/dd392/palmer_scratch/data/1kgenomes/crams/igl_samples/NA19761_wg_immunovar_genotyping/familywise_pe_haplotype_inference/NA19761.wg_immunovar.IGLV3-16.rel.contigs.fasta
+
 #!/usr/bin/env Rscript
 args<-commandArgs(TRUE)
 # ensure relevant packages can be loaded - either uncomment + add specific libpaths or download
@@ -21,7 +23,7 @@ contigs<-readDNAStringSet(contig_file)
 # remove contig with 0 abundance!
 contigs<-contigs[grep("ab=0.0000",names(contigs),invert=T)]
 # limit to alleles of interest - important if VG-flow used on haps + alleles:
-contigs<-contigs[grep("IMGT|IGv2|HLA|KIR",names(contigs))]
+contigs<-contigs[grep("IMGT|IGv2|OGRDB|HLA|KIR",names(contigs))]
 haps<-readDNAStringSet(haps_file)
 for(i in 1:length(haps)){
     contig_match<-contigs[which(contigs==haps[i])]

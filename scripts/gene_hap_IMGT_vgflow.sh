@@ -554,7 +554,6 @@ if [ -s ${outdir%haplotype_inference*}"haplotype_inference"/HLA/*annot.fasta ]; 
 else
     echo "No HLA allelic inference for ${sample_id}";
 fi
-Rscript ${bigfoot_dir}/clean_genewise_results.R
 # clean up:
 echo "All cleaned up!"
 cd ${workdir}

@@ -129,6 +129,10 @@ for i in $(cat process_sample_ids.txt | head -1);do echo ${i};
     . ${bigfoot_dir}/filter_immune_subgraph.sh
 done
 
+
+
+
+
 ls *bazam.grch38.combined.gam > run_pipeline_sample_ids.txt
 export workdir=${PWD}; export tools_dir=~/tools;
 export PATH=${tools_dir}:$PATH ;
@@ -138,18 +142,31 @@ export graphdir=${bigfoot_source}; export graph="wg_immunovar";
 export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar;
 export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
 #
-for i in $(cat run_pipeline_sample_ids.txt | head -10 );do echo ${i};
+for i in $(cat run_pipeline_sample_ids.txt | tail -7);do echo ${i};
 . ${bigfoot_dir}/filter_immune_subgraph.sh
 done
+# remaining samples wtih completed fastq extraction:
+ls *bazam.grch38.combined.gam > run_pipeline_sample_ids2.txt
+grep -f run_pipeline_sample_ids.txt -v run_pipeline_sample_ids2.txt > tmp && mv tmp run_pipeline_sample_ids2.txt
 
 
 
+time parallel -j 10 'export workdir=${PWD}; export tools_dir=~/tools;
+export PATH=${tools_dir}:$PATH ; \
+export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
+export bigfoot_source=~/pi_kleinstein/bigfoot/; \
+export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
+export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
+export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
+export i={}; \
+. ${bigfoot_dir}/filter_immune_subgraph.sh' :::: <(cat run_pipeline_sample_ids2.txt | tail -38);
 
-# try things in parallel
+
+# try things in parallel?
 cd /home/dd392/palmer_scratch/data/1kgenomes/crams/igl_samples
 split -l 20 process_sample_ids.txt process_sample_split_
 conda activate bigfoot
-for i in $(ls process_sample_split_*);do echo $i;
+for i in $(ls process_sample_split_* | grep -v "_aa\|_ab\|_ac");do echo $i;
     time parallel -j 3 'export workdir=${PWD}; export tools_dir=~/tools;
     export PATH=${tools_dir}:$PATH ; \
     export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
@@ -176,7 +193,7 @@ for i in $(ls process_sample_split_*);do echo $i;
         echo "Graph alignment of unmapped reads completed";
     else
         cat ${sample_id}.bazam.grch38.wg.gam ${sample_id}.unmapped.grch38.wg.gam > ${sample_id}.bazam.grch38.combined.gam
-    fi' :::: <(cat ${i} | grep -v "NA19091");
+    fi' :::: <(cat ${i});
 done
 
 
@@ -186,15 +203,3 @@ done
 
 
 
-grep "#1#IGH.*D" ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv | cut -f1 | sed s/.*#1#//g | sed s/D.*//g | sort | uniq > test_remove.txt
-IGHV1-68
-IGHV1-69
-IGHV2-70
-IGHV3-23
-IGHV3-43
-IGHV3-64
-IGHV7-40
-for i in $(cat test_remove.txt);do echo $i;
-    ls *_wg_immunovar_genotyping/familywise_pe_haplotype_inference/*${i}* >> gene_to_remove.txt
-done
-xargs rm -rf < gene_to_remove.txt
