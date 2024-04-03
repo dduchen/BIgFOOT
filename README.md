@@ -159,6 +159,7 @@ export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
 export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
 export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
 export i={}; \
+. ${bigfoot_dir}/filter_immune_subgraph.sh' :::: <(cat run_pipeline_sample_ids.txt);
 . ${bigfoot_dir}/filter_immune_subgraph.sh' :::: <(cat run_pipeline_sample_ids2.txt | tail -38);
 
 
@@ -203,3 +204,67 @@ done
 
 
 
+# Supplemental notes - WIP
+
+## remember to check igl_samples for ogrdb parsing error - some alleles missing, will need to rerun pipeline for those genes
+
+cd $workdir
+for i in $(ls -d *_wg_immunovar_genotyping); do echo $i;
+    cd $i
+    #grep "^>:path" ./*haplotype_inference/*annot.fasta | sed s/":.*"//g > annotated_fasta_to_edit.txt
+#    for j in $(cat annotated_fasta_to_edit.txt);do echo $j;
+#        removing_you=${j%.rel.haps.final.*}; removing_you=$(echo ${removing_you} | sed s/.wg_immunovar./"\*"/g)
+#        rm familywise_pe_haplotype_inference/${removing_you}*;
+    for j in $(cut -f2 seqkit_repl_ids.txt | sed s/":path.*"//g);do echo $j
+        rm familywise_pe_haplotype_inference/*${j}_*;
+    done
+    cd $workdir
+done
+
+    grep -h "^>:path" ./*haplotype_inference/*annot.fasta | sed s/"^>"//g > annotated_fasta_id_to_replace.txt
+    grep "^>:path" ./*haplotype_inference/*annot.fasta | sed s/.*${graph}.//g | sed s/"\\..*>"//g > annotated_fasta_id_replacements.txt
+    paste -d'\t' annotated_fasta_id_to_replace.txt annotated_fasta_id_replacements.txt > seqkit_repl_ids.txt
+    for i in $(cat annotated_fasta_to_edit.txt);do echo ${i};
+        awk 'NR==FNR{a[$1]=$2;next}
+            NF==2{$2=a[$2]; print ">" $2;next}
+            1' FS='\t' seqkit_repl_ids.txt FS='>' ${i} > ${i}.tmp && mv ${i}.tmp ${i};
+    done
+    cd $workdir
+done
+# replace results with updated allele info
+cd $workdir
+for i in $(ls -d *_wg_immunovar_genotyping); do echo $i;
+    cd $i
+    sample_id=${i%_wg_*}
+    grep -h ">" ./family*/*annot.fasta | sed s/"^.*>"/''/ | sed s/' or '/'_or_'/g > ${sample_id}.results_raw.txt";
+    echo -e ${sample_id} "mean" "sd" | sed s/" "/'\t'/g > ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.txt;
+    for each in $(ls ${outdir%haplotype_inference*}"haplotype_inference"/*.filtered.depth); do echo -e $(echo -ne ${each%.filtered.depth} ' ' |
+        sed s/"__"/"\/"/; echo $(cut -f1,2 $each)) | sed s/" "/'\t'/g | sed s/".*wg_immunovar."//g >> ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.txt;
+    done
+    # append HLA results if they exist
+    if [ -s ${outdir%haplotype_inference*}"haplotype_inference"/HLA/*annot.fasta ]; then
+        grep ">" ${outdir%haplotype_inference*}"haplotype_inference"/HLA/*annot.fasta | sed s/"^.*>"/''/ >> ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.results_raw.txt;
+        for each in $(ls ${outdir%haplotype_inference*}"haplotype_inference/HLA"/*.filtered.depth); do echo -e $(echo -ne ${each%.filtered.depth} ' ' |
+            sed s/"__"/"\/"/; echo $(cut -f1,2 $each)) | sed s/" "/'\t'/g | sed s/".*\\/"//g | sed s/".*wg_immunovar."//g >> ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.txt;
+        done
+    else
+        echo "No HLA allelic inference for ${sample_id}";
+    fi
+done
+
+
+
+    grep "^:path" NA18515.results_raw.txt > 
+
+for i in $(cat ${outdir%haplotype_inference*}"haplotype_inference"/annotated_fasta_to_edit.txt);do echo ${i};
+    grep "^>:path" ${outdir%haplotype_inference*}"haplotype_inference"/*annot.fasta | sed s/":.*"//g > ${outdir%haplotype_inference*}"haplotype_inference"/annotated_fasta_to_edit.txt
+    grep -h "^>:path" ${outdir%haplotype_inference*}"haplotype_inference"/*annot.fasta | sed s/"^>"//g > ${outdir%haplotype_inference*}"haplotype_inference"/annotated_fasta_id_to_replace.txt
+    grep "^>:path" ${outdir%haplotype_inference*}"haplotype_inference"/*annot.fasta | sed s/.*${graph}.//g | sed s/"\\..*>"//g > ${outdir%haplotype_inference*}"haplotype_inference"/annotated_fasta_id_replacements.txt
+    paste -d'\t' ${outdir%haplotype_inference*}"haplotype_inference"/annotated_fasta_id_to_replace.txt ${outdir%haplotype_inference*}"haplotype_inference"/annotated_fasta_id_replacements.txt > ${outdir%haplotype_inference*}"haplotype_inference"/seqkit_repl_ids.txt
+
+    for i in $(cat ${outdir%haplotype_inference*}"haplotype_inference"/annotated_fasta_to_edit.txt);do echo ${i};
+        awk 'NR==FNR{a[$1]=$2;next}
+            NF==2{$2=a[$2]; print ">" $2;next}
+            1' FS='\t' ${outdir%haplotype_inference*}"haplotype_inference"/seqkit_repl_ids.txt FS='>' ${i};
+    done
+done

@@ -94,7 +94,7 @@ if [ -s ${sorted_gam} ]; then
     cd ${workdir}
     #
     output_graph=${sample_id}_graph.${graph}.${aln_type}
-    if [ -s ${output_graph}.fix.gfa ]; then
+    if [ -s ${output_graph}.sub.gfa ]; then
         echo "Alignment completed - using: ${sample}.${graph_base##*/}.gam";
     else
         echo "Embedding sample-specific variation within immunovariation loci"
