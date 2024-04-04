@@ -207,11 +207,12 @@ done
 # Supplemental notes - WIP
 
 ## remember to check igl_samples for ogrdb parsing error - some alleles missing, will need to rerun pipeline for those genes
-
+ # remove text files for genes missing allele info - so when pipeline called again, will overwrite
 cd $workdir
 for i in $(ls -d *_wg_immunovar_genotyping); do echo $i;
     cd $i
     #grep "^>:path" ./*haplotype_inference/*annot.fasta | sed s/":.*"//g > annotated_fasta_to_edit.txt
+# alternatively remove all the files for the gene
 #    for j in $(cat annotated_fasta_to_edit.txt);do echo $j;
 #        removing_you=${j%.rel.haps.final.*}; removing_you=$(echo ${removing_you} | sed s/.wg_immunovar./"\*"/g)
 #        rm familywise_pe_haplotype_inference/${removing_you}*;
@@ -221,6 +222,7 @@ for i in $(ls -d *_wg_immunovar_genotyping); do echo $i;
     cd $workdir
 done
 
+# in directory, try edit the fasta files directly - but this doesnt fix gfa files, would still need to update raw results
     grep -h "^>:path" ./*haplotype_inference/*annot.fasta | sed s/"^>"//g > annotated_fasta_id_to_replace.txt
     grep "^>:path" ./*haplotype_inference/*annot.fasta | sed s/.*${graph}.//g | sed s/"\\..*>"//g > annotated_fasta_id_replacements.txt
     paste -d'\t' annotated_fasta_id_to_replace.txt annotated_fasta_id_replacements.txt > seqkit_repl_ids.txt

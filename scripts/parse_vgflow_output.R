@@ -1,5 +1,3 @@
-/home/dd392/palmer_scratch/data/1kgenomes/crams/igl_samples/NA19761_wg_immunovar_genotyping/familywise_pe_haplotype_inference/NA19761.wg_immunovar.IGLV3-16.rel.contigs.fasta
-
 #!/usr/bin/env Rscript
 args<-commandArgs(TRUE)
 # ensure relevant packages can be loaded - either uncomment + add specific libpaths or download
