@@ -12,7 +12,6 @@ suppressPackageStartupMessages(library(DECIPHER))
 suppressPackageStartupMessages(library(data.table))
 suppressPackageStartupMessages(library(dplyr))
 contig_file=args[1]
-#contig_file="ERR3989410.franken.IGHV4-59.contigs.fasta"
 sample<-gsub("\\..*","",contig_file)
 haps_file<-gsub("contigs","haps.final",contig_file)
 graph_file<-gsub("contigs.fasta","genome_graph.gfa",contig_file)
