@@ -74,11 +74,10 @@ if(sample_id==colnames(depth)[1]){
         }
     }
     other_info<-gsub("^.*/","",getwd())
-    graph_results$aln_type<-ifelse(grepl("_pe_",other_info)==1,"PE","NGmerge")
+    graph_results$aln_type<-ifelse(grepl("_pe_",subdir)==1,"PE","NGmerge")
     graph_results$augmented_graph<-ifelse(grepl("_augmented_",other_info)==1,T,F)
     #
-    fwrite(graph_results,file=paste0(gsub("\\..*$","",graph_results$V1)[1],"_",graph_results$aln_type[1],"_",ifelse(graph_results$augmented_graph[1]==T,"augmented","basegraph"),".results_cleaned.txt"),sep="\t",col.names=T,row.names=F,quote=F)
-    #fwrite(graph_results,file=paste0(gsub("\\..*$","",graph_results$V1)[1],".results_cleaned.txt"),sep="\t",col.names=T,row.names=F,quote=F)
+    fwrite(graph_results,file=paste0(sample_id,"_",graph_results$aln_type[1],"_",graph,"_results_cleaned.txt"),sep="\t",col.names=T,row.names=F,quote=F)
     #################################################################
     #could derive copy number variation/alleles using the relative abundance of observed strains + strain-specific abundance/locus depth
     # or from TTN (immunotyper-SR) or the nodes immediately adjacent to the area?
