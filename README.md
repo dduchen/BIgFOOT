@@ -150,8 +150,9 @@ ls *bazam.grch38.combined.gam > run_pipeline_sample_ids2.txt
 grep -f run_pipeline_sample_ids.txt -v run_pipeline_sample_ids2.txt > tmp && mv tmp run_pipeline_sample_ids2.txt
 
 
+ls *bazam.grch38.combined.gam > run_pipeline_sample_ids.txt
 
-time parallel -j 10 'export workdir=${PWD}; export tools_dir=~/tools;
+time parallel -j 5 'export workdir=${PWD}; export tools_dir=~/tools;
 export PATH=${tools_dir}:$PATH ; \
 export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
 export bigfoot_source=~/pi_kleinstein/bigfoot/; \
@@ -159,8 +160,7 @@ export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
 export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
 export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
 export i={}; \
-. ${bigfoot_dir}/filter_immune_subgraph.sh' :::: <(cat run_pipeline_sample_ids.txt);
-. ${bigfoot_dir}/filter_immune_subgraph.sh' :::: <(cat run_pipeline_sample_ids2.txt | tail -38);
+. ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids.txt | tail -5);
 
 
 # try things in parallel?
@@ -201,7 +201,8 @@ done
 
 <i>To do: set default values for all parameters (graph/valid alleles/pe...)
 
-
+#igl samples i need to redownload:
+#HG03301
 
 
 # Supplemental notes - WIP
@@ -211,7 +212,12 @@ done
 cd $workdir
 for i in $(ls -d *_wg_immunovar_genotyping); do echo $i;
     cd $i
-    #grep "^>:path" ./*haplotype_inference/*annot.fasta | sed s/":.*"//g > annotated_fasta_to_edit.txt
+    grep "^>:path" ./*haplotype_inference/*annot.fasta | sed s/":.*"//g | sed s/'.wg_immunovar.'/'_'/g | sed s/'.rel.haps.*'/'_files.txt'/g > annotated_fasta_to_edit.txt
+    echo "Removing: $(cat annotated_fasta_to_edit.txt)"
+    xargs rm < annotated_fasta_to_edit.txt
+    cd $workdir
+done
+
 # alternatively remove all the files for the gene
 #    for j in $(cat annotated_fasta_to_edit.txt);do echo $j;
 #        removing_you=${j%.rel.haps.final.*}; removing_you=$(echo ${removing_you} | sed s/.wg_immunovar./"\*"/g)

@@ -115,6 +115,7 @@ if [ -s ${sorted_gam} ]; then
     # cleaning assumes ngmerged route takes sufficiently longer - pe workflow has completed
     if [[ ${aln_type} == *"pe"* ]]; then
     # perform some depth estimates:
+    grep -v "nan" ${sample}.${graph}_TTN.pe.depth > ${sample}.${graph}_TTN.pe.depth.tmp && mv ${sample}.${graph}_TTN.pe.depth.tmp ${sample}.${graph}_TTN.pe.depth
         if [ -s ${sample}.${graph}_TTN.pe.depth ]; then
             echo "depth estimates exist - using them"
             depth_immune=$(awk -F ' ' '{print $1}' ${sample}.${graph}_immune.pe.depth)
@@ -163,7 +164,7 @@ if [ -s ${sorted_gam} ]; then
     echo "fin!"
     ###########################
     # -- association explo -- #
-    odgi unitig -i HG00438_graph.wg_immunovar.pe.sub.gfa -t 31 -t 4 -P > HG00438_graph.wg_immunovar.pe.sub.unitigs.fa
+    odgi unitig -i ${output_graph}.sub.gfa -t 31 -t 4 -P > ${output_graph}.sub.unitigs.fa
     # -- then using kmdiff (https://github.com/tlemane/kmdiff) or kmtricks (https://github.com/tlemane/kmtricks/wiki) or unitig-caller - subsample for use in PCA
     # -- adjust for ancestry using an adapted version of:
     # kmdiff: "To take into account the population stratification and thus to compute corrected P-values, a random sample of k-mers (<1/100th of total) are used to infer a stratification using the Eigenstrat software (Patterson et al., 2006; Price et al., 2006; Rahman et al., 2018)."

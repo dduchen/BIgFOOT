@@ -61,6 +61,11 @@ fi
 # sort and index only once...
 if [ -s ${gam_file%.gam}.sorted.gam ]; then
     echo "Sorted gam file for ${sample_id} already exists - using it (${gam_file%.gam}.sorted.gam)"
+    if [ -s "${gam_file%.gam}.sorted.gam.gai" ]; then
+        echo "index exists"
+    else
+        vg index -l ${gam_file%.gam}.sorted.gam
+    fi
 else
     vg gamsort ${gam_file} -i ${gam_file%.gam}.sorted.gam.gai -p > ${gam_file%.gam}.sorted.gam
 fi
@@ -268,7 +273,7 @@ else
         #   allele inference:
             python3 ${bigfoot_dir}/parse_graph_vgflow.py --sample ${outdir}/${sample_id}.${graph}.${gene}.vgflow -m 0
             for opt in {2..2}; do #relative difference performs best on average
-                echo "basing inference on haplotypes + alleles embedded in graph, for inference based on full set of alleles set downsampled=FALSE (this might be much slower for certain HLA genes)"
+                echo "basing inference on haplotypes + alleles embedded in graph"
                 python3 ${bigfoot_dir}/vg-flow_immunovar.py --careful --optimization_approach ${opt} --min_depth 0 --trim 0 -m 0 -c ${min_strain_depth} --remove_included_paths 0 ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
         #       python3 ${bigfoot_dir}/vg-flow_immunovar_long_contigs.py --careful --min_depth 0 --trim 0 -m 0 -c ${min_strain_depth} --remove_included_paths 0 ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
                 if [[ "$opt" =~ 1 ]]; then
