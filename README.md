@@ -151,6 +151,18 @@ grep -f run_pipeline_sample_ids.txt -v run_pipeline_sample_ids2.txt > tmp && mv 
 
 
 ls *bazam.grch38.combined.gam > run_pipeline_sample_ids.txt
+# check those runs with completed logs - dont reprocess them. Include something to check this in the original script...
+grep "All cleaned up!" *_bigfootprint.txt | sed s/":All cleaned up!"//g | sed s/"_bigfootprint.txt"//g > completed_runs.txt
+grep -v -f completed_runs.txt run_pipeline_sample_ids.txt > run_pipeline_sample_ids_remaining.txt
+
+
+2024-04-12T23:12:22
+HG02019.final_bigfootprint.txt
+HG02107.final_bigfootprint.txt
+HG02116.final_bigfootprint.txt
+HG01965.final_bigfootprint.txt
+HG01958.final_bigfootprint.txt
+
 
 time parallel -j 5 'export workdir=${PWD}; export tools_dir=~/tools;
 export PATH=${tools_dir}:$PATH ; \
@@ -160,10 +172,12 @@ export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
 export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
 export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
 export i={}; \
-. ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids.txt | tail -5);
+. ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids_remaining.txt |  tail -80);
+#. ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids.txt | grep "HG03867");
 
 
 # try things in parallel?
+cd /home/dd392/palmer_scratch/data/1kgenomes/crams/igl_samples
 cd /home/dd392/palmer_scratch/data/1kgenomes/crams/igl_samples
 split -l 20 process_sample_ids.txt process_sample_split_
 conda activate bigfoot
@@ -203,9 +217,20 @@ done
 
 #igl samples i need to redownload:
 #HG03301
-
+#HG00376
+#HG03826
+#HG03833
+#HG03885
+#HG03925
+#HG03955
+# -- maybe HG00360
 
 # Supplemental notes - WIP
+
+ls *.sub.gfa > 1kGenomes_immunovar_sub.txt
+unitig-caller --call --kmer 15 --refs 1kGenomes_immunovar_sub.txt --out 1kGenomes_immunovar_subgraph --write-graph
+
+
 
 ## remember to check igl_samples for ogrdb parsing error - some alleles missing, will need to rerun pipeline for those genes
  # remove text files for genes missing allele info - so when pipeline called again, will overwrite
