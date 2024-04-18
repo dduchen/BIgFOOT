@@ -164,6 +164,20 @@ HG01965.final_bigfootprint.txt
 HG01958.final_bigfootprint.txt
 
 
+cd /home/dd392/pi_kleinstein/bigfoot/1kgenomes/crams/igl_samples
+ls *.final.bazam.grch38.combined.gam | sort | uniq > process_sample_ids_igl.txt
+split -l 20 process_sample_ids_igl.txt process_sample_split_
+    time parallel -j 5 'export workdir=${PWD}; export tools_dir=~/tools;
+    export PATH=${tools_dir}:$PATH ; \
+    export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
+    export bigfoot_source=~/pi_kleinstein/bigfoot/; \
+    export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
+    export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
+    export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
+    export i={}; \
+    . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat ${i});
+done
+
 time parallel -j 5 'export workdir=${PWD}; export tools_dir=~/tools;
 export PATH=${tools_dir}:$PATH ; \
 export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
@@ -172,8 +186,8 @@ export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
 export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
 export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
 export i={}; \
-. ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids_remaining.txt |  tail -80);
-#. ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids.txt | grep "HG03867");
+. ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat test.txt);
+#. ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids_remaining.txt |  tail -80);
 
 
 # try things in parallel?

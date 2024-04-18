@@ -233,9 +233,11 @@ else
             echo "Minimum strain depth required: $min_strain_depth"
             cd ${outdir}
             # allele inference:
+            mkdir -p ${outdir}/${gene}_allele_inference
             python3 ${bigfoot_dir}/parse_graph_vgflow.py --sample ${outdir}/${sample_id}.${graph}.${gene}.vgflow -m 0
             for opt in {2..2}; do #relative difference performs best on average
                 echo "basing inference on haplotypes + alleles embedded in graph"
+                cd ${outdir}/${gene}_allele_inference
                 python3 ${bigfoot_dir}/vg-flow_immunovar.py --careful --optimization_approach ${opt} --min_depth 0 --trim 0 -m 0 -c ${min_strain_depth} --remove_included_paths 0 ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
                 # python3 ${bigfoot_dir}/vg-flow_immunovar_long_contigs.py --careful --min_depth 0 --trim 0 -m 0 -c ${min_strain_depth} --remove_included_paths 0 ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
                 if [[ "$opt" =~ 1 ]]; then
@@ -246,6 +248,7 @@ else
                     Rscript ${bigfoot_dir}/parse_vgflow_output.R ${outdir}/${sample_id}.${graph}.${gene}.abs.contigs.fasta
                     echo "Allele-level abundance estimation completed for ${gene} ::"
                     grep ">" ${outdir}/${sample_id}.${graph}.${gene}.abs.haps.final.annot.fasta
+                    cd ${outdir}
                 elif [[ "$opt" =~ 2 ]]; then
                     echo "optimization_approach = relative difference";
                     if [ -s haps.final.fasta ]; then
@@ -265,6 +268,7 @@ else
                     else
                         echo "No final haplotypes > depth threshold"
                     fi
+                    cd ${outdir}
                 elif [[ "$opt" =~ 3 ]]; then
                     echo "optimization_approach = relative absolute differences sqrt approach"
                     mv trimmed_contigs.fasta ${outdir}/${sample_id}.${graph}.${gene}.relabs.contigs.fasta ; mv haps.final.fasta ${outdir}/${sample_id}.${graph}.${gene}.relabs.haps.final.fasta ; 
@@ -273,10 +277,13 @@ else
                     Rscript ${bigfoot_dir}/parse_vgflow_output.R ${outdir}/${sample_id}.${graph}.${gene}.relabs.contigs.fasta
                     echo "Allele-level abundance estimation completed for ${gene} ::"
                     grep ">" ${outdir}/${sample_id}.${graph}.${gene}.relabs.haps.final.annot.fasta
+                    cd ${outdir}
                 else
                     echo "Select an acceptable optimization approach (1: absolute diff, 2: relative diff, 3: sqrt(relative abs diff)"
+                    cd ${outdir}
                 fi
             done
+            rm -rf ${outdir}/${gene}_allele_inference
             echo "2) Augmenting annotated post-flow inference graph with reads for association testing";
             sed s/' '/_/g ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta > ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.adding.fasta
             if [ -s "${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta" ]; then    
