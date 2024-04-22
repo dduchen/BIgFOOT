@@ -89,11 +89,10 @@ mkdir -p ${genotyping_nodes_dir}/gene_graphs/
 # potentially save this as script - run in parallel #https://stackoverflow.com/questions/25158583/exporting-the-full-environment-to-gnu-parallel
 # parallel!
 ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV" | grep -v "__\|IGHD\|IGHJ" > ${outdir}/gene_list.txt
-
 parallel -j 4 'export each={}; \
-. ${bigfoot_dir}/gene_allele_calling_parallel.sh >> parallel_testing.txt' :::: <(cat ${outdir}/gene_list.txt);
-rm -rf ${outdir}/seqwish_${sample_id}.${graph}/
+    . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(cat ${outdir}/gene_list.txt);
 #
+rm -rf ${outdir}/seqwish_${sample_id}.${graph}/
 #ls ${outdir}/*_files.txt > ${outdir}/${sample_id}_files_rm.txt # keep in dir to avoid re-analyzing samples
 #ls -d ${outdir}/seqwish* >> ${outdir}/${sample_id}_files_rm.txt
 #xargs rm -rf < ${outdir}/${sample_id}_files_rm.txt
