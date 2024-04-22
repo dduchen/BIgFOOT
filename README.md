@@ -163,11 +163,13 @@ HG02116.final_bigfootprint.txt
 HG01965.final_bigfootprint.txt
 HG01958.final_bigfootprint.txt
 
-
+##############################
+# igl directory - parallel in chunks
 cd /home/dd392/pi_kleinstein/bigfoot/1kgenomes/crams/igl_samples
 ls *.final.bazam.grch38.combined.gam | sort | uniq > process_sample_ids_igl.txt
 split -l 20 process_sample_ids_igl.txt process_sample_split_
-    time parallel -j 5 'export workdir=${PWD}; export tools_dir=~/tools;
+for i in $(ls process_sample_split_*);do echo $i;
+    time parallel -j 4 'export workdir=${PWD}; export tools_dir=~/tools;
     export PATH=${tools_dir}:$PATH ; \
     export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
     export bigfoot_source=~/pi_kleinstein/bigfoot/; \
@@ -177,6 +179,12 @@ split -l 20 process_sample_ids_igl.txt process_sample_split_
     export i={}; \
     . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat ${i});
 done
+###################################
+
+
+
+
+
 
 time parallel -j 5 'export workdir=${PWD}; export tools_dir=~/tools;
 export PATH=${tools_dir}:$PATH ; \

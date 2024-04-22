@@ -115,7 +115,7 @@ if [ -s ${sorted_gam} ]; then
     # cleaning assumes ngmerged route takes sufficiently longer - pe workflow has completed
     if [[ ${aln_type} == *"pe"* ]]; then
     # perform some depth estimates:
-    grep -v "nan" ${sample}.${graph}_TTN.pe.depth > ${sample}.${graph}_TTN.pe.depth.tmp && mv ${sample}.${graph}_TTN.pe.depth.tmp ${sample}.${graph}_TTN.pe.depth
+        grep -v "nan" ${sample}.${graph}_TTN.pe.depth > ${sample}.${graph}_TTN.pe.depth.tmp && mv ${sample}.${graph}_TTN.pe.depth.tmp ${sample}.${graph}_TTN.pe.depth
         if [ -s ${sample}.${graph}_TTN.pe.depth ]; then
             echo "depth estimates exist - using them"
             depth_immune=$(awk -F ' ' '{print $1}' ${sample}.${graph}_immune.pe.depth)
@@ -137,7 +137,6 @@ if [ -s ${sorted_gam} ]; then
         #sbatch --export=i=${sample_immune_graph}.gam,sample_id=$sample,graph=$graph,aln_type='pe',use_augmented=FALSE,workdir=${PWD} /home/dd392/project/gene_hap_IMGT_vgflow.sh
         export i=${sample_immune_graph}.gam workdir=${PWD} sample_id=${sample} aln_type='pe' tools_dir=${tools_dir} use_augmented=FALSE bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged=FALSE graph=${graph} valid_alleles=${valid_alleles}
         . ${bigfoot_dir}/gene_hap_IMGT_vgflow.sh
-
     else echo "fin - performing depth estimates and cleaning up after myself";
     # perform some depth estimates:
         vg depth --gam ${sample_immune_graph}.gam ${immune_graph}.xg > ${sample}.${graph}_immune.ngmerged.depth;
