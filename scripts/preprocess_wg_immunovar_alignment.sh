@@ -16,8 +16,7 @@ cd $OUTPATH
 #reformat.sh in1=${sample}_1.fastq in2=${sample}_2.fastq out=${sample}.fastq addslash int=f underscore overwrite=t
 #reformat.sh in=${sample}.fastq out=${sample}_#.fastq overwrite=t
 
-FILE=${sample}_qc_1.fastq.gz
-if test [ -s "$FILE" ]; then
+if [ -s ${sample}_qc_1.fastq.gz ]; then
     echo "QC'd ${sample} fastq files exist, skipping fastp QC"
 else
     echo "Performing QC via fastp - no base correction but minimal read length=36bp"
@@ -64,8 +63,7 @@ export i=${sample}.${graph_base##*/}.gam workdir=${PWD} graph=${graph} bigfoot_s
 . ${bigfoot_dir}/filter_immune_subgraph.sh
 #
 if [[ $merged == "TRUE" ]]; then
-    FILE=${sample}.NGmerge.fastq.gz
-    if test -f "$FILE"; then
+    if [-s ${sample}.NGmerge.fastq.gz ]; then
         echo "${sample} fastq files have been merged, skipping NGmerge + processing steps prior to alignment"
     else
         echo "Merge paired-end reads using overlapping region via NGmerge"
