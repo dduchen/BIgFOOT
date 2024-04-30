@@ -24,7 +24,7 @@ I hope to expand this workflow to enable genome-to-genome analyses/assessing gen
 
 1) Clone me! <code>git clone https://github.com/dduchen/BIgFOOT.git</code>
 2) set up conda/mamba environment we'll be needing -- can move some of these after the '#' if they're already in your path (e.g., samtools, we assume you have R)<br>
-<code>mamba create --name bigfoot -c bioconda -c conda-forge -c gurobi python=3 fastp graph-tool bazam minimap2 gurobi biopython numpy odgi gfaffix seqkit bbmap minimap2 seqwish blend-bio wfmash samtools pyseer unitig-caller parallel #fastq-dl kmc r-base
+<code>mamba create --name bigfoot -c bioconda -c conda-forge -c gurobi python=3 fastp graph-tool bazam minimap2 gurobi biopython numpy odgi gfaffix seqkit bbmap minimap2 seqwish blend-bio wfmash samtools pyseer unitig-caller parallel #fastq-dl kmc r-base cd-hit
 conda activate bigfoot </code><br>
 Ensure you have an active gurobi licence:<br>
 <code>gurobi_cl</code><br>
@@ -168,7 +168,7 @@ HG01958.final_bigfootprint.txt
 cd /home/dd392/pi_kleinstein/bigfoot/1kgenomes/crams/igl_samples
 ls *.final.bazam.grch38.combined.gam | sort | uniq > process_sample_ids_igl.txt
 split -l 20 process_sample_ids_igl.txt process_sample_split_
-for i in $(ls process_sample_split_*);do echo $i;
+for i in $(ls process_sample_split_* | tail -2);do echo $i;
     time parallel -j 4 'export workdir=${PWD}; export tools_dir=~/tools;
     export PATH=${tools_dir}:$PATH ; \
     export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
@@ -236,6 +236,14 @@ done
 
 
 <i>To do: set default values for all parameters (graph/valid alleles/pe...)
+
+# for most complex genes (IGHV4-4, 3-30*etc):
+## 1) grab alleles for gene of interest
+## 2) see if multiple ASC clusters exist
+## 3) force subgraph construction for allele inference using ASC cluster definitions rather than different chromosomes
+## 4) for reference/augmented graph - can use chromosome differences as we incorporate reference
+# -- IGHV4-59, IGHV4-4
+
 
 #igl samples i need to redownload:
 #HG03301
