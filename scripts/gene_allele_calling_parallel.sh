@@ -26,7 +26,7 @@ elif [[ "$loci" =~ ^(IMGT)$ ]]; then
     # if n_genes > 1 then use asc cluster
         asc_cluster=$(cut -f4 ${outdir}/potential_asc_for_${gene} | sed s/'\*.*'//g | sort | uniq)
         if [ $(echo "${asc_cluster[@]}" | wc -l) -gt 1 ]; then
-            echo "Multiple V genes in this cluster";
+            echo "Complex locus - using ASC-based allele -- ALSO - looks like there are multiple V genes in this cluster";
             for asc_multi in ${asc_cluster[@]}; do echo $asc_multi;
                 echo "Concatentating nodes across cluster members";
                 cat ${genotyping_nodes_dir}/ig_asc/${asc_multi}.immune_subset.nodes.txt >> ${outdir}/${gene}_asc_nodes.txt
@@ -68,6 +68,14 @@ else
             vg find -x ${graph_base}.xg -c 150 -L -N ${genotyping_nodes_dir}/${each} > ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.vg
             echo "Extracting local haplotypes reads --> ${sample_id}.${graph}.${gene}.haplotypes.gfa"
             vg paths -Lv ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.vg | grep "grch\|chm" > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.txt
+            if [ -s ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.txt ]; then
+                echo "Local reference sequences obtained for ${gene}"
+            else 
+                echo "Expanding search space to find local reference sequence ${gene}"
+                vg find -x ${graph_base}.xg -c 100 -N ${genotyping_nodes_dir}/${each} > ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.vg
+                echo "Extracting local haplotypes reads --> ${sample_id}.${graph}.${gene}.haplotypes.gfa"
+                vg paths -Lv ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.vg | grep "grch\|chm" > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.txt
+            fi
             vg paths -v ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.vg -r -p ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.txt | 
             vg mod - -N > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.vg
             vg paths -v ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.vg -F > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta
@@ -99,10 +107,11 @@ else
                 mkdir -p $outdir/${gene}_haps
                 if [[ ${gene} == *["VJ"]* ]]; then
                     echo "Exact allele:haplotype matching"
-                    minimap2 -x sr -c ${outdir}/${gene}.alleles.fasta ${outdir}/${gene}.haps.fasta | grep "NM:i:0" | cut -f1 | sort | uniq > ${outdir}/${gene}_haps/haps.matching.txt
+                    minimap2 -x sr --secondary=no -c ${outdir}/${gene}.alleles.fasta ${outdir}/${gene}.haps.fasta | grep "NM:i:0" | cut -f1 | sort | uniq > ${outdir}/${gene}_haps/haps.matching.txt
                 else
-                    echo "Fuzzy allele:haplotype matching"
-                    minimap2 -x sr -c ${outdir}/${gene}.alleles.fasta ${outdir}/${gene}.haps.fasta | egrep "NM:i:0|NM:i:[0-9]$" | cut -f1 | sort | uniq > ${outdir}/${gene}_haps/haps.matching.txt
+                    echo "Fuzzy allele:haplotype matching (< 1% gap-compressed sequence divergence)"
+#                    minimap2 -x sr -c ${outdir}/${gene}.alleles.fasta ${outdir}/${gene}.haps.fasta | egrep "NM:i:([0-9]|10)\b" | cut -f1 | sort | uniq > ${outdir}/${gene}_haps/haps.matching.txt
+                    minimap2 -x sr --secondary=no -c ${outdir}/${gene}.alleles.fasta ${outdir}/${gene}.haps.fasta | egrep "de:f:0\.00[0-9][0-9]?" | cut -f1 | sort | uniq > ${outdir}/${gene}_haps/haps.matching.txt
                 fi
                 echo "$(cut -f1 ${outdir}/${gene}_haps/haps.matching.txt | wc -l) out of $(grep ">" ${outdir}/${gene}.haps.fasta | cut -f1 | wc -l) haplotypes with a $gene (or ASC cluster member) allele mapping"
                 if [ -s ${outdir}/${gene}_haps/haps.matching.txt ]; then
@@ -125,20 +134,26 @@ else
             fi
             # remove duplicate sequences
             seqkit rmdup -s < ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta
-            # Split by ASC cluster - if >1 chromosome present, also split by chromosome
-            # accounting for chromosome specific mapping + best matching haplotypes -->
-            if [ $(grep "chm13#chr" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.txt | cut -f1 -d':' | wc -l) -gt 1 ]; then
-                echo "more than 1 chromosome - forcing multi-component graph construction"
-                seqkit grep -r -p "chm13" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta | minimap2 -x asm20 --secondary=no -c - ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta | cut -f1,6 | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt
+            # checking number of chromosomes + primary allele<->haplotype alignments
+            seqkit grep -r -p "chm13" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta | minimap2 -x asm20 --secondary=no -c - ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta | cut -f1,6 | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt
+            if [ -s ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt ]; then
+                echo "Using CHM13 reference backbone"
+            else 
+                echo "Using GRCh38 reference backbone"
+                seqkit grep -r -p "grch" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta | minimap2 -x asm20 --secondary=no -c - ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta | cut -f1,6 | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt
+            fi
+            # account for some genes with no local haplotypes!
+            if [ -s ${outdir}/${gene}.haps.fasta ]; then
                 seqkit grep -r -p "${gene}|IMGT|OGRDB|IGv2" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta | minimap2 -x asm20 --secondary=no -c ${outdir}/${gene}.haps.fasta - | cut -f1,6 | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.haplotype_assignments.txt
             fi
             if [ $(echo "${asc_cluster[@]}" | wc -l) -gt 1 ]; then
                 echo "Accounting for multi-ASC clustering"
                 cut -f4 ${outdir}/potential_asc_for_${gene} | sed s/'\*.*'//g | sort | uniq > ${outdir}/potential_asc_for_${gene}_ascs.txt
-                for clust in $(cat ${outdir}/potential_asc_for_${gene}_ascs.txt | head -1);do echo ${clust};
+                for clust in $(cat ${outdir}/potential_asc_for_${gene}_ascs.txt);do echo ${clust};
                     grep "${clust}\*" ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv | cut -f1 | sed s/'*'/'\\*'/g > ${outdir}/potential_asc_for_${gene}_ascs.iterative_assignment.txt
-                    # if >1 chromsome, split again
-                    if [ -s ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt ]; then
+                    # check if >1 chromsome -- (cluster specific) is so, split again
+#                    if [ $(grep "chm13#chr" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.txt | cut -f1 -d':' | wc -l) -gt 1 ]; then
+                        # checking number of chromosomes to which this clusters alleles had primary alignments
                         if [ $(grep -f ${outdir}/potential_asc_for_${gene}_ascs.iterative_assignment.txt ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt | cut -f2 | sort | uniq | wc -l) -gt 1 ]; then
                             echo "More than 1 chromosome represented in $clust -- additionally splitting by chr"
                             for chr_loc in $(grep -f ${outdir}/potential_asc_for_${gene}_ascs.iterative_assignment.txt ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt | cut -f2 | sort | uniq); do echo "subgraph for alleles specific to: $chr_loc";
@@ -162,71 +177,53 @@ else
                         else
                             echo "Single locus for this cluster of ${gene}"
                             seqkit grep -r -f ${outdir}/potential_asc_for_${gene}_ascs.iterative_assignment.txt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${sample_id}.${graph}.${gene}.${clust}.fasta
-                            grep -f ${outdir}/potential_asc_for_${gene}_ascs.iterative_assignment.txt ${outdir}/${sample_id}.${graph}.${gene}.haplotype_assignments.txt | cut -f2 | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotype_assignments.patterns.txt
-                            seqkit grep -f ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotype_assignments.patterns.txt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta >> ${outdir}/${sample_id}.${graph}.${gene}.${clust}.fasta
+                            if [ -s ${outdir}/${sample_id}.${graph}.${gene}.haplotype_assignments.txt ]; then
+                                grep -f ${outdir}/potential_asc_for_${gene}_ascs.iterative_assignment.txt ${outdir}/${sample_id}.${graph}.${gene}.haplotype_assignments.txt | cut -f2 | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotype_assignments.patterns.txt
+                                seqkit grep -f ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotype_assignments.patterns.txt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta >> ${outdir}/${sample_id}.${graph}.${gene}.${clust}.fasta
+                            fi
                             minimap2 -x asm20 -t 16 -c -X ${outdir}/${sample_id}.${graph}.${gene}.${clust}.fasta ${outdir}/${sample_id}.${graph}.${gene}.${clust}.fasta > ${outdir}/${sample_id}.${graph}.${gene}.${clust}.paf
                             seqwish -s ${outdir}/${sample_id}.${graph}.${gene}.${clust}.fasta -p ${outdir}/${sample_id}.${graph}.${gene}.${clust}.paf -g ${outdir}/${sample_id}.${graph}.${gene}.${clust}.gfa -b ${outdir}/seqwish_${sample_id}.${graph}
                             gfaffix ${outdir}/${sample_id}.${graph}.${gene}.${clust}.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotypes.gfa
                         fi
-                        # ^^^ continue editing here...
-                        # combine graphs across ASC clusters for gene of interest!
-#                            ls ${outdir}/${sample_id}.${graph}.${gene}.${clust}.*.gfa | grep -v "haplotypes" - > ${outdir}/${sample_id}.${graph}.${gene}.${clust}.graphs_to_squeeze.txt
-#                            odgi squeeze -f ${outdir}/${sample_id}.${graph}.${gene}.${clust}.graphs_to_squeeze.txt -O -o ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotypes.og 
-#                            odgi view -i ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotypes.og -g > ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotypes.gfa
-#                            #delete temp files
-#                            rm ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotypes.og;rm ${outdir}/${sample_id}.${graph}.${gene}.${clust}.graphs_to_squeeze.txt; rm ${outdir}/${sample_id}.${graph}.${gene}.${clust}.chr*
-                        fi
-                    echo "Single locus -- multiple clusters for ${gene}"
-                            seqkit grep -r -f ${outdir}/potential_asc_for_${gene}_ascs.iterative_assignment.txt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${sample_id}.${graph}.${gene}.${clust}.fasta
-                            grep -f ${outdir}/potential_asc_for_${gene}_ascs.iterative_assignment.txt ${outdir}/${sample_id}.${graph}.${gene}.haplotype_assignments.txt | cut -f2 | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotype_assignments.patterns.txt
-                            seqkit grep -f ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotype_assignments.patterns.txt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta >> ${outdir}/${sample_id}.${graph}.${gene}.${clust}.fasta
-                            minimap2 -x asm20 -t 16 -c -X ${outdir}/${sample_id}.${graph}.${gene}.${clust}.fasta ${outdir}/${sample_id}.${graph}.${gene}.${clust}.fasta > ${outdir}/${sample_id}.${graph}.${gene}.${clust}.paf
-                            seqwish -s ${outdir}/${sample_id}.${graph}.${gene}.${clust}.fasta -p ${outdir}/${sample_id}.${graph}.${gene}.${clust}.paf -g ${outdir}/${sample_id}.${graph}.${gene}.${clust}.gfa -b ${outdir}/seqwish_${sample_id}.${graph}
-                            gfaffix ${outdir}/${sample_id}.${graph}.${gene}.${clust}.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotypes.gfa
-
-
-                    chr_graph_tmp=$(echo $chr_loc | sed s/":.*"//g | sed s/".*#"//g)
-                    grep $chr_loc ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt | cut -f1 > ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.patterns.txt
-                        else
-
-                    seqkit grep -f ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.patterns.txt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.fasta
-
-                    minimap2 -x asm20 -t 16 -c -X ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.fasta ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.fasta > ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.paf
-                    seqwish -s ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.fasta -p ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.paf -g ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa -b ${outdir}/seqwish_${sample_id}.${graph}
-                    gfaffix ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.tmp; mv ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.tmp ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa
+                    #else
+                    #    echo "something wrong for $gene -- the ...outdir/${sample_id}.${graph}.${gene}.chr_assignments.txt mapping summary doesnt exist"
+                    #fi
                 done
-
-
-
-
-
-                for chr_loc in $(cut -f2 ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt | sort | uniq); do echo "subgraph for alleles specific to: $chr_loc";
-                    chr_graph_tmp=$(echo $chr_loc | sed s/":.*"//g | sed s/".*#"//g)
-                    grep $chr_loc ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt | cut -f1 > ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.patterns.txt
-                    seqkit grep -f ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.patterns.txt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.fasta
-                    minimap2 -x asm20 -t 16 -c -X ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.fasta ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.fasta > ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.paf
-                    seqwish -s ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.fasta -p ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.paf -g ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa -b ${outdir}/seqwish_${sample_id}.${graph}
-                    gfaffix ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.tmp; mv ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.tmp ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa
-
-
-                done
-                echo "combine subgraphs"
-                ls ${outdir}/${sample_id}.${graph}.${gene}.chr*gfa > ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt
+                echo "Constructing pan-cluster graph for ${gene}"
+                ls ${outdir}/${sample_id}.${graph}.${gene}.*.haplotypes.gfa > ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt
                 odgi squeeze -f ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt -O -o ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.og 
                 odgi view -i ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.og -g > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa
                 #delete temp files
+                xargs rm < ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt
                 rm ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.og;rm ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt; rm ${outdir}/${sample_id}.${graph}.${gene}.chr*
             else
-                echo "single chromosomal locus - standard graph construction"
-                minimap2 -x asm20 -t 16 -c -X ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.paf
-                seqwish -s ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta -p ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.paf -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa -b ${outdir}/seqwish_${sample_id}.${graph}
-                gfaffix ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.tmp; mv ${outdir}/${sample_id}.${graph}.${gene}.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa
-            fi 
+                echo "Single locus/cluster for ${gene}"
+                # this still checks for multiple chromosomes - if single chromosome, then this shouldnt change things
+                for chr_loc in $(cut -f2 ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt | sort | uniq); do echo "subgraph for alleles specific to: $chr_loc";
+                    chr_graph_tmp=$(echo $chr_loc | sed s/":.*"//g | sed s/".*#"//g)
+                    grep $chr_loc ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt | cut -f1 > ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.patterns.txt
+                    seqkit grep -f ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.patterns.txt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta
+                    #grep -r ${chr_graph_tmp} ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt | grep -v "${gene}\|IMGT\|OGRDB\|IGv2" - | cut -f1 | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.haplotype_assignments.patterns.txt
+                    #seqkit grep -f ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.haplotype_assignments.patterns.txt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta >> ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta
+                    minimap2 -x asm20 -t 16 -c -X ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.fasta > ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.paf
+                    seqwish -s ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.fasta -p ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.paf -g ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa -b ${outdir}/seqwish_${sample_id}.${graph}
+                    gfaffix ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.tmp; mv ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.tmp ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa
+                done
+                echo "combining chr specific subgraphs for ${gene}"
+                # ensuring we only combine relevant subgraphs - avoid patten matching from other gfa files potentially created during an incomplete run
+                ls ${outdir}/${sample_id}.${graph}.${gene}.*gfa | grep -v "haplotypes\|final\|vgflow\|genome" > ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt
+                odgi squeeze -f ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt -O -o ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.og 
+                odgi view -i ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.og -g > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa
+                #delete temp files
+                xargs rm < ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt
+                rm ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.og;rm ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt; rm ${outdir}/${sample_id}.${graph}.${gene}.chr*
+            fi
             #odgi explode -i ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa -b 1 -s P -O -P -p "${sample_id}.${gene}.exp" -g
             #mv ${sample_id}.${gene}.exp*gfa ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa
             vg convert -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa -p > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg
             vg mod -n -U 10 -c ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg -X 256 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.vg
             vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.vg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa
+            gfaffix ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fix.gfa && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fix.gfa ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa
             vg convert -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa -p > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg
             vg index -t 16 -L -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg;
             vg gbwt -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -o ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -P --pass-paths
@@ -251,7 +248,12 @@ else
             vg map -G ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.gam -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
             # copy mapped reads -- use this for augmentation?
             cp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
-            vg filter -r 0 -P -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+            # filtering for complex genes?
+#            if [ $(echo "${asc_cluster[@]}" | wc -l) -gt 1 ]; then
+ #               vg filter -r 0.95 -P -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+  #          else
+                vg filter -r 0 -P -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+   #         fi
             vg depth --gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg > ${outdir}/${sample_id}.${graph}.${gene}.filtered.depth;
             echo "1) Performing inference on haplotype graph labled only with alleles of interest";
             # if variable gene -- limit to OGRDB validated set of alleles?
@@ -260,8 +262,15 @@ else
                 echo "Where possible - retaining path labels only for OGRDB validated set of ${gene_actual} alleles";
                 if [[ ${gene} == *"IGHV"* ]]; then
                     echo "IGHV";
+                    # joint filtering
                     ogrdb_refs="${bigfoot_dir}/../custom_beds/ogrdb_IGH_*fasta"
-                    grep ${gene}\\* $ogrdb_refs | sed s/'>'//g | sed s/'\*'/'\\*'/g > ${outdir}/${sample_id}.${graph}.${gene}.ogrdb_alleles
+                    # if more than 1 asc_cluster - then account for other genes! -- potentially use minimum node depth as a filter? (see below - commented out as well)  use the trimmed contigs with abundance - weight them according to number of other alleles in the component
+#                    if [ $(echo "${asc_cluster[@]}" | wc -l) -gt 1 ]; then
+ #                       sed s/".*#1#"//g ${outdir}/${sample_id}.${graph}.${gene}.alleles | sed s/"\*.*"//g | sed s/"\/"/'\\\/'/g | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}_grep.txt
+  #                      grep -f ${outdir}/${sample_id}.${graph}.${gene}_grep.txt $ogrdb_refs | sed s/'>'//g | sed s/'\*'/'\\*'/g > ${outdir}/${sample_id}.${graph}.${gene}.ogrdb_alleles
+   #                 else
+                        grep ${gene}\\* $ogrdb_refs | sed s/'>'//g | sed s/'\*'/'\\*'/g > ${outdir}/${sample_id}.${graph}.${gene}.ogrdb_alleles
+    #                fi
                     if [ -s  ${outdir}/${sample_id}.${graph}.${gene}.ogrdb_alleles ]; then
                         grep -f ${outdir}/${sample_id}.${graph}.${gene}.ogrdb_alleles ${outdir}/${sample_id}.${graph}.${gene}.alleles > ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp ${outdir}/${sample_id}.${graph}.${gene}.alleles
                     else
@@ -299,7 +308,8 @@ else
             # gene-specific read depth for minimum strain-level coverage
             depth_locus=$(awk -F ' ' '{print $1}' ${outdir}/${sample_id}.${graph}.${gene}.filtered.depth)
             # min_strain_depth=$(bc -l <<< "scale=3;${depth_locus}/$gene_min_len")
-            min_strain_depth=$(bc -l <<< "scale=2;${depth_locus}*0.05"| awk '{printf("%d\n",$1 + 0.5)}')
+#            min_strain_depth=$(bc -l <<< "scale=2;${depth_locus}*0.05"| awk '{printf("%d\n",$1 + 0.5)}')
+            min_strain_depth=$(bc -l <<< "scale=2;(${depth_locus}*0.05)/$(echo "${asc_cluster[@]}" | wc -l)"| awk '{printf("%d\n",$1 + 0.5)}')
             if (( $(awk 'BEGIN {print ("'"$min_strain_depth"'" < 0.1) ? "1" : "0"}') )); then
                 min_strain_depth=0.1
             fi
@@ -329,7 +339,9 @@ else
                         echo "Matching inferred alleles to allele set + constructing allele-specific ${gene} graph"
                     else
                         echo "No strains with estimated allele coverage >= ${min_strain_depth} - using basal threshold (0.01) to rescue inference";
-                        python3 ${bigfoot_dir}/vg-flow_immunovar.py --careful --optimization_approach ${opt} --min_depth 0 --trim 0 -m 0 -c 0.1 --remove_included_paths 0 ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
+                        # mean_node_depth=$(perl -F: -lane '$total += $F[1]; END{print $total/$.}' ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt)
+                        # mean_node_depth=$(bc -l <<< "scale=3;${mean_node_depth}/$(echo "${asc_cluster[@]}" | wc -l)")
+                        python3 ${bigfoot_dir}/vg-flow_immunovar.py --careful --optimization_approach ${opt} --min_depth 1 --trim 0 -m 0 -c 0.1 --remove_included_paths 0 ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
                     fi
                     mv trimmed_contigs.fasta ${outdir}/${sample_id}.${graph}.${gene}.rel.contigs.fasta ; mv haps.final.fasta ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.fasta ;
                     mv genome_graph.gfa ${outdir}/${sample_id}.${graph}.${gene}.rel.genome_graph.gfa;
@@ -359,11 +371,11 @@ else
             rm -rf ${outdir}/${gene}_allele_inference
             echo "2) Augmenting annotated post-flow inference graph with reads for association testing";
             sed s/' '/_/g ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta > ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.adding.fasta
-            if [ -s "${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta" ]; then    
-                seqkit grep -r -p "chm" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta
-                if [ $(grep "chm13#chr" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta | cut -f1 -d':' | wc -l) -gt 1 ]; then
+            if [ -s "${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta" ]; then
+                #seqkit grep -r -p "chm" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta
+                if [ $(grep ">" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta | cut -f1 -d':' | wc -l) -gt 1 ]; then
                     echo "Likely orphon involvement - ensuring we use best matching reference locus"
-                    seqkit grep -r -p "chm13" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta | minimap2 -x asm20 -c - ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.adding.fasta | cut -f1,6 | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt
+                    seqkit grep -r -p "chm13|grch" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta | minimap2 -x asm20 -c - ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.adding.fasta | cut -f1,6 | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt
                     for chr_loc in $(cut -f2 ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt | sort | uniq); do echo "subgraph for alleles specific to: $chr_loc";
                         chr_graph_tmp=$(echo $chr_loc | sed s/":.*"//g | sed s/".*#"//g)
                         grep $chr_loc ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt | cut -f1 > ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.patterns.txt
@@ -373,12 +385,13 @@ else
                         seqwish -s ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.fasta -p ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.paf -g ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.gfa -b ${outdir}/seqwish_${sample_id}.${graph}
                         gfaffix ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.tmp; mv ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.tmp ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.gfa
                     done
-                    if [ $(ls ${outdir}/${sample_id}.${graph}.${gene}.chr*.genome_graph_ref.gfa | wc -l) -gt 1 ]; then
+                    if [ $(ls ${outdir}/${sample_id}.${graph}.${gene}.*.genome_graph_ref.gfa | wc -l) -gt 1 ]; then
                         echo "combining relevant subgraphs"
-                        ls ${outdir}/${sample_id}.${graph}.${gene}.chr*.genome_graph_ref.gfa > ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt
+                        ls ${outdir}/${sample_id}.${graph}.${gene}.*.genome_graph_ref.gfa > ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt
                         odgi squeeze -f ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt -O -o ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.og
                         odgi view -i ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.og -g > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.gfa
                         #delete temp files
+                        xargs rm < ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt
                         rm ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.og;rm ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.adding.fasta; rm ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt; rm ${outdir}/${sample_id}.${graph}.${gene}.chr*
                     else
                         mv ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.gfa ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.gfa
@@ -395,6 +408,7 @@ else
                 vg mod -n -U 10 -c ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.gfa -X 256 > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.vg
                 vg convert -p ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.vg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.pg
                 vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.vg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.gfa
+                gfaffix ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.gfa.tmp; mv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.gfa.tmp ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.gfa
                 vg index -t 16 -L -x ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.xg ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.pg;
                 vg gbwt -x ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.xg -o ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.gbwt -P --pass-paths
                 vg gbwt -x ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.xg -g ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.gbz --gbz-format -P --pass-paths;

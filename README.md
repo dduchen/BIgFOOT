@@ -142,7 +142,7 @@ export graphdir=${bigfoot_source}; export graph="wg_immunovar";
 export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar;
 export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
 #
-for i in $(cat run_pipeline_sample_ids.txt | tail -7);do echo ${i};
+for i in $(cat run_pipeline_sample_ids.txt | tail -1);do echo ${i};
 . ${bigfoot_dir}/filter_immune_subgraph.sh
 done
 # remaining samples wtih completed fastq extraction:
