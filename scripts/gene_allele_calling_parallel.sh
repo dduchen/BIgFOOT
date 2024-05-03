@@ -197,13 +197,7 @@ else
                 rm ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.og;rm ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt
             else
                 echo "Single locus/cluster for ${gene}"
-
-
-
-                # IGHM -- no alleles included! -- check this 
-
-
-                # this still checks for multiple chromosomes - if single chromosome, then this shouldnt change things
+               # this still checks for multiple chromosomes - if single chromosome, then this shouldnt change things
                 for chr_loc in $(cut -f2 ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt | sort | uniq); do echo "subgraph for alleles specific to: $chr_loc";
                     chr_graph_tmp=$(echo $chr_loc | sed s/":.*"//g | sed s/".*#"//g)
                     grep $chr_loc ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt | cut -f1 > ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.patterns.txt
@@ -368,7 +362,7 @@ else
                         echo "No strains with estimated allele coverage >= ${min_strain_depth} - using basal threshold (0.01) to rescue inference";
                         # mean_node_depth=$(perl -F: -lane '$total += $F[1]; END{print $total/$.}' ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt)
                         # mean_node_depth=$(bc -l <<< "scale=3;${mean_node_depth}/$(echo "${asc_cluster[@]}" | wc -l)")
-                        python3 ${bigfoot_dir}/vg-flow_immunovar.py --careful --optimization_approach ${opt} --min_depth 0 --trim 0 -m 0 -c 0.1 --remove_included_paths 0 ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
+                        python3 ${bigfoot_dir}/vg-flow_immunovar.py --careful --optimization_approach ${opt} --min_depth 0 --trim 0 -m 0 -c 0.01 --remove_included_paths 0 ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
                     fi
                     mv trimmed_contigs.fasta ${outdir}/${sample_id}.${graph}.${gene}.rel.contigs.fasta ; mv haps.final.fasta ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.fasta ;
                     mv genome_graph.gfa ${outdir}/${sample_id}.${graph}.${gene}.rel.genome_graph.gfa;
@@ -476,6 +470,7 @@ else
             ls ${outdir}/${sample_id}.${graph}.${gene}\.* | grep -v "${gene}.genome_graph_ref.augmented.gfa\|${gene}.genome_graph_ref.gfa\|${gene}.haplotypes.xg\|${gene}.haplotypes.gam\|annot.fasta\|annot.gfa\|final.gfa\|node_abundance\|depth" > ${outdir}/${sample_id}_${gene}_files.txt
             #ls ${outdir}/${gene}\.*  | grep "haps.fasta\|alleles" >> ${outdir}/${sample_id}_${gene}_files.txt
             ls ${outdir}/*${gene}* | grep "asc_" >> ${outdir}/${sample_id}_${gene}_files.txt
+            ls ${outdir}/${gene}* | grep "stats|fasta" >> ${outdir}/${sample_id}_${gene}_files.txt
             xargs rm < ${outdir}/${sample_id}_${gene}_files.txt
         else 
             echo "No reads aligning for ${gene}"
