@@ -30,7 +30,7 @@ depth_file=list.files(pattern="depth_raw.txt")
 graph_results_file<-list.files(pattern="results_raw.txt")
 depth<-fread(paste0(depth_file),header=T)
 graph_results<-fread(paste0(graph_results_file),header=F)
-
+#
 if(sample_id==colnames(depth)[1]){
     #
     ttn_depth=list.files(path="../",pattern="TTN.pe.depth")
@@ -50,8 +50,11 @@ if(sample_id==colnames(depth)[1]){
     graph_results$relative_freq<-as.numeric(gsub("^.*freq=","",gsub("_Hamming.*$","",graph_results$V3)))
     #
     graph_results$passed<-"NA"
+    graph_results$gene<-gsub("_.*","",graph_results$gene)
     for(i in seq_along(unique(graph_results$gene))){
         gene<-unique(graph_results$gene)[i]
+        # accounting for non-standard gene nomenclature
+        print(gene)
         gene_full<-gsub("__","/",gene)
         res<-data.frame(graph_results)[graph_results$gene==gene,]
     #    dep<-data.frame(depth)[grep(paste0(gene_full,".genotyping"),depth[[1]]),]

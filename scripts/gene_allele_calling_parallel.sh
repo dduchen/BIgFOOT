@@ -8,6 +8,7 @@ gene_actual=$(echo $gene | sed 's!__!/!g')
 loci=$(vg paths -Lv ${graph_base}.xg | grep "#1#${gene}\*" | cut -f1 -d"#" | sort | uniq | grep "IMGT\|HLA\|KIR")
 echo "$gene --> $loci"
 #
+unset asc_cluster #ensure no carryover of variables from previous gene analysis
 if [[ "$loci" =~ ^(HLA)$ ]]; then
     echo "HLA inference"
     outdir=${workdir}/${sample_id}_${graph}_genotyping/familywise_${aln_type}_haplotype_inference/HLA
@@ -43,8 +44,10 @@ elif [[ "$loci" =~ ^(IMGT)$ ]]; then
                 echo "Using core gene+haplotype graph for ${gene}";
             fi
         fi
+    else
+        echo "Using core gene+haplotype graph for ${gene}" #; <--- might need to do more here!
     fi
-else 
+else
     echo "Unknown locus for ${gene}"
 fi
 # check if graph exists in subdir - if it does use it rather than reconstruct things
@@ -148,18 +151,6 @@ else
             fi
             if [ $(echo "${asc_cluster[@]}" | wc -l) -gt 1 ]; then
                 echo "Accounting for multi-ASC clustering"
-                # filtering weights in final call set - downweight alleles in a component containing other genes
-                # vg chunk
-                vg chunk -C -x ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.haplotypes.xg -b ${outdir}/${sample_id}.${graph}.${gene}.component
-                for chunk in $(ls ${outdir}/${sample_id}.${graph}.${gene}.component*vg); do echo ${chunk};
-                    component=$(echo "${chunk##*$gene.}" | sed s/".vg"//g)
-                    alleles_comp=$(vg paths -Lv ${chunk} | grep "${gene}\*" | sort | uniq)
-                    other_genes_comp=$(vg paths -Lv ${chunk} | grep -v "${gene}\*" | grep "IMGT\|OGRDB\|IGv2" | sed s/".*#1#"//g | sed s/"\\*.*"//g | sort | uniq)
-                    echo $component >> ${outdir}/${sample_id}.${graph}.${gene}.component.summary.txt
-                    echo "${alleles_comp[@]}" >> ${outdir}/${sample_id}.${graph}.${gene}.component.summary.txt
-                    echo "${other_genes_comp[@]}" >> ${outdir}/${sample_id}.${graph}.${gene}.component.summary.txt
-                done
-                sed -i '/^$/d' ${outdir}/${sample_id}.${graph}.${gene}.component.summary.txt
                 #
                 cut -f4 ${outdir}/potential_asc_for_${gene} | sed s/'\*.*'//g | sort | uniq > ${outdir}/potential_asc_for_${gene}_ascs.txt
                 for clust in $(cat ${outdir}/potential_asc_for_${gene}_ascs.txt);do echo ${clust};
@@ -199,18 +190,29 @@ else
                 done
                 echo "Constructing pan-cluster graph for ${gene}"
                 ls ${outdir}/${sample_id}.${graph}.${gene}.*.haplotypes.gfa > ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt
-                odgi squeeze -f ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt -O -o ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.og 
+                odgi squeeze -f ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt -s "#" -O -o ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.og 
                 odgi view -i ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.og -g > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa
                 #delete temp files
                 xargs rm < ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt
                 rm ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.og;rm ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt
             else
                 echo "Single locus/cluster for ${gene}"
+
+
+
+                # IGHM -- no alleles included! -- check this 
+
+
                 # this still checks for multiple chromosomes - if single chromosome, then this shouldnt change things
                 for chr_loc in $(cut -f2 ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt | sort | uniq); do echo "subgraph for alleles specific to: $chr_loc";
                     chr_graph_tmp=$(echo $chr_loc | sed s/":.*"//g | sed s/".*#"//g)
                     grep $chr_loc ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt | cut -f1 > ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.patterns.txt
                     seqkit grep -f ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.patterns.txt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta
+                    if [ $(cut -f2 ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt | sort | uniq | wc -l) -le 1 ]; then
+                        echo "adding all alleles to subgraph"
+                        seqkit grep -r -p "${gene}|IMGT|OGRDB|IGv2" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta >> ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta
+                    fi
+                    seqkit rmdup -s ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta > ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta.tmp ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta
                     #grep -r ${chr_graph_tmp} ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt | grep -v "${gene}\|IMGT\|OGRDB\|IGv2" - | cut -f1 | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.haplotype_assignments.patterns.txt
                     #seqkit grep -f ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.haplotype_assignments.patterns.txt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta >> ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta
                     minimap2 -x asm20 -t 16 -c -X ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.fasta > ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.paf
@@ -219,8 +221,8 @@ else
                 done
                 echo "combining chr specific subgraphs for ${gene}"
                 # ensuring we only combine relevant subgraphs - avoid patten matching from other gfa files potentially created during an incomplete run
-                ls ${outdir}/${sample_id}.${graph}.${gene}.*gfa | grep -v "haplotypes\|final\|vgflow\|genome" > ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt
-                odgi squeeze -f ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt -O -o ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.og 
+                ls ${outdir}/${sample_id}.${graph}.${gene}.*gfa | grep -v "haplotypes\|final\|vgflow\|genome_graph" > ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt
+                odgi squeeze -f ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt -s "#" -O -o ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.og 
                 odgi view -i ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.og -g > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa
                 #delete temp files
                 xargs rm < ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt
@@ -249,19 +251,36 @@ else
         fi
         # parse alignments
         vg find -x ${graph_base}.xg -l ${gam_file%.gam}.sorted.gam -A ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.vg > ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.gam
-        vg view -a ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.gam | sed s/'.*"fragment_next": {"name": '//g | sed s/'.*"fragment_prev": {"name": '//g | sed s/', "name": ".*'//g > ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.gam.txt
+        vg view -a ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.gam -X | seqkit seq -n - > ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.gam.txt
         if [[ $(wc -l <${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.gam.txt) -ge 1 ]]; then
+            # filtering weights in final call set - downweight alleles in a component containing other genes
+            # vg chunk -- dont think we need component-level info anymore
+            #vg chunk -C -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -b ${outdir}/${sample_id}.${graph}.${gene}.component
+            #> ${outdir}/${sample_id}.${graph}.${gene}.component.summary.txt;
+            #for chunk in $(ls ${outdir}/${sample_id}.${graph}.${gene}.component*vg); do echo ${chunk};
+            #    component=$(echo "${chunk##*$gene.}" | sed s/".vg"//g)
+            #    alleles_comp=$(vg paths -Lv ${chunk} | grep "${gene}\*" | sort | uniq)
+            #    other_genes_comp=$(vg paths -Lv ${chunk} | grep -v "${gene}\*" | grep "IMGT\|OGRDB\|IGv2" | sed s/".*#1#"//g | sort | uniq)
+            #    echo $component >> ${outdir}/${sample_id}.${graph}.${gene}.component.summary.txt
+            #    echo "${alleles_comp[@]}" >> ${outdir}/${sample_id}.${graph}.${gene}.component.summary.txt
+            #    echo "${other_genes_comp[@]}" >> ${outdir}/${sample_id}.${graph}.${gene}.component.summary.txt
+            #done
+            #sed -i '/^$/d' ${outdir}/${sample_id}.${graph}.${gene}.component.summary.txt
             echo "Re-aligning reads to locus-specific haplotype graph"
             vg map -G ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.gam -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
             # copy mapped reads -- use this for augmentation?
             cp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
             # extra read filtering for complex genes
-            #if [ $(echo "${asc_cluster[@]}" | wc -l) -gt 1 ]; then
-            #    echo "Multi-ASC cluster gene - stringent read filtering"
-            #    vg filter -r 0.85 -P -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
-            #else
-                vg filter -r 0 -P -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
-            #fi
+            if [ $(echo "${asc_cluster[@]}" | wc -l) -gt 1 ]; then
+                echo "Complex locus - filtering out reads aligning to non-target gene alleles"
+                sed -n '/^#1:/p;/^P/p' ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes
+                Rscript ${bigfoot_dir}/identify_non_gene_nodes_complex_locus.R ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes
+                vg find -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -c 0 -N ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.vg
+                vg find -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -l ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -A ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.vg | vg view -X - | seqkit seq -n - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt
+                vg view -X ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam | seqkit grep -v -n -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq
+                vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
+            fi
+            vg filter -r 0 -P -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
             vg depth --gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg > ${outdir}/${sample_id}.${graph}.${gene}.filtered.depth;
             echo "1) Performing inference on haplotype graph labled only with alleles of interest";
             # if variable gene -- limit to OGRDB validated set of alleles?
@@ -316,8 +335,8 @@ else
             # gene-specific read depth for minimum strain-level coverage
             depth_locus=$(awk -F ' ' '{print $1}' ${outdir}/${sample_id}.${graph}.${gene}.filtered.depth)
             # min_strain_depth=$(bc -l <<< "scale=3;${depth_locus}/$gene_min_len")
-            #min_strain_depth=$(bc -l <<< "scale=2;${depth_locus}*0.05"| awk '{printf("%d\n",$1 + 0.5)}')
-            min_strain_depth=$(bc -l <<< "scale=2;(${depth_locus}*0.05)*$(echo "${asc_cluster[@]}" | wc -l)"| awk '{printf("%d\n",$1 + 0.5)}')
+            min_strain_depth=$(bc -l <<< "scale=2;${depth_locus}*0.05"| awk '{printf("%d\n",$1 + 0.5)}')
+#            min_strain_depth=$(bc -l <<< "scale=2;(${depth_locus}*0.05)*$(echo "${asc_cluster[@]}" | wc -l)"| awk '{printf("%d\n",$1 + 0.5)}')
             if (( $(awk 'BEGIN {print ("'"$min_strain_depth"'" < 0.1) ? "1" : "0"}') )); then
                 min_strain_depth=0.1
             fi
@@ -356,11 +375,7 @@ else
                     rm genome_graph.gt; rm haps.fasta; rm overlaps.minimap2.paf; rm trimmed_contigs.paths ; rm trimmed_contigs.gfa
                     if [ -s ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.fasta ]; then
                     # account for ${outdir}/${sample_id}.${graph}.${gene}.component.summary.txt to up/downweight alleles influenced by non-gene of interest
-                        if [ $(echo "${asc_cluster[@]}" | wc -l) -gt 1 ]; then
-                            # Rscript accounting for complex genes... 2 arguments - ${bigfoot_dir}/parse_vgflow_output_complex.R ${outdir}/${sample_id}.${graph}.${gene}.rel.contigs.fasta ${outdir}/${sample_id}.${graph}.${gene}.component.summary.txt
-                        else
-                            Rscript ${bigfoot_dir}/parse_vgflow_output.R ${outdir}/${sample_id}.${graph}.${gene}.rel.contigs.fasta
-                        fi
+                        Rscript ${bigfoot_dir}/parse_vgflow_output.R ${outdir}/${sample_id}.${graph}.${gene}.rel.contigs.fasta
                         echo "Allele-level abundance estimation completed for ${gene} ::"
                         grep ">" ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta
                     else
@@ -460,7 +475,7 @@ else
             # remove files we dont need anymore
             ls ${outdir}/${sample_id}.${graph}.${gene}\.* | grep -v "${gene}.genome_graph_ref.augmented.gfa\|${gene}.genome_graph_ref.gfa\|${gene}.haplotypes.xg\|${gene}.haplotypes.gam\|annot.fasta\|annot.gfa\|final.gfa\|node_abundance\|depth" > ${outdir}/${sample_id}_${gene}_files.txt
             #ls ${outdir}/${gene}\.*  | grep "haps.fasta\|alleles" >> ${outdir}/${sample_id}_${gene}_files.txt
-            ls ${outdir}/*asc_*${gene}* >> ${outdir}/${sample_id}_${gene}_files.txt
+            ls ${outdir}/*${gene}* | grep "asc_" >> ${outdir}/${sample_id}_${gene}_files.txt
             xargs rm < ${outdir}/${sample_id}_${gene}_files.txt
         else 
             echo "No reads aligning for ${gene}"
