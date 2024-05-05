@@ -96,111 +96,9 @@ echo "${sample_id} ready for VG Flow filtering-->inference"
 . ${bigfoot_dir}/filter_immune_subgraph.sh
 ################################################################</code><br>
 
-#### Parallel processing
-conda activate bigfoot
+#### Parallel processing - extract fastq from BAM > align to graph > BIgFOOT inference
+
 ls *bazam.fastq.gz > process_sample_ids.txt
-export workdir=${PWD}; export bigfoot_dir=${bigfoot_dir}; \
-export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
-export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
-export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
-for i in $(cat process_sample_ids.txt | head -1);do echo ${i};
-    cd ${workdir};
-    sample_id=${i%.bazam.fastq.gz};sample_id=${sample_id##*\/};
-    cat ${sample_id}.bazam*fastq.gz > ${sample_id}.mapped.fastq.gz;
-    bazam_reads=${sample_id}.mapped.fastq.gz;
-    sample_id=${bazam_reads%.mapped.fastq.gz};sample_id=${sample_id##*\/};
-    if [ -s ${sample_id}.bazam.grch38.wg.gam ]; then
-        echo "Alignment of linearly mapped reads completed";
-    else
-        vg giraffe -i -f ${bazam_reads} -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.bazam.grch38.wg.gam
-    fi
-    if [ -s ${sample_id}.unmapped.grch38.wg.gam ]; then
-        echo "Alignment of unmapped reads completed";
-    else
-        vg giraffe -f ${sample_id}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.unmapped.grch38.wg.gam
-    fi
-    if [ -s ${sample_id}.bazam.grch38.combined.gam ]; then
-        echo "Graph alignment of unmapped reads completed";
-    else
-        cat ${sample_id}.bazam.grch38.wg.gam ${sample_id}.unmapped.grch38.wg.gam > ${sample_id}.bazam.grch38.combined.gam
-    fi
-    echo "${sample_id} ready for VG Flow filtering-->inference"
-    i=${sample_id}.bazam.grch38.combined.gam;
-    . ${bigfoot_dir}/filter_immune_subgraph.sh
-done
-
-
-
-
-
-ls *bazam.grch38.combined.gam > run_pipeline_sample_ids.txt
-export workdir=${PWD}; export tools_dir=~/tools;
-export PATH=${tools_dir}:$PATH ;
-export bigfoot_dir=~/tools/BIgFOOT/scripts/;
-export bigfoot_source=~/pi_kleinstein/bigfoot/;
-export graphdir=${bigfoot_source}; export graph="wg_immunovar";
-export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar;
-export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
-#
-for i in $(cat run_pipeline_sample_ids.txt | tail -1);do echo ${i};
-. ${bigfoot_dir}/filter_immune_subgraph.sh
-done
-# remaining samples wtih completed fastq extraction:
-ls *bazam.grch38.combined.gam > run_pipeline_sample_ids2.txt
-grep -f run_pipeline_sample_ids.txt -v run_pipeline_sample_ids2.txt > tmp && mv tmp run_pipeline_sample_ids2.txt
-
-
-ls *bazam.grch38.combined.gam > run_pipeline_sample_ids.txt
-# check those runs with completed logs - dont reprocess them. Include something to check this in the original script...
-grep "All cleaned up!" *_bigfootprint.txt | sed s/":All cleaned up!"//g | sed s/"_bigfootprint.txt"//g > completed_runs.txt
-grep -v -f completed_runs.txt run_pipeline_sample_ids.txt > run_pipeline_sample_ids_remaining.txt
-
-
-2024-04-12T23:12:22
-HG02019.final_bigfootprint.txt
-HG02107.final_bigfootprint.txt
-HG02116.final_bigfootprint.txt
-HG01965.final_bigfootprint.txt
-HG01958.final_bigfootprint.txt
-
-##############################
-# igl directory - parallel in chunks
-cd /home/dd392/pi_kleinstein/bigfoot/1kgenomes/crams/igl_samples
-ls *.final.bazam.grch38.combined.gam | sort | uniq > process_sample_ids_igl.txt
-split -l 20 process_sample_ids_igl.txt process_sample_split_
-for i in $(ls process_sample_split_* | tail -2);do echo $i;
-    time parallel -j 4 'export workdir=${PWD}; export tools_dir=~/tools;
-    export PATH=${tools_dir}:$PATH ; \
-    export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
-    export bigfoot_source=~/pi_kleinstein/bigfoot/; \
-    export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
-    export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
-    export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
-    export i={}; \
-    . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat ${i});
-done
-###################################
-
-
-
-
-
-
-time parallel -j 5 'export workdir=${PWD}; export tools_dir=~/tools;
-export PATH=${tools_dir}:$PATH ; \
-export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
-export bigfoot_source=~/pi_kleinstein/bigfoot/; \
-export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
-export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
-export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
-export i={}; \
-. ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat test.txt);
-#. ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids_remaining.txt |  tail -80);
-
-
-# try things in parallel?
-cd /home/dd392/palmer_scratch/data/1kgenomes/crams/igl_samples
-cd /home/dd392/palmer_scratch/data/1kgenomes/crams/igl_samples
 split -l 20 process_sample_ids.txt process_sample_split_
 conda activate bigfoot
 for i in $(ls process_sample_split_* | grep -v "_aa\|_ab\|_ac");do echo $i;
@@ -232,6 +130,17 @@ for i in $(ls process_sample_split_* | grep -v "_aa\|_ab\|_ac");do echo $i;
         cat ${sample_id}.bazam.grch38.wg.gam ${sample_id}.unmapped.grch38.wg.gam > ${sample_id}.bazam.grch38.combined.gam
     fi' :::: <(cat ${i});
 done
+
+
+time parallel -j 4 'export workdir=${PWD}; export tools_dir=~/tools;
+export PATH=${tools_dir}:$PATH ; \
+export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
+export bigfoot_source=~/pi_kleinstein/bigfoot/; \
+export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
+export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
+export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
+export i={}; \
+. ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids.txt);
 
 
 
