@@ -48,13 +48,13 @@ Ensure you have an active gurobi licence:<br>
 Make distance indexes read only<br>
 <code>chmod 0444 *.dist</code><br>
 We also need the variation graph toolkit (VG) executable<br>
-- <code>wget -P ${tools_dir}/ https://github.com/vgteam/vg/releases/download/v1.55.0/vg; chmod +x ${tools_dir}/vg <br>
+- <code>wget -P ${tools_dir}/ https://github.com/vgteam/vg/releases/download/v1.56.0/vg; chmod +x ${tools_dir}/vg <br>
 PATH=${tools_dir}:$PATH</code><br>
 
 We use the Ryan Wick's Assembly-dereplicator package during haplotype selection <a href="https://github.com/rrwick/Assembly-Dereplicator">Assembly-dereplicator</a>.<br>
-- <code>git clone https://github.com/rrwick/Assembly-dereplicator.git ${tools_dir}/Assembly-dereplicator </code><br>
+- <code>git clone https://github.com/dduchen/Assembly-Dereplicator.git ${tools_dir}/Assembly-dereplicator </code><br>
 We provide the option of using merged paired-end reads from NGmerge for alignment/inference (optional, not always recommended) <a href="https://github.com/harvardinformatics/NGmerge">NGmerge</a>.<br></code>
-- <code>git clone https://github.com/harvardinformatics/NGmerge.git ${tools_dir}/ </code><br>
+- <code>git clone https://github.com/dduchen/NGmerge.git ${tools_dir}/NGmerge </code><br>
 
 ### Running bigfoot - Example using sequencing/alignment files from ISGR: <a href="https://www.internationalgenome.org/data-portal/sample/NA19240">NA19240</a><br>
 #### Yoruba in Ibadan, Nigeria, African Ancestry<br>
@@ -96,9 +96,117 @@ echo "${sample_id} ready for VG Flow filtering-->inference"
 . ${bigfoot_dir}/filter_immune_subgraph.sh
 ################################################################</code><br>
 
-#### Parallel processing - extract fastq from BAM > align to graph > BIgFOOT inference
-
+##### Parallel processing using GNU parallel
+conda activate bigfoot
 ls *bazam.fastq.gz > process_sample_ids.txt
+export workdir=${PWD}; export bigfoot_dir=${bigfoot_dir}; \
+export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
+export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
+export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
+for i in $(cat process_sample_ids.txt | head -1);do echo ${i};
+    cd ${workdir};
+    sample_id=${i%.bazam.fastq.gz};sample_id=${sample_id##*\/};
+    cat ${sample_id}.bazam*fastq.gz > ${sample_id}.mapped.fastq.gz;
+    bazam_reads=${sample_id}.mapped.fastq.gz;
+    sample_id=${bazam_reads%.mapped.fastq.gz};sample_id=${sample_id##*\/};
+    if [ -s ${sample_id}.bazam.grch38.wg.gam ]; then
+        echo "Alignment of linearly mapped reads completed";
+    else
+        vg giraffe -i -f ${bazam_reads} -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.bazam.grch38.wg.gam
+    fi
+    if [ -s ${sample_id}.unmapped.grch38.wg.gam ]; then
+        echo "Alignment of unmapped reads completed";
+    else
+        vg giraffe -f ${sample_id}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.unmapped.grch38.wg.gam
+    fi
+    if [ -s ${sample_id}.bazam.grch38.combined.gam ]; then
+        echo "Graph alignment of unmapped reads completed";
+    else
+        cat ${sample_id}.bazam.grch38.wg.gam ${sample_id}.unmapped.grch38.wg.gam > ${sample_id}.bazam.grch38.combined.gam
+    fi
+    echo "${sample_id} ready for VG Flow filtering-->inference"
+    i=${sample_id}.bazam.grch38.combined.gam;
+    . ${bigfoot_dir}/filter_immune_subgraph.sh
+done
+
+
+ls *bazam.grch38.combined.gam > run_pipeline_sample_ids.txt
+export workdir=${PWD}; export tools_dir=~/tools;
+export PATH=${tools_dir}:$PATH;
+export bigfoot_dir=~/tools/BIgFOOT/scripts/;
+export bigfoot_source=~/pi_kleinstein/bigfoot/;
+export graphdir=${bigfoot_source}; export graph="wg_immunovar";
+export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar;
+export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
+#
+for i in $(cat run_pipeline_sample_ids.txt | head -1);do echo ${i};
+. ${bigfoot_dir}/filter_immune_subgraph.sh >> "${i%.final.bazam.*}_bigfootprint.txt"
+done
+# in chunks:
+#bigfoot_dir=~/tools/BIgFOOT/scripts/
+bigfoot_dir=~/Documents/github/BIgFOOT/scripts/
+#bigfoot_source=~/pi_kleinstein/bigfoot/
+bigfoot_source=/home/dduchen/Documents/bigfoot/
+
+split -l 20 run_pipeline_sample_ids.txt process_sample_split_
+for i in $(ls process_sample_split_* );do echo $i;
+    time parallel -j 5 'export workdir=${PWD}; export tools_dir=~/tools;
+    export PATH=${tools_dir}:$PATH ; \
+    export bigfoot_dir=${bigfoot_dir}; \
+    export bigfoot_source=${bigfoot_source}; \
+    export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
+    export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
+    export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
+    export i={}; \
+    . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam.*}_bigfootprint.txt' :::: <(cat ${i});
+done
+
+##############################
+# Process samples in chunked parallel threads
+ls *.final.bazam.grch38.combined.gam | sort | uniq > process_sample_ids_igl.txt
+split -l 20 process_sample_ids_igl.txt process_sample_split_
+for i in $(ls process_sample_split_* | tail -2);do echo $i;
+    time parallel -j 4 'export workdir=${PWD}; export tools_dir=~/tools;
+    export PATH=${tools_dir}:$PATH ; \
+    export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
+    export bigfoot_source=~/pi_kleinstein/bigfoot/; \
+    export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
+    export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
+    export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
+    export i={}; \
+    . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat ${i});
+done
+###################################
+
+
+
+# remaining samples wtih completed fastq extraction:
+ls *bazam.grch38.combined.gam > run_pipeline_sample_ids2.txt
+grep -f run_pipeline_sample_ids.txt -v run_pipeline_sample_ids2.txt > tmp && mv tmp run_pipeline_sample_ids2.txt
+
+
+ls *bazam.grch38.combined.gam > run_pipeline_sample_ids.txt
+# check those runs with completed logs - dont reprocess them. Include something to check this in the original script...
+grep "All cleaned up!" *_bigfootprint.txt | sed s/":All cleaned up!"//g | sed s/"_bigfootprint.txt"//g > completed_runs.txt
+grep -v -f completed_runs.txt run_pipeline_sample_ids.txt > run_pipeline_sample_ids_remaining.txt
+
+
+
+time parallel -j 5 'export workdir=${PWD}; export tools_dir=~/tools;
+export PATH=${tools_dir}:$PATH ; \
+export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
+export bigfoot_source=~/pi_kleinstein/bigfoot/; \
+export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
+export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
+export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
+export i={}; \
+. ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat test.txt);
+#. ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids_remaining.txt |  tail -80);
+
+
+# try things in parallel?
+cd /home/dd392/palmer_scratch/data/1kgenomes/crams/igl_samples
+cd /home/dd392/palmer_scratch/data/1kgenomes/crams/igl_samples
 split -l 20 process_sample_ids.txt process_sample_split_
 conda activate bigfoot
 for i in $(ls process_sample_split_* | grep -v "_aa\|_ab\|_ac");do echo $i;
@@ -132,111 +240,15 @@ for i in $(ls process_sample_split_* | grep -v "_aa\|_ab\|_ac");do echo $i;
 done
 
 
-time parallel -j 4 'export workdir=${PWD}; export tools_dir=~/tools;
-export PATH=${tools_dir}:$PATH ; \
-export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
-export bigfoot_source=~/pi_kleinstein/bigfoot/; \
-export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
-export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
-export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
-export i={}; \
-. ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids.txt);
 
-
-
-<i>To do: set default values for all parameters (graph/valid alleles/pe...)
-
-# for most complex genes (IGHV4-4, 3-30*etc):
-## 1) grab alleles for gene of interest
-## 2) see if multiple ASC clusters exist
-## 3) force subgraph construction for allele inference using ASC cluster definitions rather than different chromosomes
-## 4) for reference/augmented graph - can use chromosome differences as we incorporate reference
-# -- IGHV4-59, IGHV4-4
-
-
-#igl samples i need to redownload:
-#HG03301
-#HG00376
-#HG03826
-#HG03833
-#HG03885
-#HG03925
-#HG03955
-# -- maybe HG00360
-
-# Supplemental notes - WIP
-
-ls *.sub.gfa > 1kGenomes_immunovar_sub.txt
-unitig-caller --call --kmer 15 --refs 1kGenomes_immunovar_sub.txt --out 1kGenomes_immunovar_subgraph --write-graph
-
-
-
-## remember to check igl_samples for ogrdb parsing error - some alleles missing, will need to rerun pipeline for those genes
- # remove text files for genes missing allele info - so when pipeline called again, will overwrite
-cd $workdir
-for i in $(ls -d *_wg_immunovar_genotyping); do echo $i;
-    cd $i
-    grep "^>:path" ./*haplotype_inference/*annot.fasta | sed s/":.*"//g | sed s/'.wg_immunovar.'/'_'/g | sed s/'.rel.haps.*'/'_files.txt'/g > annotated_fasta_to_edit.txt
-    echo "Removing: $(cat annotated_fasta_to_edit.txt)"
-    xargs rm < annotated_fasta_to_edit.txt
-    cd $workdir
-done
-
-# alternatively remove all the files for the gene
-#    for j in $(cat annotated_fasta_to_edit.txt);do echo $j;
-#        removing_you=${j%.rel.haps.final.*}; removing_you=$(echo ${removing_you} | sed s/.wg_immunovar./"\*"/g)
-#        rm familywise_pe_haplotype_inference/${removing_you}*;
-    for j in $(cut -f2 seqkit_repl_ids.txt | sed s/":path.*"//g);do echo $j
-        rm familywise_pe_haplotype_inference/*${j}_*;
-    done
-    cd $workdir
-done
-
-# in directory, try edit the fasta files directly - but this doesnt fix gfa files, would still need to update raw results
-    grep -h "^>:path" ./*haplotype_inference/*annot.fasta | sed s/"^>"//g > annotated_fasta_id_to_replace.txt
-    grep "^>:path" ./*haplotype_inference/*annot.fasta | sed s/.*${graph}.//g | sed s/"\\..*>"//g > annotated_fasta_id_replacements.txt
-    paste -d'\t' annotated_fasta_id_to_replace.txt annotated_fasta_id_replacements.txt > seqkit_repl_ids.txt
-    for i in $(cat annotated_fasta_to_edit.txt);do echo ${i};
-        awk 'NR==FNR{a[$1]=$2;next}
-            NF==2{$2=a[$2]; print ">" $2;next}
-            1' FS='\t' seqkit_repl_ids.txt FS='>' ${i} > ${i}.tmp && mv ${i}.tmp ${i};
-    done
-    cd $workdir
-done
-# replace results with updated allele info
-cd $workdir
-for i in $(ls -d *_wg_immunovar_genotyping); do echo $i;
-    cd $i
-    sample_id=${i%_wg_*}
-    grep -h ">" ./family*/*annot.fasta | sed s/"^.*>"/''/ | sed s/' or '/'_or_'/g > ${sample_id}.results_raw.txt";
-    echo -e ${sample_id} "mean" "sd" | sed s/" "/'\t'/g > ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.txt;
-    for each in $(ls ${outdir%haplotype_inference*}"haplotype_inference"/*.filtered.depth); do echo -e $(echo -ne ${each%.filtered.depth} ' ' |
-        sed s/"__"/"\/"/; echo $(cut -f1,2 $each)) | sed s/" "/'\t'/g | sed s/".*wg_immunovar."//g >> ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.txt;
-    done
-    # append HLA results if they exist
-    if [ -s ${outdir%haplotype_inference*}"haplotype_inference"/HLA/*annot.fasta ]; then
-        grep ">" ${outdir%haplotype_inference*}"haplotype_inference"/HLA/*annot.fasta | sed s/"^.*>"/''/ >> ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.results_raw.txt;
-        for each in $(ls ${outdir%haplotype_inference*}"haplotype_inference/HLA"/*.filtered.depth); do echo -e $(echo -ne ${each%.filtered.depth} ' ' |
-            sed s/"__"/"\/"/; echo $(cut -f1,2 $each)) | sed s/" "/'\t'/g | sed s/".*\\/"//g | sed s/".*wg_immunovar."//g >> ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.txt;
-        done
-    else
-        echo "No HLA allelic inference for ${sample_id}";
-    fi
-done
-
-
-
-    grep "^:path" NA18515.results_raw.txt > 
-
-for i in $(cat ${outdir%haplotype_inference*}"haplotype_inference"/annotated_fasta_to_edit.txt);do echo ${i};
-    grep "^>:path" ${outdir%haplotype_inference*}"haplotype_inference"/*annot.fasta | sed s/":.*"//g > ${outdir%haplotype_inference*}"haplotype_inference"/annotated_fasta_to_edit.txt
-    grep -h "^>:path" ${outdir%haplotype_inference*}"haplotype_inference"/*annot.fasta | sed s/"^>"//g > ${outdir%haplotype_inference*}"haplotype_inference"/annotated_fasta_id_to_replace.txt
-    grep "^>:path" ${outdir%haplotype_inference*}"haplotype_inference"/*annot.fasta | sed s/.*${graph}.//g | sed s/"\\..*>"//g > ${outdir%haplotype_inference*}"haplotype_inference"/annotated_fasta_id_replacements.txt
-    paste -d'\t' ${outdir%haplotype_inference*}"haplotype_inference"/annotated_fasta_id_to_replace.txt ${outdir%haplotype_inference*}"haplotype_inference"/annotated_fasta_id_replacements.txt > ${outdir%haplotype_inference*}"haplotype_inference"/seqkit_repl_ids.txt
-
-    for i in $(cat ${outdir%haplotype_inference*}"haplotype_inference"/annotated_fasta_to_edit.txt);do echo ${i};
-        awk 'NR==FNR{a[$1]=$2;next}
-            NF==2{$2=a[$2]; print ">" $2;next}
-            1' FS='\t' ${outdir%haplotype_inference*}"haplotype_inference"/seqkit_repl_ids.txt FS='>' ${i};
-    done
-done
+<code>
+<i>To do: <br>
+1) Explain default parameters (graph/valid alleles/pe...) <br>
+2) Global/local ancestry inference
+-- whole genome gam > immunovariation ...sub.gfa > gene graphs<br>
+3) Association testing
+- Haplotype/allele level association testing script
+-- regression analyses in R
+- Unitig-caller vs. reference-backbone VCF for association testing - script
+-- ls *.sub.gfa > 1kGenomes_immunovar_sub.txt
+-- unitig-caller --call --kmer 15 --refs 1kGenomes_immunovar_sub.txt --out 1kGenomes_immunovar_subgraph --write-graph
