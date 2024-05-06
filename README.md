@@ -165,7 +165,7 @@ done
 # Process samples in chunked parallel threads
 ls *.final.bazam.grch38.combined.gam | sort | uniq > process_sample_ids_igl.txt
 split -l 20 process_sample_ids_igl.txt process_sample_split_
-for i in $(ls process_sample_split_* | tail -2);do echo $i;
+for i in $(ls process_sample_split_* );do echo $i;
     time parallel -j 4 'export workdir=${PWD}; export tools_dir=~/tools;
     export PATH=${tools_dir}:$PATH ; \
     export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
