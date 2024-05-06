@@ -97,38 +97,39 @@ echo "${sample_id} ready for VG Flow filtering-->inference"
 ################################################################</code><br>
 
 ##### Parallel processing using GNU parallel
-conda activate bigfoot
-ls *bazam.fastq.gz > process_sample_ids.txt
-export workdir=${PWD}; export bigfoot_dir=${bigfoot_dir}; \
-export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
-export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
-export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
-for i in $(cat process_sample_ids.txt | head -1);do echo ${i};
-    cd ${workdir};
-    sample_id=${i%.bazam.fastq.gz};sample_id=${sample_id##*\/};
-    cat ${sample_id}.bazam*fastq.gz > ${sample_id}.mapped.fastq.gz;
-    bazam_reads=${sample_id}.mapped.fastq.gz;
-    sample_id=${bazam_reads%.mapped.fastq.gz};sample_id=${sample_id##*\/};
-    if [ -s ${sample_id}.bazam.grch38.wg.gam ]; then
-        echo "Alignment of linearly mapped reads completed";
-    else
-        vg giraffe -i -f ${bazam_reads} -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.bazam.grch38.wg.gam
-    fi
-    if [ -s ${sample_id}.unmapped.grch38.wg.gam ]; then
-        echo "Alignment of unmapped reads completed";
-    else
-        vg giraffe -f ${sample_id}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.unmapped.grch38.wg.gam
-    fi
-    if [ -s ${sample_id}.bazam.grch38.combined.gam ]; then
-        echo "Graph alignment of unmapped reads completed";
-    else
-        cat ${sample_id}.bazam.grch38.wg.gam ${sample_id}.unmapped.grch38.wg.gam > ${sample_id}.bazam.grch38.combined.gam
-    fi
-    echo "${sample_id} ready for VG Flow filtering-->inference"
-    i=${sample_id}.bazam.grch38.combined.gam;
-    . ${bigfoot_dir}/filter_immune_subgraph.sh
-done
+<code>conda activate bigfoot <br>
+ls *bazam.fastq.gz > process_sample_ids.txt <br>
+export workdir=${PWD}; export bigfoot_dir=${bigfoot_dir}; \ <br>
+export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \ <br>
+export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \ <br>
+export immune_graph=${graph_base}".subgraph"; export valid_alleles=true; <br>
+for i in $(cat process_sample_ids.txt);do echo ${i}; <br>
+    cd ${workdir}; <br>
+    sample_id=${i%.bazam.fastq.gz};sample_id=${sample_id##*\/}; <br>
+    cat ${sample_id}.bazam*fastq.gz > ${sample_id}.mapped.fastq.gz; <br>
+    bazam_reads=${sample_id}.mapped.fastq.gz; <br>
+    sample_id=${bazam_reads%.mapped.fastq.gz};sample_id=${sample_id##*\/}; <br>
+    if [ -s ${sample_id}.bazam.grch38.wg.gam ]; then <br>
+        echo "Alignment of linearly mapped reads completed"; <br>
+    else <br>
+        vg giraffe -i -f ${bazam_reads} -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.bazam.grch38.wg.gam <br>
+    fi <br>
+    if [ -s ${sample_id}.unmapped.grch38.wg.gam ]; then <br>
+        echo "Alignment of unmapped reads completed"; <br>
+    else <br>
+        vg giraffe -f ${sample_id}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.unmapped.grch38.wg.gam <br>
+    fi <br>
+    if [ -s ${sample_id}.bazam.grch38.combined.gam ]; then <br>
+        echo "Graph alignment of unmapped reads completed"; <br>
+    else <br>
+        cat ${sample_id}.bazam.grch38.wg.gam ${sample_id}.unmapped.grch38.wg.gam > ${sample_id}.bazam.grch38.combined.gam <br>
+    fi <br>
+    echo "${sample_id} ready for VG Flow filtering-->inference" <br>
+    i=${sample_id}.bazam.grch38.combined.gam; <br>
+    . ${bigfoot_dir}/filter_immune_subgraph.sh <br>
+done <br></code>
 
+##### process 1kGenomes individuals
 
 ls *bazam.grch38.combined.gam > run_pipeline_sample_ids.txt
 export workdir=${PWD}; export tools_dir=~/tools;
@@ -138,11 +139,11 @@ export bigfoot_source=~/pi_kleinstein/bigfoot/;
 export graphdir=${bigfoot_source}; export graph="wg_immunovar";
 export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar;
 export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
-#
+
 for i in $(cat run_pipeline_sample_ids.txt | head -1);do echo ${i};
 . ${bigfoot_dir}/filter_immune_subgraph.sh >> "${i%.final.bazam.*}_bigfootprint.txt"
 done
-# in chunks:
+
 #bigfoot_dir=~/tools/BIgFOOT/scripts/
 bigfoot_dir=~/Documents/github/BIgFOOT/scripts/
 #bigfoot_source=~/pi_kleinstein/bigfoot/
@@ -178,66 +179,10 @@ for i in $(ls process_sample_split_* );do echo $i;
 done
 ###################################
 
-
-
-# remaining samples wtih completed fastq extraction:
-ls *bazam.grch38.combined.gam > run_pipeline_sample_ids2.txt
-grep -f run_pipeline_sample_ids.txt -v run_pipeline_sample_ids2.txt > tmp && mv tmp run_pipeline_sample_ids2.txt
-
-
-ls *bazam.grch38.combined.gam > run_pipeline_sample_ids.txt
-# check those runs with completed logs - dont reprocess them. Include something to check this in the original script...
+<i>Assess completed samples - make a list of remaining files to process <br>
 grep "All cleaned up!" *_bigfootprint.txt | sed s/":All cleaned up!"//g | sed s/"_bigfootprint.txt"//g > completed_runs.txt
 grep -v -f completed_runs.txt run_pipeline_sample_ids.txt > run_pipeline_sample_ids_remaining.txt
 
-
-
-time parallel -j 5 'export workdir=${PWD}; export tools_dir=~/tools;
-export PATH=${tools_dir}:$PATH ; \
-export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
-export bigfoot_source=~/pi_kleinstein/bigfoot/; \
-export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
-export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
-export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
-export i={}; \
-. ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat test.txt);
-#. ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids_remaining.txt |  tail -80);
-
-
-# try things in parallel?
-cd /home/dd392/palmer_scratch/data/1kgenomes/crams/igl_samples
-cd /home/dd392/palmer_scratch/data/1kgenomes/crams/igl_samples
-split -l 20 process_sample_ids.txt process_sample_split_
-conda activate bigfoot
-for i in $(ls process_sample_split_* | grep -v "_aa\|_ab\|_ac");do echo $i;
-    time parallel -j 3 'export workdir=${PWD}; export tools_dir=~/tools;
-    export PATH=${tools_dir}:$PATH ; \
-    export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
-    export bigfoot_source=~/pi_kleinstein/bigfoot/; \
-    export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
-    export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
-    export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
-    export sample_id={}; \
-    sample_id=${sample_id%.bazam.fastq.gz};sample_id=${sample_id##*\/}; \
-    cat ${sample_id}.bazam*fastq.gz > ${sample_id}.mapped.fastq.gz; \
-    bazam_reads=${sample_id}.mapped.fastq.gz; \
-    sample_id=${bazam_reads%.mapped.fastq.gz};sample_id=${sample_id##*\/};
-    if [ -s ${sample_id}.bazam.grch38.wg.gam ]; then
-        echo "Alignment of linearly mapped reads completed";
-    else
-        vg giraffe -i -f ${bazam_reads} -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.bazam.grch38.wg.gam
-    fi
-    if [ -s ${sample_id}.unmapped.grch38.wg.gam ]; then
-        echo "Alignment of unmapped reads completed";
-    else
-        vg giraffe -f ${sample_id}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.unmapped.grch38.wg.gam
-    fi
-    if [ -s ${sample_id}.bazam.grch38.combined.gam ]; then
-        echo "Graph alignment of unmapped reads completed";
-    else
-        cat ${sample_id}.bazam.grch38.wg.gam ${sample_id}.unmapped.grch38.wg.gam > ${sample_id}.bazam.grch38.combined.gam
-    fi' :::: <(cat ${i});
-done
 
 
 
