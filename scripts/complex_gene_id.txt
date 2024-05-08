@@ -1,0 +1,25 @@
+#ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV" | grep -v "__\|IGHD\|IGHJ" > ${outdir}/gene_list.txt
+>${bigfoot_dir}/../custom_beds/complex_genes.txt
+for each in $(cat ${outdir}/gene_list.txt );do echo ${each};
+    gene=${each%.nodes.txt}
+    gene=${gene%.immune_subset}
+    gene_actual=$(echo $gene | sed 's!__!/!g')
+    grep "${gene}\*" ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv > test.txt
+    if [ -s test.txt ]; then
+        asc_cluster=$(cut -f4 test.txt | sed s/'\*.*'//g | sort | uniq)
+        if [ $(echo "${asc_cluster[@]}" | wc -l) -gt 1 ]; then
+            echo ${gene} >> ${bigfoot_dir}/../custom_beds/complex_genes.txt
+        fi
+        >test2.txt
+        for i in $(echo "${asc_cluster[@]}");do
+            grep ${i} ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv | cut -f1 | grep -v ${gene}"\*" | grep -v "${gene}_" | grep -v "${gene}D" | grep "IMGT" >> test2.txt
+        done
+        sort test2.txt | cut -f1 -d'*' | uniq > test2.txt.tmp && mv test2.txt.tmp test2.txt
+#        more than 1 other gene across clusters - to account for duplicated genes
+        if [ $(cat test2.txt | wc -l ) -ge 1 ]; then
+            echo ${gene} >> ${bigfoot_dir}/../custom_beds/complex_genes.txt
+        fi
+    fi
+done
+#
+sort ${bigfoot_dir}/../custom_beds/complex_genes.txt | uniq > ${bigfoot_dir}/../custom_beds/complex_genes.txt.tmp && mv ${bigfoot_dir}/../custom_beds/complex_genes.txt.tmp ${bigfoot_dir}/../custom_beds/complex_genes.txt

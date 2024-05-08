@@ -76,17 +76,19 @@ else
     echo "Extracting reads via BAZAM";
     if [[ ${aln_linear} == *"bam"* ]]; then
         echo "BAM input";
-        time bazam -bam ${input_aln} -L ${immunovar_bed} | gzip > ${input_aln%.${aln_linear}}.bazam.fastq.gz
-        time bazam -bam ${input_aln} -L chr2:179424038-179441143 | gzip > ${input_aln%.${aln_linear}}.bazam.TTN.fastq.gz
+        time bazam -bam ${input_aln} -L ${immunovar_bed} | gzip > ${input_aln%.${aln_linear}}.bazam.fastq.gz;
+        time bazam -bam ${input_aln} -L chr2:179424038-179441143 | gzip > ${input_aln%.${aln_linear}}.bazam.TTN.fastq.gz;
+        time bazam -bam ${input_aln} -L ${bigfoot_dir}/../custom_beds/grch38_FCGR_loci.bed | gzip > ${input_aln%.${aln_linear}}.bazam.FCGR.fastq.gz;
     elif [[ ${aln_linear} == *"cram"* ]]; then
         echo "CRAM input";
-        bazam_path=$(which bazam);bazam_path=${bazam_path%bin/*}share/bazam*;bazam_path=${bazam_path}"/bazam.jar"
-        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L ${immunovar_bed} -n 6 | gzip > ${input_aln%.${aln_linear}}.bazam.fastq.gz
-        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L chr2:179424038-179441143 -n 6 | gzip > ${input_aln%.${aln_linear}}.bazam.TTN.fastq.gz
+        bazam_path=$(which bazam);bazam_path=${bazam_path%bin/*}share/bazam*;bazam_path=${bazam_path}"/bazam.jar";
+        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L ${immunovar_bed} -n 6 | gzip > ${input_aln%.${aln_linear}}.bazam.fastq.gz;
+        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L chr2:179424038-179441143 -n 6 | gzip > ${input_aln%.${aln_linear}}.bazam.TTN.fastq.gz;
+        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L ${bigfoot_dir}/../custom_beds/grch38_FCGR_loci.bed | gzip > ${input_aln%.${aln_linear}}.bazam.FCGR.fastq.gz;
     else
         echo "Unknown alignment format - convert to GRCh38 BAM/CRAM and rerun"
     fi
-    samtools view -@8 -C ${input_aln} -T ${ref} -f 4 | samtools fastq | gzip > ${input_aln%.${aln_linear}}.unmapped.fastq.gz
+    samtools view -@8 -C ${input_aln} -T ${ref} -f 4 | samtools fastq | gzip > ${input_aln%.${aln_linear}}.unmapped.fastq.gz;
 fi
 if [ -s ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam ]; then
     echo "Alignment completed - using: ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam for inference";
