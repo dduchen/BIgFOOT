@@ -132,26 +132,28 @@ done <br></code>
 ##### process 1kGenomes individuals
 
 ls *bazam.grch38.combined.gam > run_pipeline_sample_ids.txt
-export workdir=${PWD}; export tools_dir=~/tools;
-export PATH=${tools_dir}:$PATH;
-export bigfoot_dir=~/tools/BIgFOOT/scripts/;
-export bigfoot_source=~/pi_kleinstein/bigfoot/;
-export graphdir=${bigfoot_source}; export graph="wg_immunovar";
-export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar;
-export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
+grep -f igh_samples.txt run_pipeline_sample_ids.txt > run_pipeline_sample_ids_igh.txt
+grep -f igh_samples.txt -v run_pipeline_sample_ids.txt > run_pipeline_sample_ids_other.txt
 
-for i in $(cat run_pipeline_sample_ids.txt | head -1);do echo ${i};
-. ${bigfoot_dir}/filter_immune_subgraph.sh >> "${i%.final.bazam.*}_bigfootprint.txt"
-done
+parallel -j 5 'export workdir=${PWD}; export tools_dir=~/tools;
+export PATH=${tools_dir}:$PATH ; \
+export bigfoot_dir=${bigfoot_dir}; \
+export bigfoot_source=${bigfoot_source}; \
+export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
+export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
+export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
+export i={}; \
+time . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam.*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids_other.txt);
+time . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam.*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids_igh.txt);
 
 #bigfoot_dir=~/tools/BIgFOOT/scripts/
 bigfoot_dir=~/Documents/github/BIgFOOT/scripts/
 #bigfoot_source=~/pi_kleinstein/bigfoot/
 bigfoot_source=/home/dduchen/Documents/bigfoot/
 
-split -l 20 run_pipeline_sample_ids.txt process_sample_split_
+split -l 20 run_pipeline_sample_ids_other.txt process_sample_split_
 for i in $(ls process_sample_split_* );do echo $i;
-    time parallel -j 5 'export workdir=${PWD}; export tools_dir=~/tools;
+    time parallel -j 4 'export workdir=${PWD}; export tools_dir=~/tools;
     export PATH=${tools_dir}:$PATH ; \
     export bigfoot_dir=${bigfoot_dir}; \
     export bigfoot_source=${bigfoot_source}; \
@@ -162,10 +164,14 @@ for i in $(ls process_sample_split_* );do echo $i;
     . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam.*}_bigfootprint.txt' :::: <(cat ${i});
 done
 
+<code> # reprocess HG03354, download and everything <-- igl sample
+find NA19129 <---
 ##############################
 # Process samples in chunked parallel threads
-ls *.final.bazam.grch38.combined.gam | sort | uniq > process_sample_ids_igl.txt
-split -l 20 process_sample_ids_igl.txt process_sample_split_
+ls *.final.bazam.grch38.combined.gam | sort | uniq > process_sample_ids.txt
+grep -f 1kgenomes_samples.txt process_sample_ids.txt 
+grep -f process_sample_ids.txt 1kgenomes_samples.txt 
+split -l 20 process_sample_ids.txt process_sample_split_
 for i in $(ls process_sample_split_* );do echo $i;
     time parallel -j 4 'export workdir=${PWD}; export tools_dir=~/tools;
     export PATH=${tools_dir}:$PATH ; \
@@ -175,7 +181,7 @@ for i in $(ls process_sample_split_* );do echo $i;
     export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
     export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
     export i={}; \
-    . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.bazam*}_bigfootprint.txt' :::: <(cat ${i});
+    . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam*}_bigfootprint.txt' :::: <(cat ${i});
 done
 ###################################
 
@@ -184,7 +190,19 @@ grep "All cleaned up!" *_bigfootprint.txt | sed s/":All cleaned up!"//g | sed s/
 grep -v -f completed_runs.txt run_pipeline_sample_ids.txt > run_pipeline_sample_ids_remaining.txt
 
 
+#### Download bam/cram, extract reads, and align in parallel! 
+cd /media/dduchen/Data/1kgenomes
+wget https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/1000G_2504_high_coverage.sequence.index
+time parallel -j 2 'export workdir=${PWD}; export tools_dir=~/tools;
+    export PATH=${tools_dir}:$PATH ; \
+    export bigfoot_dir=/home/dduchen/Documents/github/BIgFOOT/scripts;
+    export bigfoot_source=/home/dduchen/Documents/bigfoot/;
+    export ref=~/tools/refs/grch38_full_wHLA/GRCh38_full_analysis_set_plus_decoy_hla.fa;
+    export immunovar_bed=${bigfoot_dir}/../custom_beds/grch38_custom_immunovar_coords.bed;
+    export i={}; \
+    . ${bigfoot_dir}/download_bam_cram_parse.sh' :::: <(cut -f1 1000G_2504_high_coverage.sequence.index | grep -v "^#");
 
+end with *.combined.gam file for analysis
 
 <code>
 <i>To do: <br>
