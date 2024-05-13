@@ -135,16 +135,16 @@ ls *bazam.grch38.combined.gam > run_pipeline_sample_ids.txt
 grep -f igh_samples.txt run_pipeline_sample_ids.txt > run_pipeline_sample_ids_igh.txt
 grep -f igh_samples.txt -v run_pipeline_sample_ids.txt > run_pipeline_sample_ids_other.txt
 
-parallel -j 5 'export workdir=${PWD}; export tools_dir=~/tools;
+parallel -j 4 'export workdir=${PWD}; export tools_dir=~/tools;
 export PATH=${tools_dir}:$PATH ; \
 export bigfoot_dir=${bigfoot_dir}; \
 export bigfoot_source=${bigfoot_source}; \
 export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
 export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
-export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
+export immune_graph=${graph_base}".subgraph"; export valid_alleles=false;
 export i={}; \
-time . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam.*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids_other.txt);
 time . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam.*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids_igh.txt);
+time . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam.*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids_other.txt);
 
 #bigfoot_dir=~/tools/BIgFOOT/scripts/
 bigfoot_dir=~/Documents/github/BIgFOOT/scripts/
