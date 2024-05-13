@@ -164,8 +164,8 @@ for i in $(ls process_sample_split_* );do echo $i;
     . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam.*}_bigfootprint.txt' :::: <(cat ${i});
 done
 
-<code> # reprocess HG03354, download and everything <-- igl sample
-find NA19129 <---
+<code>
+
 ##############################
 # Process samples in chunked parallel threads
 ls *.final.bazam.grch38.combined.gam | sort | uniq > process_sample_ids.txt
@@ -203,6 +203,9 @@ time parallel -j 2 'export workdir=${PWD}; export tools_dir=~/tools;
     . ${bigfoot_dir}/download_bam_cram_parse.sh' :::: <(cut -f1 1000G_2504_high_coverage.sequence.index | grep -v "^#");
 
 end with *.combined.gam file for analysis
+
+
+## -- number of .combined.gam files, number of *_wg_* directories or directories with results -- difference, process those
 
 <code>
 <i>To do: <br>
