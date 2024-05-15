@@ -283,6 +283,16 @@ else
                     echo "Complex locus detected for ${gene} - however the multiple ASC clusters contain only taget gene alleles - retaining all reads"
                     vg filter -r 0 -P -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
                 fi
+            elif [ $(vg paths -Lv  ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa | grep "IMGT\|IGv2\|OGRDB" | grep -v "${gene}\*\|${gene}_\|${gene}" wc -l) -gt 0 ]; then
+                echo "Complex locus detected for ${gene} - single ASC cluster but additional genes present - filtering out reads aligning to  non-gene nodes"
+                sed -n '/^#1:/p;/^P/p' ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes
+                Rscript ${bigfoot_dir}/identify_non_gene_nodes_complex_locus.R ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes
+                vg find -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -c 0 -N ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.vg
+                vg gamsort ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -i ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.gai -p > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+                vg find -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -l ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -A ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.vg | vg view -X - | seqkit seq -n - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt
+                vg view -X ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam | seqkit grep -v -n -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq
+                vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
+                vg filter -r 0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
             else
                 vg filter -r 0 -P -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
             fi
@@ -330,6 +340,19 @@ else
                     echo "Retaining path labels only for ${gene_actual}";
                     grep "${gene}\*" ${outdir}/${sample_id}.${graph}.${gene}.alleles > ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp ${outdir}/${sample_id}.${graph}.${gene}.alleles
                 fi
+            elif [ "${valid_alleles}" = "igenotyper" ]; then
+                echo "Retaining path labels only for IGenotyper alleles for ${gene_actual}. If you want to limit variable gene inference to OGRDB set - set 'valid_alleles=true'"
+                if [ -s ${bigfoot_source}/igenotyper_alleles/alleles.fasta ]; then
+                    echo "using saved Igenotyper allele set (${bigfoot_source}/igenotyper_alleles/alleles.fasta)"
+                else
+                    wget -P ${bigfoot_source}/igenotyper_alleles https://raw.githubusercontent.com/oscarlr/IGenotyper/master/IGenotyper/data/alleles.fasta
+                fi
+                echo "Retaining path labels onl for alleles matching IGenotyper alleles for ${gene} - sequence based matching";
+                seqkit grep -n -r -p "${gene}_" ${bigfoot_source}/igenotyper_alleles/alleles.fasta > ${outdir}/${sample_id}.${graph}.${gene}.igeno_alleles.fasta
+                vg paths -Fv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg | seqkit grep -f ${outdir}/${sample_id}.${graph}.${gene}.alleles > ${outdir}/${sample_id}.${graph}.${gene}.igeno_filtering.fasta
+                Rscript ${bigfoot_dir}/igenotyper_allele_matching.R ${outdir}/${sample_id}.${graph}.${gene}.igeno_alleles.fasta
+                grep ">" ${outdir}/${sample_id}.${graph}.${gene}.igeno_filtered.fasta | sed s/">"//g | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.alleles
+                rm ${outdir}/${sample_id}.${graph}.${gene}.igeno*fasta
             else
                 echo "Retaining path labels only for IMGT-derived ${gene_actual} If you want to limit variable gene inference to OGRDB set - set 'valid_alleles=true'"
                 grep "${gene}\*" ${outdir}/${sample_id}.${graph}.${gene}.alleles | grep "IMGT" > ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp ${outdir}/${sample_id}.${graph}.${gene}.alleles
