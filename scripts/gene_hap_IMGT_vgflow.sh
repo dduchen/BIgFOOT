@@ -89,6 +89,8 @@ mkdir -p ${genotyping_nodes_dir}/gene_graphs/
 # potentially save this as script - run in parallel #https://stackoverflow.com/questions/25158583/exporting-the-full-environment-to-gnu-parallel
 # parallel!
 ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV" | grep -v "__\|IGHD\|IGHJ" > ${outdir}/gene_list.txt
+#ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGHV" | grep -v "__\|IGHD\|IGHJ" > ${outdir}/gene_list.txt
+export assoc_testing=true
 parallel -j 4 'export each={}; \
     . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(cat ${outdir}/gene_list.txt);
 #

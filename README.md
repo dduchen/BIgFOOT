@@ -51,7 +51,7 @@ We also need the variation graph toolkit (VG) executable<br>
 - <code>wget -P ${tools_dir}/ https://github.com/vgteam/vg/releases/download/v1.56.0/vg; chmod +x ${tools_dir}/vg <br>
 PATH=${tools_dir}:$PATH</code><br>
 
-We use the Ryan Wick's Assembly-dereplicator package during haplotype selection <a href="https://github.com/rrwick/Assembly-Dereplicator">Assembly-dereplicator</a>.<br>
+We use Ryan Wick's Assembly-dereplicator package during haplotype selection <a href="https://github.com/rrwick/Assembly-Dereplicator">Assembly-dereplicator</a>.<br>
 - <code>git clone https://github.com/dduchen/Assembly-Dereplicator.git ${tools_dir}/Assembly-dereplicator </code><br>
 We provide the option of using merged paired-end reads from NGmerge for alignment/inference (optional, not always recommended) <a href="https://github.com/harvardinformatics/NGmerge">NGmerge</a>.<br></code>
 - <code>git clone https://github.com/dduchen/NGmerge.git ${tools_dir}/NGmerge </code><br>
@@ -83,7 +83,7 @@ wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989410/NA19240.
 ################################################################</code><br>
 <i>Support for CHM13-based BAM/CRAM is planned</i>
 
-##### Starting from subset of reads ######<br>
+##### Starting from subset of reads<br>
 - <code>graphdir=${bigfoot_source};graph="wg_immunovar";graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar;immune_graph=${graph_base}".subgraph";<br>
 bazam_reads=${i};
 sample_id=${bazam_reads%.bazam.fastq.gz};sample_id=${sample_id##*\/};
@@ -129,20 +129,21 @@ for i in $(cat process_sample_ids.txt);do echo ${i}; <br>
     . ${bigfoot_dir}/filter_immune_subgraph.sh <br>
 done <br></code>
 
-##### process 1kGenomes individuals
+##### Process 1kGenomes individuals<br>
 
-ls *bazam.grch38.combined.gam > run_pipeline_sample_ids.txt
+<code>ls *bazam.grch38.combined.gam > run_pipeline_sample_ids.txt
 grep -f igh_samples.txt run_pipeline_sample_ids.txt > run_pipeline_sample_ids_igh.txt
 grep -f igh_samples.txt -v run_pipeline_sample_ids.txt > run_pipeline_sample_ids_other.txt
 
-parallel -j 4 'export workdir=${PWD}; export tools_dir=~/tools;
+parallel -j 8 'export workdir=${PWD}; export tools_dir=~/tools;
 export PATH=${tools_dir}:$PATH ; \
 export bigfoot_dir=${bigfoot_dir}; \
 export bigfoot_source=${bigfoot_source}; \
 export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
 export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
-export immune_graph=${graph_base}".subgraph"; export valid_alleles=false;
+export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
 export i={}; \
+time . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam.*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids_other.txt);
 time . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam.*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids_igh.txt);
 time . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam.*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids_other.txt);
 
@@ -163,12 +164,11 @@ for i in $(ls process_sample_split_* );do echo $i;
     export i={}; \
     . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam.*}_bigfootprint.txt' :::: <(cat ${i});
 done
+</code>
 
-<code>
+#### Process samples in chunked parallel threads<br>
 
-##############################
-# Process samples in chunked parallel threads
-ls *.final.bazam.grch38.combined.gam | sort | uniq > process_sample_ids.txt
+<code>ls *.final.bazam.grch38.combined.gam | sort | uniq > process_sample_ids.txt
 grep -f 1kgenomes_samples.txt process_sample_ids.txt 
 grep -f process_sample_ids.txt 1kgenomes_samples.txt 
 split -l 20 process_sample_ids.txt process_sample_split_
@@ -183,15 +183,16 @@ for i in $(ls process_sample_split_* );do echo $i;
     export i={}; \
     . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam*}_bigfootprint.txt' :::: <(cat ${i});
 done
-###################################
+</code>
 
 <i>Assess completed samples - make a list of remaining files to process <br>
-grep "All cleaned up!" *_bigfootprint.txt | sed s/":All cleaned up!"//g | sed s/"_bigfootprint.txt"//g > completed_runs.txt
+<code>grep "All cleaned up!" *_bigfootprint.txt | sed s/":All cleaned up!"//g | sed s/"_bigfootprint.txt"//g > completed_runs.txt
 grep -v -f completed_runs.txt run_pipeline_sample_ids.txt > run_pipeline_sample_ids_remaining.txt
+</code>
 
+#### Download bam/cram, extract reads, and align in parallel! <br>
 
-#### Download bam/cram, extract reads, and align in parallel! 
-cd /media/dduchen/Data/1kgenomes
+<code>cd /media/dduchen/Data/1kgenomes
 wget https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/1000G_2504_high_coverage.sequence.index
 time parallel -j 2 'export workdir=${PWD}; export tools_dir=~/tools;
     export PATH=${tools_dir}:$PATH ; \
@@ -204,10 +205,7 @@ time parallel -j 2 'export workdir=${PWD}; export tools_dir=~/tools;
 
 end with *.combined.gam file for analysis
 
-
-## -- number of .combined.gam files, number of *_wg_* directories or directories with results -- difference, process those
-
-<code>
+</code>
 <i>To do: <br>
 1) Explain default parameters (graph/valid alleles/pe...) <br>
 2) Global/local ancestry inference
