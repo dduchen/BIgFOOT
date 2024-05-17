@@ -45,6 +45,13 @@ fi
 #
 if [[ $ref_build == "grch38" ]]; then
     ref=${ref};
+    if [ -s $ref ]; then
+        echo "using GRCh38 reference";
+    else 
+        wget -P ${bigfoot_source} ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/GRCh38_reference_genome/GRCh38_full_analysis_set_plus_decoy_hla.fa;
+        ref=${bigfoot_source}/GRCh38_full_analysis_set_plus_decoy_hla.fa
+        samtools faidx ${ref};
+    fi
     immunovar_bed="${bigfoot_dir}/../custom_beds/grch38_custom_immunovar_coords.bed";
 elif [[ $ref_build == "chm13" ]]; then
     ref="${ref}";
