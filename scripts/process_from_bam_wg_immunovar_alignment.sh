@@ -59,7 +59,8 @@ elif [[ $ref_build == "chm13" ]]; then
 else
     echo "Currently BIgFOOT only supports GRCh38-based BAM input. Future release will have CHM13 as an option"
 fi
-if [ -s ${bigfoot_dir}/../custom_beds/custom_bed.bed]; then
+
+if [ -s ${bigfoot_dir}/../custom_beds/custom_bed.bed ]; then
     echo "Custom bed exists";
 else
     echo -e "chr2\t179424038\t179441143" | cat ${immunovar_bed} ${bigfoot_dir}/../custom_beds/grch38_FCGR_loci.bed - | bedtools sort -i - | bedtools merge -i - -d 100 > ${bigfoot_dir}/../custom_beds/custom_bed.bed
@@ -79,7 +80,7 @@ else
         samtools index ${input_aln}
     else
         echo "working with a BAM/CRAM file";
-        if test -f "${input_aln%.bam}*i"; then
+        if [ -s ${input_aln%.bam}*i ]; then
             echo "${input_aln} already indexed";
         else
             echo "indexing ${input_aln}";
@@ -116,6 +117,16 @@ else
     echo "${input_aln%.${aln_linear}} ready for VG Flow filtering-->inference"
 fi
 #######################
+#
+export workdir=${PWD}; 
+export PATH=${tools_dir}:$PATH ;
+export bigfoot_dir=${bigfoot_dir};
+export bigfoot_source=${bigfoot_source};
+export graphdir=${bigfoot_source}; 
+export graph="wg_immunovar";
+export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar;
+export immune_graph=${graph_base}".subgraph"; 
+export valid_alleles=true;
 #
 export i=${input_aln%.${aln_linear}}.bazam.grch38.combined.gam workdir=${PWD} graph=${graph} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} tools_dir=${tools_dir} valid_alleles=${valid_alleles}
 . ${bigfoot_dir}/filter_immune_subgraph.sh
