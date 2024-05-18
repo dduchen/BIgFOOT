@@ -59,6 +59,12 @@ elif [[ $ref_build == "chm13" ]]; then
 else
     echo "Currently BIgFOOT only supports GRCh38-based BAM input. Future release will have CHM13 as an option"
 fi
+if [ -s ${bigfoot_dir}/../custom_beds/custom_bed.bed]; then
+    echo "Custom bed exists";
+else
+    echo -e "chr2\t179424038\t179441143" | cat ${immunovar_bed} ${bigfoot_dir}/../custom_beds/grch38_FCGR_loci.bed - | bedtools sort -i - | bedtools merge -i - -d 100 > ${bigfoot_dir}/../custom_beds/custom_bed.bed
+fi
+#
 echo "Extracting candidate reads from BAM"
 input_aln=${bam_file##*/};
 aln_linear=$(echo ${input_aln} | sed s/.*\\.//g)
@@ -83,15 +89,17 @@ else
     echo "Extracting reads via BAZAM";
     if [[ ${aln_linear} == *"bam"* ]]; then
         echo "BAM input";
-        time bazam -bam ${input_aln} -L ${immunovar_bed} | gzip > ${input_aln%.${aln_linear}}.bazam.fastq.gz;
-        time bazam -bam ${input_aln} -L chr2:179424038-179441143 | gzip > ${input_aln%.${aln_linear}}.bazam.TTN.fastq.gz;
-        time bazam -bam ${input_aln} -L ${bigfoot_dir}/../custom_beds/grch38_FCGR_loci.bed | gzip > ${input_aln%.${aln_linear}}.bazam.FCGR.fastq.gz;
+        time bazam -bam ${input_aln} -L ${bigfoot_dir}/../custom_beds/custom_bed.bed | gzip > ${input_aln%.${aln_linear}}.bazam.fastq.gz
+#        time bazam -bam ${input_aln} -L ${immunovar_bed} | gzip > ${input_aln%.${aln_linear}}.bazam.fastq.gz;
+#        time bazam -bam ${input_aln} -L chr2:179424038-179441143 | gzip > ${input_aln%.${aln_linear}}.bazam.TTN.fastq.gz;
+#        time bazam -bam ${input_aln} -L ${bigfoot_dir}/../custom_beds/grch38_FCGR_loci.bed | gzip > ${input_aln%.${aln_linear}}.bazam.FCGR.fastq.gz;
     elif [[ ${aln_linear} == *"cram"* ]]; then
         echo "CRAM input";
         bazam_path=$(which bazam);bazam_path=${bazam_path%bin/*}share/bazam*;bazam_path=${bazam_path}"/bazam.jar";
-        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L ${immunovar_bed} -n 6 | gzip > ${input_aln%.${aln_linear}}.bazam.fastq.gz;
-        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L chr2:179424038-179441143 -n 6 | gzip > ${input_aln%.${aln_linear}}.bazam.TTN.fastq.gz;
-        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L ${bigfoot_dir}/../custom_beds/grch38_FCGR_loci.bed | gzip > ${input_aln%.${aln_linear}}.bazam.FCGR.fastq.gz;
+        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L ${bigfoot_dir}/../custom_beds/custom_bed.bed | gzip > ${input_aln%.${aln_linear}}.bazam.fastq.gz
+#        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L ${immunovar_bed} -n 6 | gzip > ${input_aln%.${aln_linear}}.bazam.fastq.gz;
+#        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L chr2:179424038-179441143 -n 6 | gzip > ${input_aln%.${aln_linear}}.bazam.TTN.fastq.gz;
+#        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L ${bigfoot_dir}/../custom_beds/grch38_FCGR_loci.bed | gzip > ${input_aln%.${aln_linear}}.bazam.FCGR.fastq.gz;
     else
         echo "Unknown alignment format - convert to GRCh38 BAM/CRAM and rerun"
     fi
