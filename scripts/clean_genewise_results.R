@@ -10,14 +10,14 @@ if(as.numeric(grepl("franken",currdir))==1){
 }
 if(as.numeric(grepl("_pe",subdir))==1){
     aln_type="pe"
-    relevant_depth_file<-list.files(path="../",pattern=paste0(sample_id))
+    relevant_depth_file<-list.files(path="../",pattern=paste0("^",sample_id))
     relevant_depth_file<-relevant_depth_file[grep("pe.depth",relevant_depth_file)]
     relevant_depth_file<-relevant_depth_file[grep(graph,relevant_depth_file)]
     relevant_depth_file<-relevant_depth_file[grep("immune",relevant_depth_file)]
     relevant_depth_file<-paste0("../",relevant_depth_file)
 } else {
     aln_type="ngmerged"
-    relevant_depth_file<-list.files(path="../",pattern=paste0(sample_id))
+    relevant_depth_file<-list.files(path="../",pattern=paste0("^",sample_id))
     relevant_depth_file<-relevant_depth_file[grep("ngmerged.depth",relevant_depth_file)]
     relevant_depth_file<-relevant_depth_file[grep(graph,relevant_depth_file)]
     relevant_depth_file<-relevant_depth_file[grep("immune",relevant_depth_file)]
