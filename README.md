@@ -1,4 +1,4 @@
-# BIgFOOT: inference of Biological I(g)mmunovariation via Graph FOOTprinting
+# BIgFOOT: Broad inference of I(g)mmunovariation via Graph FOOTprinting
 ### Current version: 0.0.1
 
 This workflow infers alleles, calls novel variation, and constructs sample-specific sequence variation graphs for immunoglobulin(Ig)/other immune-related loci which can be used to perform genetic association tests. The workflow inolves a combination of various graph-construction steps, sequence-to-graph alignment, flow graph decomposition, and unitig calling.<br>
@@ -7,9 +7,9 @@ I hope to expand this workflow to enable genome-to-genome analyses/assessing gen
 <i>Genetic loci where BIgFOOT performs accurate allele calling:</i>
 - IGH
 - IGL
-- HLA (DQA1/DQB1/... more to come)<br>
+- HLA (DQA1/DQB1/... more TBD)<br>
 
-<i>Infers alleles - but, like bigoot, I have no evidence they're real (WiP):</i><br>
+<i>Infers alleles - but, like bigfoot, I have no evidence they're real:</i><br>
 - IGK
 - TR
 - KIR
@@ -131,9 +131,27 @@ for i in $(cat process_sample_ids.txt);do echo ${i}; <br>
     . ${bigfoot_dir}/filter_immune_subgraph.sh <br>
 done <br></code>
 
-##### Process 1kGenomes individuals<br>
+##### Processing the 1kGenomes Cohort <br>
 
-<code>ls *bazam.grch38.combined.gam > run_pipeline_sample_ids.txt
+
+<code>wget https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/1000G_2504_high_coverage.sequence.index
+ls *combined.gam | sed s/.final.*//g > 1kgenomes.processed.txt
+#
+time parallel -j 2 'export workdir=${PWD}; export tools_dir=~/tools;
+    export PATH=${tools_dir}:$PATH ; \
+    export bigfoot_dir=/home/dduchen/Documents/github/BIgFOOT/scripts;
+    export bigfoot_source=/home/dduchen/Documents/bigfoot/;
+    export ref=~/tools/refs/grch38_full_wHLA/GRCh38_full_analysis_set_plus_decoy_hla.fa;
+    export immunovar_bed=${bigfoot_dir}/../custom_beds/grch38_custom_immunovar_coords.bed;
+    export i={}; \
+    filename_prefix=${i##*/}; export filename_prefix=${filename_prefix%%\.*}; \
+    . ${bigfoot_dir}/download_bam_cram_parse.sh > ${filename_prefix}_bigfootprint.txt' :::: <(cut -f1 1000G_2504_high_coverage.sequence.index | grep -v "^#" | grep -v -f 1kgenomes.processed.txt);
+
+# redo:
+# NA21108
+cut -f1 1000G_2504_high_coverage.sequence.index | grep -v "^#" | grep -v -f 1kgenomes.processed.txt | grep "HG02696"
+
+ls *bazam.grch38.combined.gam > run_pipeline_sample_ids.txt
 grep -f igh_samples.txt run_pipeline_sample_ids.txt > run_pipeline_sample_ids_igh.txt
 grep -f igh_samples.txt -v run_pipeline_sample_ids.txt > run_pipeline_sample_ids_other.txt
 
@@ -168,46 +186,11 @@ for i in $(ls process_sample_split_* );do echo $i;
 done
 </code>
 
-#### Process samples in chunked parallel threads<br>
-
-<code>ls *.final.bazam.grch38.combined.gam | sort | uniq > process_sample_ids.txt
-grep -f 1kgenomes_samples.txt process_sample_ids.txt 
-grep -f process_sample_ids.txt 1kgenomes_samples.txt 
-split -l 20 process_sample_ids.txt process_sample_split_
-for i in $(ls process_sample_split_* );do echo $i;
-    time parallel -j 4 'export workdir=${PWD}; export tools_dir=~/tools;
-    export PATH=${tools_dir}:$PATH ; \
-    export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
-    export bigfoot_source=~/pi_kleinstein/bigfoot/; \
-    export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
-    export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
-    export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
-    export i={}; \
-    . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam*}_bigfootprint.txt' :::: <(cat ${i});
-done
-</code>
-
 <i>Assess completed samples - make a list of remaining files to process <br>
 <code>grep "All cleaned up!" *_bigfootprint.txt | sed s/":All cleaned up!"//g | sed s/"_bigfootprint.txt"//g > completed_runs.txt
 grep -v -f completed_runs.txt run_pipeline_sample_ids.txt > run_pipeline_sample_ids_remaining.txt
 </code>
 
-#### Download bam/cram, extract reads, and align in parallel! <br>
-
-<code>cd /media/dduchen/Data/1kgenomes
-wget https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/1000G_2504_high_coverage.sequence.index
-time parallel -j 2 'export workdir=${PWD}; export tools_dir=~/tools;
-    export PATH=${tools_dir}:$PATH ; \
-    export bigfoot_dir=/home/dduchen/Documents/github/BIgFOOT/scripts;
-    export bigfoot_source=/home/dduchen/Documents/bigfoot/;
-    export ref=~/tools/refs/grch38_full_wHLA/GRCh38_full_analysis_set_plus_decoy_hla.fa;
-    export immunovar_bed=${bigfoot_dir}/../custom_beds/grch38_custom_immunovar_coords.bed;
-    export i={}; \
-    . ${bigfoot_dir}/download_bam_cram_parse.sh' :::: <(cut -f1 1000G_2504_high_coverage.sequence.index | grep -v "^#");
-
-end with *.combined.gam file for analysis
-
-</code>
 <i>To do: <br>
 1) Explain default parameters (graph/valid alleles/pe...) <br>
 2) Global/local ancestry inference

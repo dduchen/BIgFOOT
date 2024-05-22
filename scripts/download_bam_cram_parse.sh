@@ -13,7 +13,7 @@ else
 fi
 
 if [ -s ${input_aln%.${aln_linear}}*combined.gam ]; then
-    echo "Pipeline completed for ${input_aln}"
+    echo "Pre-processing completed for ${input_aln}"
 else
     if [ -s ${input_aln%.${aln_linear}}.unmapped.fastq.gz ]; then
         echo "${i##*/} has been processed already - using it"
@@ -37,8 +37,8 @@ else
     fi
 #    cat ${input_aln%.${aln_linear}}.bazam.TTN.fastq.gz ${input_aln%.${aln_linear}}.bazam.FCGR.fastq.gz ${input_aln%.${aln_linear}}.bazam.fastq.gz > ${input_aln%.${aln_linear}}.mapped.fastq.gz
     cat ${input_aln%.${aln_linear}}.bazam.fastq.gz > ${input_aln%.${aln_linear}}.mapped.fastq.gz
-    time vg giraffe -i -f ${input_aln%.${aln_linear}}.mapped.fastq.gz -x ${graphdir}${graph_base}.xg -H ${graphdir}${graph_base}.gbwt -d ${graphdir}${graph_base}.dist -m ${graphdir}${graph_base}.min -p > ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam
-    time vg giraffe -f ${input_aln%.${aln_linear}}.unmapped.fastq.gz -x ${graphdir}${graph_base}.xg -H ${graphdir}${graph_base}.gbwt -d ${graphdir}${graph_base}.dist -m ${graphdir}${graph_base}.min -p > ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam
+    time vg giraffe -i -f ${input_aln%.${aln_linear}}.mapped.fastq.gz -x ${graphdir}/${graph_base}.xg -H ${graphdir}/${graph_base}.gbwt -d ${graphdir}/${graph_base}.dist -m ${graphdir}/${graph_base}.min -p > ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam
+    time vg giraffe -f ${input_aln%.${aln_linear}}.unmapped.fastq.gz -x ${graphdir}/${graph_base}.xg -H ${graphdir}/${graph_base}.gbwt -d ${graphdir}/${graph_base}.dist -m ${graphdir}/${graph_base}.min -p > ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam
     cat ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam > ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
     echo "${input_aln%.${aln_linear}} ready for bigfoot inference"
     if [ -s ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam ]; then
@@ -48,4 +48,21 @@ else
         rm ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam
         rm ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam
     fi
+fi
+if [ -s ${input_aln%%\.*}*genotyping/*results_cleaned.txt ]; then
+    echo "BIgFOOT Pipeline completed for ${input_aln}"
+else
+    echo "Progressing into BIgFOOT inference pipeline"
+    export workdir=${PWD}; 
+    export PATH=${tools_dir}:$PATH ;
+    export bigfoot_dir=${bigfoot_dir};
+    export bigfoot_source=${bigfoot_source};
+    export graphdir=${bigfoot_source}; 
+    export graph="wg_immunovar";
+    export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar;
+    export immune_graph=${graph_base}".subgraph"; 
+    export valid_alleles=true;
+    #
+    export i=${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
+    . ${bigfoot_dir}/filter_immune_subgraph.sh
 fi
