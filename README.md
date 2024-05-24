@@ -92,8 +92,13 @@ Sequence-to-graph alignment using VG-giraffe<br>
 - <code>vg giraffe -i -f ${bazam_reads} -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.bazam.grch38.wg.gam</code><br>
 - <code>vg giraffe -f ${sample_id}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.unmapped.grch38.wg.gam<br>
 cat ${sample_id}.bazam.grch38.wg.gam ${sample_id}.unmapped.grch38.wg.gam > ${sample_id}.bazam.grch38.combined.gam</code><br>
-Ready for BIgFOOT
+Ready for BIgFOOT<br>
 <code>- export i=${sample_id}.bazam.grch38.combined.gam workdir=${PWD} graph=${graph} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} valid_alleles=true<br>
 ################################################################
 . ${bigfoot_dir}/filter_immune_subgraph.sh
 ################################################################</code><br>
+
+
+This is still very much a work in progress - many parameters/options exist but have not been fully documented here - for example, to limit inference to the IGenotyper set of alleles, you can set valid_alleles=igenotyper and there are options to skip allelic inference altogether if you're only interested in the reads/unitigs obtained from the immunovariation subgraph.
+
+Please reach out if you feel this tool might be useful in your work - or if you'd like some added functionality - open an issue or email [Dr. Dylan Duchen](mailto:dylan.duchen@yale.edu?subject=[GitHub]%20BIgFOOT:)
