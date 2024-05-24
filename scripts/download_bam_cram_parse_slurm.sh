@@ -1,11 +1,8 @@
 #!/bin/bash
-
-#
-# for slurm-based batch job
 #SBATCH --ntasks=1
-#SBATCH --job-name=prep_bigfoot
-#SBATCH --time=8:00:00
-#SBATCH --mem=36GB
+#SBATCH --job-name=BamBIgFOOT
+#SBATCH --time=24:00:00
+#SBATCH --mem=70GB
 #SBATCH --mail-user=dylan.duchen@yale.edu
 #SBATCH --mail-type=FAIL
 #SBATCH --partition=pi_kleinstein

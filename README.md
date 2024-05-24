@@ -40,10 +40,9 @@ Ensure you have an active gurobi licence:<br>
 
 ### Download BIgFOOT graph materials from zenodo <a href="https://doi.org/10.5281/zenodo.10869771"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.10869771.svg" alt="DOI"></a><br>
 
-<code>bigfoot_source=~/pi_kleinstein/bigfoot</code> # where are we storing all of the reference graph files? <br>
-<code>bigfoot_source=${tools_dir}/bigfoot</code><br>
+<code>bigfoot_source=${tools_dir}/bigfoot # where are we storing all of the reference graph files?</code><br>
 <code>mkdir -p ${bigfoot_source} </code><br>
-<code>wget -P ${bigfoot_source} "https://zenodo.org/records/10869771/files/immunovar_graph_materials.tar.gz?download=1" </code><br>
+<code>wget -P ${bigfoot_source} "https://zenodo.org/records/10869771/files/immunovar_graph_materials.tar.gz?download=1"</code><br>
 <code>cd ${bigfoot_source} ; tar -xvf ${bigfoot_source}/immunovar_graph_materials.tar.gz* --keep-newer-files</code><br>
 Make distance indexes read only<br>
 <code>chmod 0444 *.dist</code><br>
@@ -68,7 +67,7 @@ test_dir=${bigfoot_source}/example/ ; mkdir -p ${test_dir}; cd ${test_dir}<br></
 <i>Illumina chemistry: V2, Array: Agilent Sure Select Whole exome capture 50 Mb</i><br>
 - <code>#fastq-dl -a SRR507323 -o ${test_dir}/<br>
 wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR507/SRR507323/SRR507323_1.fastq.gz<br>
-wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR507/SRR507323/SRR507323_2.fastq.gz
+wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR507/SRR507323/SRR507323_2.fastq.gz<br>
 - export sample="SRR507323" workdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged="FALSE" graph="wg_immunovar" valid_alleles=true<br>
 ################################################################
 . ${bigfoot_dir}/preprocess_wg_immunovar_alignment.sh<br>
@@ -78,143 +77,23 @@ wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR507/SRR507323/SRR5073
 - <code>wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989410/NA19240.final.cram<br>
 wget -P ${test_dir}/ ftp://ftp.sra.ebi.ac.uk/vol1/run/ERR398/ERR3989410/NA19240.final.cram
 tools_dir=${tools_dir}
-PATH=${tools_dir}:$PATH
+PATH=${tools_dir}:$PATH<br>
 - export bam_file="NA19240.final.cram" workdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} ref_build="grch38" ref="${bigfoot_source}/GRCh38_full_analysis_set_plus_decoy_hla.fa" merged="FALSE" graph="wg_immunovar" valid_alleles=true<br>
 ################################################################
 . ${bigfoot_dir}/process_from_bam_wg_immunovar_alignment.sh
 ################################################################</code><br>
 <i>Support for CHM13-based BAM/CRAM is planned</i>
 
-##### Starting from subset of reads<br>
+##### Starting from subset of reads, some manual pre-processing<br>
 - <code>graphdir=${bigfoot_source};graph="wg_immunovar";graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar;immune_graph=${graph_base}".subgraph";<br>
 bazam_reads=${i};
-sample_id=${bazam_reads%.bazam.fastq.gz};sample_id=${sample_id##*\/};
-vg giraffe -i -f ${bazam_reads} -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.bazam.grch38.wg.gam
-vg giraffe -f ${sample_id}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.unmapped.grch38.wg.gam
-cat ${sample_id}.bazam.grch38.wg.gam ${sample_id}.unmapped.grch38.wg.gam > ${sample_id}.bazam.grch38.combined.gam
-echo "${sample_id} ready for VG Flow filtering-->inference"
-- export i=${sample_id}.bazam.grch38.combined.gam workdir=${PWD} graph=${graph} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} valid_alleles=true<br>
+sample_id=${bazam_reads%.bazam.fastq.gz};sample_id=${sample_id##*\/};</code><br>
+Sequence-to-graph alignment using VG-giraffe<br>
+- <code>vg giraffe -i -f ${bazam_reads} -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.bazam.grch38.wg.gam</code><br>
+- <code>vg giraffe -f ${sample_id}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.unmapped.grch38.wg.gam<br>
+cat ${sample_id}.bazam.grch38.wg.gam ${sample_id}.unmapped.grch38.wg.gam > ${sample_id}.bazam.grch38.combined.gam</code><br>
+Ready for BIgFOOT
+<code>- export i=${sample_id}.bazam.grch38.combined.gam workdir=${PWD} graph=${graph} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} valid_alleles=true<br>
 ################################################################
 . ${bigfoot_dir}/filter_immune_subgraph.sh
 ################################################################</code><br>
-
-##### Parallel processing using GNU parallel
-<code>conda activate bigfoot <br>
-ls *bazam.fastq.gz > process_sample_ids.txt <br>
-export workdir=${PWD}; export bigfoot_dir=${bigfoot_dir}; \ <br>
-export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \ <br>
-export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \ <br>
-export immune_graph=${graph_base}".subgraph"; export valid_alleles=true; <br>
-for i in $(cat process_sample_ids.txt);do echo ${i}; <br>
-    cd ${workdir}; <br>
-    sample_id=${i%.bazam.fastq.gz};sample_id=${sample_id##*\/}; <br>
-    cat ${sample_id}.bazam*fastq.gz > ${sample_id}.mapped.fastq.gz; <br>
-    bazam_reads=${sample_id}.mapped.fastq.gz; <br>
-    sample_id=${bazam_reads%.mapped.fastq.gz};sample_id=${sample_id##*\/}; <br>
-    if [ -s ${sample_id}.bazam.grch38.wg.gam ]; then <br>
-        echo "Alignment of linearly mapped reads completed"; <br>
-    else <br>
-        vg giraffe -i -f ${bazam_reads} -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.bazam.grch38.wg.gam <br>
-    fi <br>
-    if [ -s ${sample_id}.unmapped.grch38.wg.gam ]; then <br>
-        echo "Alignment of unmapped reads completed"; <br>
-    else <br>
-        vg giraffe -f ${sample_id}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${sample_id}.unmapped.grch38.wg.gam <br>
-    fi <br>
-    if [ -s ${sample_id}.bazam.grch38.combined.gam ]; then <br>
-        echo "Graph alignment of unmapped reads completed"; <br>
-    else <br>
-        cat ${sample_id}.bazam.grch38.wg.gam ${sample_id}.unmapped.grch38.wg.gam > ${sample_id}.bazam.grch38.combined.gam <br>
-    fi <br>
-    echo "${sample_id} ready for VG Flow filtering-->inference" <br>
-    i=${sample_id}.bazam.grch38.combined.gam; <br>
-    . ${bigfoot_dir}/filter_immune_subgraph.sh <br>
-done <br></code>
-
-##### Process 1kGenomes individuals<br>
-
-<code>ls *bazam.grch38.combined.gam > run_pipeline_sample_ids.txt
-grep -f igh_samples.txt run_pipeline_sample_ids.txt > run_pipeline_sample_ids_igh.txt
-grep -f igh_samples.txt -v run_pipeline_sample_ids.txt > run_pipeline_sample_ids_other.txt
-
-parallel -j 8 'export workdir=${PWD}; export tools_dir=~/tools;
-export PATH=${tools_dir}:$PATH ; \
-export bigfoot_dir=${bigfoot_dir}; \
-export bigfoot_source=${bigfoot_source}; \
-export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
-export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
-export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
-export i={}; \
-time . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam.*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids_other.txt);
-time . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam.*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids_igh.txt);
-time . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam.*}_bigfootprint.txt' :::: <(cat run_pipeline_sample_ids_other.txt);
-
-#bigfoot_dir=~/tools/BIgFOOT/scripts/
-bigfoot_dir=~/Documents/github/BIgFOOT/scripts/
-#bigfoot_source=~/pi_kleinstein/bigfoot/
-bigfoot_source=/home/dduchen/Documents/bigfoot/
-
-split -l 20 run_pipeline_sample_ids_other.txt process_sample_split_
-for i in $(ls process_sample_split_* );do echo $i;
-    time parallel -j 4 'export workdir=${PWD}; export tools_dir=~/tools;
-    export PATH=${tools_dir}:$PATH ; \
-    export bigfoot_dir=${bigfoot_dir}; \
-    export bigfoot_source=${bigfoot_source}; \
-    export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
-    export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
-    export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
-    export i={}; \
-    . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam.*}_bigfootprint.txt' :::: <(cat ${i});
-done
-</code>
-
-#### Process samples in chunked parallel threads<br>
-
-<code>ls *.final.bazam.grch38.combined.gam | sort | uniq > process_sample_ids.txt
-grep -f 1kgenomes_samples.txt process_sample_ids.txt 
-grep -f process_sample_ids.txt 1kgenomes_samples.txt 
-split -l 20 process_sample_ids.txt process_sample_split_
-for i in $(ls process_sample_split_* );do echo $i;
-    time parallel -j 4 'export workdir=${PWD}; export tools_dir=~/tools;
-    export PATH=${tools_dir}:$PATH ; \
-    export bigfoot_dir=~/tools/BIgFOOT/scripts/; \
-    export bigfoot_source=~/pi_kleinstein/bigfoot/; \
-    export graphdir=${bigfoot_source}; export graph="wg_immunovar"; \
-    export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar; \
-    export immune_graph=${graph_base}".subgraph"; export valid_alleles=true;
-    export i={}; \
-    . ${bigfoot_dir}/filter_immune_subgraph.sh > ${i%.final.bazam*}_bigfootprint.txt' :::: <(cat ${i});
-done
-</code>
-
-<i>Assess completed samples - make a list of remaining files to process <br>
-<code>grep "All cleaned up!" *_bigfootprint.txt | sed s/":All cleaned up!"//g | sed s/"_bigfootprint.txt"//g > completed_runs.txt
-grep -v -f completed_runs.txt run_pipeline_sample_ids.txt > run_pipeline_sample_ids_remaining.txt
-</code>
-
-#### Download bam/cram, extract reads, and align in parallel! <br>
-
-<code>cd /media/dduchen/Data/1kgenomes
-wget https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000G_2504_high_coverage/1000G_2504_high_coverage.sequence.index
-time parallel -j 2 'export workdir=${PWD}; export tools_dir=~/tools;
-    export PATH=${tools_dir}:$PATH ; \
-    export bigfoot_dir=/home/dduchen/Documents/github/BIgFOOT/scripts;
-    export bigfoot_source=/home/dduchen/Documents/bigfoot/;
-    export ref=~/tools/refs/grch38_full_wHLA/GRCh38_full_analysis_set_plus_decoy_hla.fa;
-    export immunovar_bed=${bigfoot_dir}/../custom_beds/grch38_custom_immunovar_coords.bed;
-    export i={}; \
-    . ${bigfoot_dir}/download_bam_cram_parse.sh' :::: <(cut -f1 1000G_2504_high_coverage.sequence.index | grep -v "^#");
-
-end with *.combined.gam file for analysis
-
-</code>
-<i>To do: <br>
-1) Explain default parameters (graph/valid alleles/pe...) <br>
-2) Global/local ancestry inference
--- whole genome gam > immunovariation ...sub.gfa > gene graphs<br>
-3) Association testing
-- Haplotype/allele level association testing script
--- regression analyses in R
-- Unitig-caller vs. reference-backbone VCF for association testing - script
--- ls *.sub.gfa > 1kGenomes_immunovar_sub.txt
--- unitig-caller --call --kmer 15 --refs 1kGenomes_immunovar_sub.txt --out 1kGenomes_immunovar_subgraph --write-graph
