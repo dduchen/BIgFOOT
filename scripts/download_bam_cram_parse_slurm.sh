@@ -23,7 +23,7 @@ PATH=${tools_dir}:$PATH
 input_aln=${i##*/};echo $input_aln
 aln_linear=$(echo ${input_aln} | sed s/.*\\.//g)
 
-if [ -s ${bigfoot_dir}/../custom_beds/custom_bed.bed]; then
+if [ -s ${bigfoot_dir}/../custom_beds/custom_bed.bed ]; then
     echo "Custom bed exists";
 else
     echo -e "chr2\t179424038\t179441143" | cat ${immunovar_bed} ${bigfoot_dir}/../custom_beds/grch38_FCGR_loci.bed - | bedtools sort -i - | bedtools merge -i - -d 100 > ${bigfoot_dir}/../custom_beds/custom_bed.bed
