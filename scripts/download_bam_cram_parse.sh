@@ -5,7 +5,7 @@
 #SBATCH --ntasks=1
 #SBATCH --job-name=prep_bigfoot
 #SBATCH --time=8:00:00
-#SBATCH --mem=36GB
+#SBATCH --mem=65GB
 #SBATCH --mail-user=dylan.duchen@yale.edu
 #SBATCH --mail-type=FAIL
 #SBATCH --partition=pi_kleinstein

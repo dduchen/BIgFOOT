@@ -31,6 +31,7 @@ else
         if test -f "${input_aln}"; then
             echo "downloaded cram already - using it"
         else
+            echo "Downloading ${i}"
             wget -c ${i};
         fi
         input_aln=${i##*/}
