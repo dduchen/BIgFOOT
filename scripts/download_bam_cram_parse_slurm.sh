@@ -18,6 +18,8 @@ source ${HOME}/.bashrc;
 eval "$curenv"
 conda activate ${bf_env_load};
 
+PATH=${tools_dir}:$PATH
+
 input_aln=${i##*/};echo $input_aln
 aln_linear=$(echo ${input_aln} | sed s/.*\\.//g)
 
