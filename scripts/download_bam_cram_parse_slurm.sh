@@ -83,4 +83,5 @@ else
     #
     export i=${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
     . ${bigfoot_dir}/filter_immune_subgraph.sh
+    rm ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
 fi
