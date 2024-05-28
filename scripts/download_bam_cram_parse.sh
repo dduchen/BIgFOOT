@@ -34,7 +34,7 @@ else
         if test -f "${input_aln}"; then
             echo "downloaded cram already - using it"
         else
-            wget -c ${i};
+            wget -c -nv ${i};
         fi
         input_aln=${i##*/}
         aln_linear=$(echo ${input_aln} | sed s/.*\\.//g)
