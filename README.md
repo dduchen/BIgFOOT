@@ -101,4 +101,4 @@ Ready for BIgFOOT<br>
 
 This is still very much a work in progress - many parameters/options exist but have not been fully documented here - for example, to limit inference to the IGenotyper set of alleles, you can set valid_alleles=igenotyper and there are options to skip allelic inference altogether if you're only interested in the reads/unitigs obtained from the immunovariation subgraph.
 
-Please reach out if you feel this tool might be useful in your work - or if you'd like some added functionality - open an issue or email [Dr. Dylan Duchen](mailto:dylan.duchen@yale.edu?subject=[GitHub]%20BIgFOOT:)
+Please reach out if you feel this tool might be useful in your work - or if you'd like some added functionality - open an issue or [email](mailto:dylan.duchen@yale.edu?subject=[GitHub]%20BIgFOOT:)

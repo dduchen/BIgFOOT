@@ -13,8 +13,9 @@ export graphdir=${bigfoot_source}
 export graph_base=whole_genome_ig_hla_kir_immunovar
 
 bf_env_load=$(conda info --envs | grep "bigfoot" | awk '{print $NF}')
-
+curenv=$(declare -p -x)
 source ${HOME}/.bashrc;
+eval "$curenv"
 conda activate ${bf_env_load};
 
 input_aln=${i##*/};echo $input_aln
