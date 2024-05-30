@@ -1,5 +1,6 @@
 #!/bin/bash
 #SBATCH --ntasks=1
+#SBATCH --array=1-10
 #SBATCH --job-name=BamBIgFOOT
 #SBATCH --time=24:00:00
 #SBATCH --mem=70GB
@@ -22,6 +23,8 @@ PATH=${tools_dir}:$PATH
 
 input_aln=${i##*/};echo $input_aln
 aln_linear=$(echo ${input_aln} | sed s/.*\\.//g)
+
+echo "This is array task ${SLURM_ARRAY_TASK_ID} corresponding to: ${input_aln%.${aln_linear}}." >> output.txt
 
 if [ -s ${bigfoot_dir}/../custom_beds/custom_bed.bed ]; then
     echo "Custom bed exists";
@@ -67,21 +70,26 @@ else
         rm ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam
     fi
 fi
-if [ -s ${input_aln%%\.*}*genotyping/*results_cleaned.txt ]; then
-    echo "BIgFOOT Pipeline completed for ${input_aln}"
+if [ "${prep_only}" = true ]; then
+    echo "Downloading and prepping GAMs for ${input_aln%.${aln_linear}}, to proceed with BIgFOOT inference pipeline, set prep_only=false in sbatch command";
 else
-    echo "Progressing into BIgFOOT inference pipeline"
-    export workdir=${PWD}; 
-    export PATH=${tools_dir}:$PATH ;
-    export bigfoot_dir=${bigfoot_dir};
-    export bigfoot_source=${bigfoot_source};
-    export graphdir=${bigfoot_source}; 
-    export graph="wg_immunovar";
-    export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar;
-    export immune_graph=${graph_base}".subgraph"; 
-    export valid_alleles=true;
-    #
-    export i=${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
-    . ${bigfoot_dir}/filter_immune_subgraph.sh
-    rm ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
+    echo "Progressing into BIgFOOT inference pipeline for ${input_aln%.${aln_linear}}";
+    if [ -s ${input_aln%%\.*}*genotyping/*results_cleaned.txt ]; then
+        echo "BIgFOOT Pipeline completed for ${input_aln}"
+    else
+        echo "Progressing into BIgFOOT inference pipeline"
+        export workdir=${PWD}; 
+        export PATH=${tools_dir}:$PATH ;
+        export bigfoot_dir=${bigfoot_dir};
+        export bigfoot_source=${bigfoot_source};
+        export graphdir=${bigfoot_source}; 
+        export graph="wg_immunovar";
+        export graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar;
+        export immune_graph=${graph_base}".subgraph"; 
+        export valid_alleles=true;
+        #
+        export i=${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
+        . ${bigfoot_dir}/filter_immune_subgraph.sh
+        rm ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
+    fi
 fi
