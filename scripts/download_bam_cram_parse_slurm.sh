@@ -1,6 +1,5 @@
 #!/bin/bash
 #SBATCH --ntasks=1
-#SBATCH --array=1-10
 #SBATCH --job-name=BamBIgFOOT
 #SBATCH --time=24:00:00
 #SBATCH --mem=70GB
@@ -21,10 +20,16 @@ conda activate ${bf_env_load};
 
 PATH=${tools_dir}:$PATH
 
-input_aln=${i##*/};echo $input_aln
-aln_linear=$(echo ${input_aln} | sed s/.*\\.//g)
-
-echo "This is array task ${SLURM_ARRAY_TASK_ID} corresponding to: ${input_aln%.${aln_linear}}." >> output.txt
+if [ "${slurm_array}" = true ]; then
+    process_these=${process_these}
+    i=$(echo "${process_these[@]}" | head -${SLURM_ARRAY_TASK_ID} | tail -1)
+    input_aln=${i##*/};echo $input_aln
+    aln_linear=$(echo ${input_aln} | sed s/.*\\.//g)
+    echo "This is array task ${SLURM_ARRAY_TASK_ID} corresponding to: ${input_aln%.${aln_linear}}." >> output.txt
+else
+    input_aln=${i##*/};echo $input_aln
+    aln_linear=$(echo ${input_aln} | sed s/.*\\.//g)
+fi
 
 if [ -s ${bigfoot_dir}/../custom_beds/custom_bed.bed ]; then
     echo "Custom bed exists";
