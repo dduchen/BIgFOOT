@@ -21,7 +21,7 @@ conda activate ${bf_env_load};
 PATH=${tools_dir}:$PATH
 
 if [ "${slurm_array}" = true ]; then
-    process_these=${process_these}
+    process_these="${process_these}"
     i=$(echo "${process_these[@]}" | head -${SLURM_ARRAY_TASK_ID} | tail -1)
     input_aln=${i##*/};echo $input_aln
     aln_linear=$(echo ${input_aln} | sed s/.*\\.//g)
