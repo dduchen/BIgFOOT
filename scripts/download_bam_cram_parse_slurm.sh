@@ -37,7 +37,9 @@ else
     echo -e "chr2\t179424038\t179441143" | cat ${immunovar_bed} ${bigfoot_dir}/../custom_beds/grch38_FCGR_loci.bed - | bedtools sort -i - | bedtools merge -i - -d 100 > ${bigfoot_dir}/../custom_beds/custom_bed.bed
 fi
 
-if [ -s ${input_aln%.${aln_linear}}*combined.gam ]; then
+if [ -s ${input_aln%.${aln_linear}}*combined.sorted.gam ]; then
+    echo "Pre-processing + sorting completed for ${input_aln}"
+elif [ -s ${input_aln%.${aln_linear}}*combined.gam ]; then
     echo "Pre-processing completed for ${input_aln}"
 else
     if [ -s ${input_aln%.${aln_linear}}.unmapped.fastq.gz ]; then
@@ -93,7 +95,12 @@ else
         export immune_graph=${graph_base}".subgraph"; 
         export valid_alleles=true;
         #
-        export i=${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
+        if [ -s ${input_aln%.${aln_linear}}.bazam.grch38.combined.sorted.gam ]; then
+            echo "Looks like we're re-running BIgFOOT - using ${input_aln%.${aln_linear}}.bazam.grch38.combined.sorted.gam"
+            export i=${input_aln%.${aln_linear}}.bazam.grch38.combined.sorted.gam
+        else 
+            export i=${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
+        fi
         . ${bigfoot_dir}/filter_immune_subgraph.sh
         rm ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
     fi
