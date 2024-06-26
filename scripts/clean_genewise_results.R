@@ -1,4 +1,4 @@
-library(data.table)
+suppressMessages(suppressWarnings(library(data.table)))
 currdir=getwd()
 subdir=list.files(pattern="familywise_")
 sample_id=gsub("^.*/","",currdir);

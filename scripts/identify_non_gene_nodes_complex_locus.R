@@ -1,7 +1,8 @@
 #!/usr/bin/env Rscript
 workingdir=getwd()
 # -- use this to find nodes not shared with alleles we care about  -- then vg find to extract reads that preferentially map to those non-target alleles and remove them from consideration
-library(data.table);library(stringr)
+suppressMessages(suppressWarnings(library(data.table)))
+suppressMessages(suppressWarnings(library(stringr)))
 args<-commandArgs(TRUE)
 graph_paths_file=args[1]
 #graph_paths_file="/home/dduchen/Documents/bigfoot/1kgenomes/HG00438_wg_immunovar_genotyping/familywise_pe_haplotype_inference/HG00438.wg_immunovar.IGHV4-4.haplotypes.pathnodes"

@@ -20,7 +20,7 @@ if [ -s ${sample}_qc_1.fastq.gz ]; then
     echo "QC'd ${sample} fastq files exist, skipping fastp QC"
 else
     echo "Performing QC via fastp - no base correction but minimal read length=36bp"
-    fastp -i ${sample}_1.fastq.gz -I ${sample}_2.fastq.gz -o ${sample}_qc_1.fastq.gz -O ${sample}_qc_2.fastq.gz --detect_adapter_for_pe -w 12 --length_required 36 -h ${sample}_report_fastp.html -R '${sample} fastp Report';
+    fastp -i ${sample}*_*1.f*q.gz -I ${sample}*_*2.f*q.gz -o ${sample}_qc_1.fastq.gz -O ${sample}_qc_2.fastq.gz --detect_adapter_for_pe -w 12 --length_required 36 -h ${sample}_report_fastp.html -R '${sample} fastp Report';
 fi
 #
 if [[ $graph == "minimal" ]]; then

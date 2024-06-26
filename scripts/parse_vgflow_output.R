@@ -6,11 +6,12 @@ if (!require("BiocManager", quietly = TRUE))
     install.packages("BiocManager")
 list.of.packages <- c("DECIPHER", "data.table","dplyr","Biostrings")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
-if(length(new.packages)) BiocManager::install(new.packages)
+if(length(new.packages)) suppressMessages(suppressWarnings(suppressPackageStartupMessages(BiocManager::install(new.packages))))
 #
-suppressPackageStartupMessages(library(DECIPHER))
-suppressPackageStartupMessages(library(data.table))
-suppressPackageStartupMessages(library(dplyr))
+suppressMessages(suppressWarnings(suppressPackageStartupMessages(library(DECIPHER))))
+suppressMessages(suppressWarnings(suppressPackageStartupMessages(library(data.table))))
+suppressMessages(suppressWarnings(suppressPackageStartupMessages(library(dplyr))))
+
 contig_file=args[1]
 sample<-gsub("\\..*","",contig_file)
 haps_file<-gsub("contigs","haps.final",contig_file)

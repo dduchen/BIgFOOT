@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 workingdir=getwd()
-library(data.table);library(stringr)
+suppressMessages(suppressWarnings(library(data.table)))
+suppressMessages(suppressWarnings(library(stringr)))
 args<-commandArgs(TRUE)
 #arg_1=${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt
 #arg_2=${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes
