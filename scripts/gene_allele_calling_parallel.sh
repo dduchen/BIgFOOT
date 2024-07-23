@@ -557,6 +557,14 @@ else
                             vg convert -fW ${gene}.careful.w_ref_paths.augmented.pg > ${gene}.careful.w_ref_paths.augmented.gfa
                             gfaffix ${gene}.careful.w_ref_paths.augmented.gfa -o ${gene}.careful.w_ref_paths.augmented.gfa.tmp; mv ${gene}.careful.w_ref_paths.augmented.gfa.tmp ${gene}.careful.w_ref_paths.augmented.gfa
                             cp ${gene}.careful.w_ref_paths.augmented.gfa ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.careful.gfa
+                            if [ -s ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.careful.gfa ];then
+                                echo "Using careful augmented graph for association testing"
+                                mv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.careful.gfa ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa
+                            fi
+                            if [ -s ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.careful.fasta ];then
+                                echo "Reporting careful fasta alleles"
+                                mv ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.careful.fasta ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta
+                            fi                            
                             if [ "${de_novo}" = true ]; then
                                 echo "De-novo allele inference... WiP"
                             cd ${outdir}
