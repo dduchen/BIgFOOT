@@ -21,7 +21,8 @@ contigs<-readDNAStringSet(contig_file)
 # remove contig with 0 abundance!
 contigs<-contigs[grep("ab=0.0000",names(contigs),invert=T)]
 # limit to alleles of interest - important if VG-flow used on haps + alleles:
-contigs<-contigs[grep("IMGT|IGv2|OGRDB|HLA|KIR",names(contigs))]
+# second round of inference - path names have ":path" embedded in them
+contigs<-contigs[grep("IMGT|IGv2|OGRDB|HLA|KIR|:path",names(contigs))]
 haps<-readDNAStringSet(haps_file)
 for(i in 1:length(haps)){
     contig_match<-contigs[which(contigs==haps[i])]

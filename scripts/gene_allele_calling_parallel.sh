@@ -28,6 +28,7 @@ elif [[ "$loci" =~ ^(IMGT)$ ]]; then
         asc_cluster=$(cut -f4 ${outdir}/potential_asc_for_${gene} | sed s/'\*.*'//g | sort | uniq)
         if [ $(echo "${asc_cluster[@]}" | wc -l) -gt 1 ]; then
             echo "Complex locus - using ASC-based allele -- ALSO - looks like there are multiple V genes in this cluster";
+            complex_gene=true
             for asc_multi in ${asc_cluster[@]}; do echo $asc_multi;
                 echo "Concatentating nodes across cluster members";
                 cat ${genotyping_nodes_dir}/ig_asc/${asc_multi}.immune_subset.nodes.txt >> ${outdir}/${gene}_asc_nodes.txt
@@ -40,6 +41,7 @@ elif [[ "$loci" =~ ^(IMGT)$ ]]; then
             if [ -s ${outdir}/asc_additional_${gene}_fams.txt ]; then
                 echo "Complex locus - using ASC-based allele";
                 each=ig_asc/${asc_cluster}.immune_subset.nodes.txt
+                complex_gene=true
             else
                 echo "Using core gene+haplotype graph for ${gene}";
             fi
@@ -486,12 +488,94 @@ else
                         augment_cov=3
                     fi
                     echo "Minimum coverage to add breakpoint: ${augment_cov} (3 <--> 10% of strain depth)"
-                #
                     vg augment -m ${augment_cov} -q 5 -Q 60 ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.pg ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.filt.gam -A ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gam > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.vg;
                     vg convert -p ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.vg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pg
                     vg mod -c ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.tmp ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pg
                     vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa
                     gfaffix ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.tmp; mv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.tmp ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa
+                    # Additional inference - cleaning complex genes + allele inference
+                    careful=true
+                    if [ "${careful}" = true ]; then
+                        echo "Careful mode - Additional round of flow-based inference"
+                        if [ $(grep ${gene} ${bigfoot_dir}../custom_beds/complex_genes.txt | wc -l) -gt 0 ];then
+                            echo "Potential overlap with complex gene - additional round of flow-based inference"
+                            complex_gene=true
+                        fi
+                        if [ "${complex_gene}" = true ]; then
+                            mkdir -p ${outdir}/${gene}_careful; cd ${outdir}/${gene}_careful
+                            echo "Complex gene - additional round of flow-based inference"
+                            gene_aug_orig_graph=${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa
+                            vg convert -g ${gene_aug_orig_graph} -p > ${gene}.index.pg
+                            vg index -t 16 -L -x ${gene}.index.xg ${gene}.index.pg;
+                            vg gbwt -x ${gene}.index.xg -o ${gene}.index.gbwt -P --pass-paths
+                            vg prune -u -g ${gene}.index.gbwt -k 31 -m ${gene}.index.node_mapping ${gene}.index.pg > ${gene}.index.pruned.vg
+                            vg index -g ${gene}.index.gcsa -f ${gene}.index.node_mapping ${gene}.index.pruned.vg
+                            vg map -G ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gam -d ${gene}.index -1 ${gene}.index.gbwt > ${gene}.aug.gam 
+                            vg filter -r 0.95 -P -s 1 -x ${gene}.index.xg -D 0 -fu -t 4 ${gene}.aug.gam -v > ${gene}.aug.filt.gam
+                            vg paths -Lx ${gene}.index.pg | grep -v "grch\|chm" > ${gene}.index.alleles
+                            vg paths -r -p ${gene}.index.alleles -x ${gene}.index.pg > ${gene}.index.careful.vg
+                            vg view -a ${gene}.aug.filt.gam > ${gene}.index.careful.aln.json
+                            vg convert -fW ${gene}.index.careful.vg > ${gene}.index.careful.gfa
+                            python3 ${bigfoot_dir}/parse_graph_vgflow.py --sample ${gene}.index.careful -m 0
+                            python3 ${bigfoot_dir}/vg-flow_immunovar.py --ilp --max_strains $(wc -l ${gene}.index.alleles | cut -f1 -d' ') --careful --optimization_approach ${opt} --min_depth 0 --trim 0 -m 0 -c 0.1 --remove_included_paths 0 ${gene}.index.careful.node_abundance.txt ${gene}.index.careful.final.gfa
+                            mv trimmed_contigs.fasta ${gene}.index.careful.contigs.fasta; mv haps.final.fasta ${gene}.index.careful.haps.final.fasta ; mv genome_graph.gfa ${gene}.index.careful.genome_graph.gfa
+                            Rscript ${bigfoot_dir}/parse_vgflow_output.R ${outdir}/${gene}_careful/${gene}.index.careful.contigs.fasta
+                            echo "Careful allele-level abundance estimation completed for ${gene} ::"
+                            echo "Saving previous sample-specific allele fasta file"
+                            sed s/:path.*:path/:path/g ${gene}.index.careful.haps.final.annot.fasta > ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.careful.fasta
+# add reference paths from original augmented graph - reconstruct augmented graph
+                            echo "Reconstructing augmented graph using cleaned set of alleles"
+                            vg paths -Fx ${gene_aug_orig_graph} | seqkit grep -r -p "chm|grch" > ${gene}.index.ref_paths.fasta
+                            cat ${gene}.index.ref_paths.fasta ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.careful.fasta | sed s/' '/_/g > ${gene}.careful.w_ref_paths.fasta                            
+                            minimap2 -x asm20 -t 16 -c -X ${gene}.careful.w_ref_paths.fasta ${gene}.careful.w_ref_paths.fasta > ${gene}.careful.w_ref_paths.paf
+                            seqwish -s ${gene}.careful.w_ref_paths.fasta -p ${gene}.careful.w_ref_paths.paf -g ${gene}.careful.w_ref_paths.gfa -b ${outdir}/seqwish_${sample_id}.${graph}
+                            gfaffix ${gene}.careful.w_ref_paths.gfa -o ${gene}.careful.w_ref_paths.tmp; mv ${gene}.careful.w_ref_paths.tmp ${gene}.careful.w_ref_paths.gfa
+                            vg mod -n -U 10 -c ${gene}.careful.w_ref_paths.gfa -X 256 > ${gene}.careful.w_ref_paths.vg
+                            vg convert -p ${gene}.careful.w_ref_paths.vg > ${gene}.careful.w_ref_paths.pg
+                            vg convert -fW ${gene}.careful.w_ref_paths.vg > ${gene}.careful.w_ref_paths.gfa
+                            gfaffix ${gene}.careful.w_ref_paths.gfa -o ${gene}.careful.w_ref_paths.gfa.tmp; mv ${gene}.careful.w_ref_paths.gfa.tmp ${gene}.careful.w_ref_paths.gfa
+                            vg index -t 16 -L -x ${gene}.careful.w_ref_paths.xg ${gene}.careful.w_ref_paths.pg;
+                            vg gbwt -x ${gene}.careful.w_ref_paths.xg -o ${gene}.careful.w_ref_paths.gbwt -P --pass-paths
+                            vg gbwt -x ${gene}.careful.w_ref_paths.xg -g ${gene}.careful.w_ref_paths.gbz --gbz-format -P --pass-paths;
+                            vg prune -u -g ${gene}.careful.w_ref_paths.gbwt -k 31 -m ${gene}.careful.w_ref_paths.node_mapping ${gene}.careful.w_ref_paths.pg > ${gene}.careful.w_ref_paths.pruned.vg
+                            vg index -g ${gene}.careful.w_ref_paths.gcsa -f ${gene}.careful.w_ref_paths.node_mapping ${gene}.careful.w_ref_paths.pruned.vg
+                        #   map locus-associated reads to augmented/annotated graph
+                            vg map -N ${sample_id}.${graph}.${gene} -G ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -x ${gene}.careful.w_ref_paths.xg -g ${gene}.careful.w_ref_paths.gcsa -1 ${gene}.careful.w_ref_paths.gbwt -t 4 -M 1 > ${gene}.careful.w_ref_paths.gam
+                            vg filter -r 0.975 -P -s 1 -q 60 -x ${gene}.careful.w_ref_paths.xg -D 0 -fu -t 4 ${gene}.careful.w_ref_paths.gam -v > ${gene}.careful.w_ref_paths.filt.gam
+                            vg depth --gam ${gene}.careful.w_ref_paths.filt.gam ${gene}.careful.w_ref_paths.xg > ${gene}.careful.w_ref_paths.filt.depth;
+                            depth_aug=$(awk -F ' ' '{print $1}' ${gene}.careful.w_ref_paths.filt.depth)
+                            aug_depth=$(bc -l <<< "scale=2;${depth_aug}*0.10"| awk '{printf("%d\n",$1 + 0.5)}')
+                            if [ "${aug_depth}" -gt 3 ]; then
+                                augment_cov=${aug_depth}
+                            else
+                                augment_cov=3
+                            fi
+                            echo "Minimum coverage to add breakpoint: ${augment_cov} (3 <--> 10% of strain depth)"
+                            vg augment -m ${augment_cov} -q 5 -Q 60 ${gene}.careful.w_ref_paths.pg ${gene}.careful.w_ref_paths.filt.gam -A ${gene}.careful.w_ref_paths.augmented.gam > ${gene}.careful.w_ref_paths.augmented.vg;
+                            vg convert -p ${gene}.careful.w_ref_paths.augmented.vg > ${gene}.careful.w_ref_paths.augmented.pg
+                            vg mod -c ${gene}.careful.w_ref_paths.augmented.pg > ${gene}.careful.w_ref_paths.augmented.tmp && mv ${gene}.careful.w_ref_paths.augmented.tmp ${gene}.careful.w_ref_paths.augmented.pg
+                            vg convert -fW ${gene}.careful.w_ref_paths.augmented.pg > ${gene}.careful.w_ref_paths.augmented.gfa
+                            gfaffix ${gene}.careful.w_ref_paths.augmented.gfa -o ${gene}.careful.w_ref_paths.augmented.gfa.tmp; mv ${gene}.careful.w_ref_paths.augmented.gfa.tmp ${gene}.careful.w_ref_paths.augmented.gfa
+                            cp ${gene}.careful.w_ref_paths.augmented.gfa ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.careful.gfa
+                            if [ "${de_novo}" = true ]; then
+                                echo "De-novo allele inference... WiP"
+                            cd ${outdir}
+                            else
+                                echo "No novel allele inference requested - to perform novel allele inference set de_novo=true"
+                                cd ${outdir}
+                            fi
+                            rm -rf ${outdir}/${gene}_careful
+                        else
+                            echo "No complex gene overlap detected - skipping additional round of flow-based inference"
+                        fi
+                    else
+                        echo "No additional round of flow-based inference requested - to perform additional round of flow-based inference set careful=true"
+                        if [ "${de_novo}" = true ]; then
+                            echo "De-novo allele inference... WiP"
+                        else
+                            echo "No novel allele inference requested - to perform novel allele inference set de_novo=true"
+                        fi
+                    fi
                 else
                     echo "Insuffient coverage to infer alleles for $gene - not trying to embed variation"
                 fi
