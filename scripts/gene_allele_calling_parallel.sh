@@ -272,7 +272,7 @@ else
             # extra read filtering for complex genes
             if [ $(echo "${asc_cluster[@]}" | wc -l) -gt 1 ]; then
                 if [ $(vg paths -Lv  ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa | grep -v "${gene}\*" | grep "IMGT\|IGv2\|OGRDB" | wc -l) -gt 0 ]; then
-                    echo "Complex locus detected for ${gene} - with multiple other genes in overlapping ASC clusters - filtering out reads aligning to  non-gene nodes"
+                    echo "Complex locus detected for ${gene} - with multiple other genes in overlapping ASC clusters - filtering out reads aligning to non-gene nodes"
                     sed -n '/^#1:/p;/^P/p' ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes
                     Rscript ${bigfoot_dir}/identify_non_gene_nodes_complex_locus.R ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes
                     vg find -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -c 0 -N ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.vg
@@ -343,7 +343,7 @@ else
                 else
                     wget -P ${bigfoot_source}/igenotyper_alleles https://raw.githubusercontent.com/oscarlr/IGenotyper/master/IGenotyper/data/alleles.fasta
                 fi
-                echo "Retaining path labels onl for alleles matching IGenotyper alleles for ${gene} - sequence based matching";
+                echo "Retaining path labels only for alleles matching IGenotyper alleles for ${gene} - sequence based matching";
                 seqkit grep -n -r -p "${gene}_" ${bigfoot_source}/igenotyper_alleles/alleles.fasta > ${outdir}/${sample_id}.${graph}.${gene}.igeno_alleles.fasta
                 vg paths -Fv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg | seqkit grep -f ${outdir}/${sample_id}.${graph}.${gene}.alleles > ${outdir}/${sample_id}.${graph}.${gene}.igeno_filtering.fasta
                 Rscript ${bigfoot_dir}/igenotyper_allele_matching.R ${outdir}/${sample_id}.${graph}.${gene}.igeno_alleles.fasta
@@ -354,6 +354,29 @@ else
                 grep "${gene}\*" ${outdir}/${sample_id}.${graph}.${gene}.alleles | grep "IMGT" > ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp ${outdir}/${sample_id}.${graph}.${gene}.alleles
             fi
             vg paths -r -p ${outdir}/${sample_id}.${graph}.${gene}.alleles -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg > ${outdir}/${sample_id}.${graph}.${gene}.vg
+            # filter out reads mapping to nodes specific for non-ogrdb alleles?
+#            vg paths -Lv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg | grep -v -w -f <(sed s/\*/'\\*'/g ${outdir}/${sample_id}.${graph}.${gene}.alleles) | grep "^I\|^OG" > ${outdir}/${sample_id}.${graph}.${gene}.additional_filt_alleles
+#            vg paths -Ax ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg -p ${outdir}/${sample_id}.${graph}.${gene}.additional_filt_alleles | cut -f6 | sed s/'>'/' '/g | tr ' ' '\n' | sed "/^ *$/d" | sed "/ /d" | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.additional_filt_alleles_nodes
+#            vg paths -Ax ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg -p ${outdir}/${sample_id}.${graph}.${gene}.alleles | cut -f6 | sed s/'>'/' '/g | tr ' ' '\n' | sed "/^ *$/d" | sed "/ /d" | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.matching_filt_alleles_nodes
+#            comm -13 ${outdir}/${sample_id}.${graph}.${gene}.matching_filt_alleles_nodes ${outdir}/${sample_id}.${graph}.${gene}.additional_filt_alleles_nodes > ${outdir}/${sample_id}.${graph}.${gene}.valid.filteringnodes
+#            vg find -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -c 0 -L -N ${outdir}/${sample_id}.${graph}.${gene}.valid.filteringnodes > ${outdir}/${sample_id}.${graph}.${gene}.valid.filter.vg
+#            vg gamsort ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -i ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.gai -p > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+#            vg find -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -l ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -A ${outdir}/${sample_id}.${graph}.${gene}.valid.filter.vg | vg view -X - | seqkit seq -n - > ${outdir}/${sample_id}.${graph}.${gene}.valid.filter.txt
+#            if [ -s ${outdir}/${sample_id}.${graph}.${gene}.valid.filter.txt ];then
+#                vg view -X ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam | seqkit grep -v -n -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq
+#                vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
+#                vg filter -r 0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+#            fi
+# Require a read mapping to nodes specific to valie alleles?
+#            vg paths -Ax ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg -p ${outdir}/${sample_id}.${graph}.${gene}.alleles | cut -f6 | sed s/'>'/' '/g | tr ' ' '\n' | sed "/^ *$/d" | sed "/ /d" | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.matching_filt_alleles_nodes
+#            vg find -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -c 0 -L -N ${outdir}/${sample_id}.${graph}.${gene}.matching_filt_alleles_nodes > ${outdir}/${sample_id}.${graph}.${gene}.valid.filter.vg
+#            vg gamsort ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -i ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.gai -p > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+#            vg find -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -l ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -A ${outdir}/${sample_id}.${graph}.${gene}.valid.filter.vg | vg view -X - | seqkit seq -n - > ${outdir}/${sample_id}.${graph}.${gene}.valid.filter.txt
+#            if [ -s ${outdir}/${sample_id}.${graph}.${gene}.valid.filter.txt ];then
+#                vg view -X ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam | seqkit grep -n -f ${outdir}/${sample_id}.${graph}.${gene}.valid.filter.txt - > ${outdir}/${sample_id}.${graph}.${gene}.valid.filter.fastq
+#                vg map -f ${outdir}/${sample_id}.${graph}.${gene}.valid.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.valid.prefilt.gam
+#                vg filter -r 0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.valid.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+#            fi
             vg view -a ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.aln.json
             vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.vg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa
             # gene-specific read depth for minimum strain-level coverage
@@ -373,7 +396,6 @@ else
                 echo "basing inference on haplotypes + alleles embedded in graph"
                 cd ${outdir}/${gene}_allele_inference
                 python3 ${bigfoot_dir}/vg-flow_immunovar.py --careful --optimization_approach ${opt} --min_depth 0 --trim 0 -m 0 -c ${min_strain_depth} --remove_included_paths 0 ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
-                # python3 ${bigfoot_dir}/vg-flow_immunovar_long_contigs.py --careful --min_depth 0 --trim 0 -m 0 -c ${min_strain_depth} --remove_included_paths 0 ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
                 if [[ "$opt" =~ 1 ]]; then
                     echo "optimization_approach = absolute difference"
                     mv trimmed_contigs.fasta ${outdir}/${sample_id}.${graph}.${gene}.abs.contigs.fasta ; mv haps.final.fasta ${outdir}/${sample_id}.${graph}.${gene}.abs.haps.final.fasta ; 
@@ -540,7 +562,7 @@ else
                             vg prune -u -g ${gene}.careful.w_ref_paths.gbwt -k 31 -m ${gene}.careful.w_ref_paths.node_mapping ${gene}.careful.w_ref_paths.pg > ${gene}.careful.w_ref_paths.pruned.vg
                             vg index -g ${gene}.careful.w_ref_paths.gcsa -f ${gene}.careful.w_ref_paths.node_mapping ${gene}.careful.w_ref_paths.pruned.vg
                         #   map locus-associated reads to augmented/annotated graph
-                            vg map -N ${sample_id}.${graph}.${gene} -G ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -x ${gene}.careful.w_ref_paths.xg -g ${gene}.careful.w_ref_paths.gcsa -1 ${gene}.careful.w_ref_paths.gbwt -t 4 -M 1 > ${gene}.careful.w_ref_paths.gam
+                            vg map -N ${sample_id}.${graph}.${gene} -G ${gene}.aug.filt.gam -x ${gene}.careful.w_ref_paths.xg -g ${gene}.careful.w_ref_paths.gcsa -1 ${gene}.careful.w_ref_paths.gbwt -t 4 -M 1 > ${gene}.careful.w_ref_paths.gam
                             vg filter -r 0.975 -P -s 1 -q 60 -x ${gene}.careful.w_ref_paths.xg -D 0 -fu -t 4 ${gene}.careful.w_ref_paths.gam -v > ${gene}.careful.w_ref_paths.filt.gam
                             vg depth --gam ${gene}.careful.w_ref_paths.filt.gam ${gene}.careful.w_ref_paths.xg > ${gene}.careful.w_ref_paths.filt.depth;
                             depth_aug=$(awk -F ' ' '{print $1}' ${gene}.careful.w_ref_paths.filt.depth)
@@ -564,7 +586,7 @@ else
                             if [ -s ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.careful.fasta ];then
                                 echo "Reporting careful fasta alleles"
                                 mv ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.careful.fasta ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta
-                            fi                            
+                            fi
                             if [ "${de_novo}" = true ]; then
                                 echo "De-novo allele inference... WiP"
                             cd ${outdir}
@@ -580,6 +602,14 @@ else
                         echo "No additional round of flow-based inference requested - to perform additional round of flow-based inference set careful=true"
                         if [ "${de_novo}" = true ]; then
                             echo "De-novo allele inference... WiP"
+                            # map - remove nodes with 0/low coverage - unitigs - stitch together using contiguous abundance...
+                            # at most number of alleles = ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta + number of nodes without a path
+                            vg view -X ${gene}.careful.w_ref_paths.augmented.gam | seqkit fq2fa - > ${gene}.careful.w_ref_paths.augmented.fasta
+                            odgi unitig -i ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa -t 151 > ${gene}.careful.unitigs.fa 
+                            Bifrost build -r ${gene}.careful.unitigs.fa -k 31 -o ${gene}.careful.bifrost
+                            gunzip ${gene}.careful.bifrost*gfa.gz
+                            ~/tools/SPAdes-4.0.0-Linux/bin/pathracer ${gene}.careful.w_ref_paths.augmented.fasta ${gene}.careful.bifrost.gfa --nt --annotate-graph --output ${gene}.careful.pathracer
+
                         else
                             echo "No novel allele inference requested - to perform novel allele inference set de_novo=true"
                         fi
