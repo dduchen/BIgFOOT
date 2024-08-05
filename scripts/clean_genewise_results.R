@@ -2,7 +2,11 @@ suppressMessages(suppressWarnings(library(data.table)))
 currdir=getwd()
 subdir=list.files(pattern="familywise_")
 sample_id=gsub("^.*/","",currdir);
-sample_id=gsub("_.*$","",sample_id)
+if(length(list.files(pattern=paste0(gsub("_.*$","",sample_id),".results_raw.txt")))>0){
+    sample_id=gsub("_.*$","",sample_id)
+} else {
+    sample_id=gsub("_wg_immunovar_genotyping.*$","",sample_id)
+}
 if(as.numeric(grepl("franken",currdir))==1){
     graph="franken"
     } else {
@@ -60,7 +64,7 @@ if(sample_id==colnames(depth)[1]){
     #    dep<-data.frame(depth)[grep(paste0(gene_full,".genotyping"),depth[[1]]),]
         dep<-data.frame(depth)[grep(paste0(gene_full,"$"),depth[[1]]),]
         res2<-cbind(res,dep)
-        # If allele has an estimated frequency >=20% then should include
+        # If allele has an estimated frequency >=10% then should include
         res2$passed<-ifelse(res2$relative_freq>=0.1,TRUE,FALSE)
         # further filtering using relative frequency + locus-specific coverage
         # if coverage is low for the allele = 2*SD below the mean, set to False - or just use hard cutoff of 3
