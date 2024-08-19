@@ -111,9 +111,18 @@ if [ -s ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam ]; then
 else
     echo "Alignment to whole genome immunovariation graph";
     cat $(ls ${input_aln%.${aln_linear}}.*.fastq.gz | grep -v "mapped") > ${input_aln%.${aln_linear}}.mapped.fastq.gz
-    time vg giraffe -i -f ${input_aln%.${aln_linear}}.mapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam
-    time vg giraffe -f ${input_aln%.${aln_linear}}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam
-    cat ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam > ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
+    if [ "${simulated}" = true ]; then
+        time vg giraffe -i -f ${input_aln%.${aln_linear}}.mapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p -A none > ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam
+        time vg filter -UP ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam -v > ${input_aln%.${aln_linear}}.bazam.grch38.wg.unmapped.gam
+        time vg giraffe -G ${input_aln%.${aln_linear}}.bazam.grch38.wg.unmapped.gam -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p -A none > ${input_aln%.${aln_linear}}.bazam.remapped.grch38.wg.gam
+        time vg giraffe -f ${input_aln%.${aln_linear}}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam
+        cat ${input_aln%.${aln_linear}}.bazam.remapped.grch38.wg.gam ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam > ${input_aln%.${aln_linear}}.unmapped.tmp.gam && mv ${input_aln%.${aln_linear}}.unmapped.tmp.gam ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam
+        cat ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam > ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
+    else
+        time vg giraffe -i -f ${input_aln%.${aln_linear}}.mapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam
+        time vg giraffe -f ${input_aln%.${aln_linear}}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam
+        cat ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam > ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
+    fi
     echo "${input_aln%.${aln_linear}} ready for VG Flow filtering-->inference"
 fi
 #######################
