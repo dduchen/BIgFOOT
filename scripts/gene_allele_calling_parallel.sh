@@ -516,7 +516,7 @@ else
                     vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa
                     gfaffix ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.tmp; mv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.tmp ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa
                     # Additional inference - cleaning complex genes + allele inference
-                    careful=true
+                    careful=false
                     if [ "${careful}" = true ]; then
                         echo "Careful mode - Additional round of flow-based inference"
                         if [ $(grep ${gene} ${bigfoot_dir}../custom_beds/complex_genes.txt | wc -l) -gt 0 ];then
