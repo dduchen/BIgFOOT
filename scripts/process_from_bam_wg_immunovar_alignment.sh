@@ -72,7 +72,7 @@ aln_linear=$(echo ${input_aln} | sed s/.*\\.//g)
 sample=${input_aln%.${aln_linear}}
 # check if BAM or CRAM
 if [ -s "${input_aln%.${aln_linear}}.unmapped.fastq.gz" ]; then
-    echo "${i##*/} has been processed already - using it"
+    echo "${input_aln##*/} has been processed already - using it"
 else
     echo "Processing: ${input_aln##*/}"
     if [[ ${bam_file} == *"ftp"* ]]; then
@@ -112,17 +112,16 @@ else
     echo "Alignment to whole genome immunovariation graph";
     cat $(ls ${input_aln%.${aln_linear}}.*.fastq.gz | grep -v "mapped") > ${input_aln%.${aln_linear}}.mapped.fastq.gz
     if [ "${simulated}" = true ]; then
-        time vg giraffe -i -f ${input_aln%.${aln_linear}}.mapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p -A none > ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam
-        time vg filter -UP ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam -v > ${input_aln%.${aln_linear}}.bazam.grch38.wg.unmapped.gam
-        time vg giraffe -G ${input_aln%.${aln_linear}}.bazam.grch38.wg.unmapped.gam -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p -A none > ${input_aln%.${aln_linear}}.bazam.remapped.grch38.wg.gam
-        time vg giraffe -f ${input_aln%.${aln_linear}}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam
-        cat ${input_aln%.${aln_linear}}.bazam.remapped.grch38.wg.gam ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam > ${input_aln%.${aln_linear}}.unmapped.tmp.gam && mv ${input_aln%.${aln_linear}}.unmapped.tmp.gam ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam
-        cat ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam > ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
+        echo "Simulated input - potential issue with fragment-length distribution. Using slightly shorter length to avoid hanging"
+        read_length=$(echo ${bam_file} | sed s/".*Length"//g | sed s/"_.*"//g)
+        new_frag_length=$(bc -l <<< "scale=3;${read_length}*2")
+        frag_sd=30
+        time vg giraffe -i -f ${input_aln%.${aln_linear}}.mapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p --fragment-mean ${new_frag_length} --fragment-stdev ${frag_sd} > ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam
     else
         time vg giraffe -i -f ${input_aln%.${aln_linear}}.mapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam
-        time vg giraffe -f ${input_aln%.${aln_linear}}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam
-        cat ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam > ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
     fi
+    time vg giraffe -f ${input_aln%.${aln_linear}}.unmapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam
+    cat ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam ${input_aln%.${aln_linear}}.unmapped.grch38.wg.gam > ${input_aln%.${aln_linear}}.bazam.grch38.combined.gam
     echo "${input_aln%.${aln_linear}} ready for VG Flow filtering-->inference"
 fi
 #######################
