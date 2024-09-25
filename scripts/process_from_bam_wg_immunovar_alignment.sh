@@ -24,7 +24,7 @@ else
     export PYTHONPATH=$PYTHONPATH:$bigfoot_dir;
 fi
 #
-echo "Processing BAM: ${bam_file}"
+echo "Processing (B/CR)AM: ${bam_file}"
 #
 if [[ $graph == "minimal" ]]; then
     echo "Using minimal SV-graph - Deprecated"
@@ -43,30 +43,32 @@ else
     echo "Define graph"
 fi
 #
-if [[ $ref_build == "grch38" ]]; then
-    ref=${ref};
-    if [ -s $ref ]; then
-        echo "using GRCh38 reference";
-    else 
-        wget -P ${bigfoot_source} ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/GRCh38_reference_genome/GRCh38_full_analysis_set_plus_decoy_hla.fa;
-        ref=${bigfoot_source}/GRCh38_full_analysis_set_plus_decoy_hla.fa
-        samtools faidx ${ref};
+if [[ ${bam_file} == *.cram ]];then
+    echo "Only CRAM files require an indexed reference - making some assumptions here"
+    if [[ $ref_build == "grch38" ]]; then
+        ref=${ref};
+        if [ -s $ref ]; then
+            echo "using GRCh38 reference";
+        else 
+            wget -P ${bigfoot_source} ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/GRCh38_reference_genome/GRCh38_full_analysis_set_plus_decoy_hla.fa;
+            ref=${bigfoot_source}/GRCh38_full_analysis_set_plus_decoy_hla.fa
+            samtools faidx ${ref};
+        fi
+        immunovar_bed="${bigfoot_dir}/../custom_beds/grch38_custom_immunovar_coords.bed";
+    elif [[ $ref_build == "chm13" ]]; then
+        ref="${ref}";
+        immunovar_bed="${bigfoot_dir}/../custom_beds/chm13_custom_immunovar_coords.bed";
+    else
+        echo "Currently BIgFOOT only supports GRCh38-based BAM input. Future release will have CHM13 as an option"
     fi
-    immunovar_bed="${bigfoot_dir}/../custom_beds/grch38_custom_immunovar_coords.bed";
-elif [[ $ref_build == "chm13" ]]; then
-    ref="${ref}";
-    immunovar_bed="${bigfoot_dir}/../custom_beds/chm13_custom_immunovar_coords.bed";
-else
-    echo "Currently BIgFOOT only supports GRCh38-based BAM input. Future release will have CHM13 as an option"
 fi
-
 if [ -s ${bigfoot_dir}/../custom_beds/custom_bed.bed ]; then
     echo "Custom bed exists";
 else
     echo -e "chr2\t179424038\t179441143" | cat ${immunovar_bed} ${bigfoot_dir}/../custom_beds/grch38_FCGR_loci.bed - | bedtools sort -i - | bedtools merge -i - -d 100 > ${bigfoot_dir}/../custom_beds/custom_bed.bed
 fi
 #
-echo "Extracting candidate reads from BAM"
+echo "Extracting candidate reads"
 input_aln=${bam_file##*/};
 aln_linear=$(echo ${input_aln} | sed s/.*\\.//g)
 sample=${input_aln%.${aln_linear}}
