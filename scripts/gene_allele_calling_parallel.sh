@@ -248,7 +248,7 @@ else
             rm ${outdir}/${gene}.alleles.stats
             rm ${outdir}/${gene}.haps.fasta
         fi
-        # parse alignments
+        # parse alignments - probably too permissive currently with ..genotyping.immune_subset.vg for read extraction for complex genes e.g. 3-30
         vg find -x ${graph_base}.xg -l ${gam_file%.gam}.sorted.gam -A ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.vg > ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.gam
         vg view -a ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.gam -X | seqkit seq -n - > ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.gam.txt
         if [[ $(wc -l <${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.gam.txt) -ge 1 ]]; then

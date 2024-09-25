@@ -116,6 +116,7 @@ if [ -s ${sorted_gam} ]; then
     if [[ ${aln_type} == *"pe"* ]]; then
     # perform some depth estimates:
         grep -v "nan" ${sample}.${graph}_TTN.pe.depth > ${sample}.${graph}_TTN.pe.depth.tmp && mv ${sample}.${graph}_TTN.pe.depth.tmp ${sample}.${graph}_TTN.pe.depth
+        rm ${sample}.${graph}_TTN.pe.depth.tmp
         if [ -s ${sample}.${graph}_TTN.pe.depth ]; then
             echo "depth estimates exist - using them"
             depth_immune=$(awk -F ' ' '{print $1}' ${sample}.${graph}_immune.pe.depth)

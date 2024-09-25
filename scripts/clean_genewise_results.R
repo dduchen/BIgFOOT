@@ -84,7 +84,23 @@ if(sample_id==colnames(depth)[1]){
     graph_results$aln_type<-ifelse(grepl("_pe_",subdir)==1,"PE","NGmerge")
     graph_results$augmented_graph<-ifelse(grepl("_augmented_",other_info)==1,T,F)
     #
-    fwrite(graph_results,file=paste0(sample_id,"_",graph_results$aln_type[1],"_",graph,"_results_cleaned.txt"),sep="\t",col.names=T,row.names=F,quote=F)
+    deletion_candidates<-list.files(path="familywise_pe_haplotype_inference",pattern="_files.txt")
+    deletion_candidates_gene<-gsub(paste0(sample_id,"_"),"",gsub("_files.txt","",deletion_candidates))
+    depth_del<-depth;colnames(depth_del)<-c("gene","mean","sd")
+    deletion_candidates_gene<-deletion_candidates_gene[-which(deletion_candidates_gene %in% depth_del[depth_del$mean>=1,]$gene)]
+    graph_results_wDels<-graph_results
+    for(i in seq_along(deletion_candidates_gene)){
+        temp_row<-graph_results[1,];
+        temp_row[,1]<-paste0(deletion_candidates_gene[i],":deletion");
+        temp_row[,2]<-"0x";
+        temp_row[,3]<-"freq=0.000";
+        temp_row[,4]<-deletion_candidates_gene[i];
+        temp_row[,5]<-"00";
+        temp_row[,6:7]<-0;
+        temp_row[,8]<-"FALSE";
+        graph_results_wDels<-rbind(graph_results_wDels,temp_row)
+    }
+    fwrite(graph_results_wDels,file=paste0(sample_id,"_",graph_results$aln_type[1],"_",graph,"_results_cleaned.txt"),sep="\t",col.names=T,row.names=F,quote=F)
     #################################################################
     #could derive copy number variation/alleles using the relative abundance of observed strains + strain-specific abundance/locus depth
     # or from TTN (immunotyper-SR) or the nodes immediately adjacent to the area?
