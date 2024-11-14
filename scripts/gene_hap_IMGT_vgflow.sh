@@ -91,8 +91,11 @@ mkdir -p ${genotyping_nodes_dir}/gene_graphs/
 ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV" | grep -v "__\|IGHD\|IGHJ" > ${outdir}/gene_list.txt
 #ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGHV" | grep -v "__\|IGHD\|IGHJ" > ${outdir}/gene_list.txt
 export assoc_testing=true
-parallel -j 4 'export each={}; \
-    . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(cat ${outdir}/gene_list.txt);
+parallel -j 6 'export each={}; \
+    . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(cat ${outdir}/gene_list.txt );
+#
+variant_file=$(ls ${outdir}/*putative_variants.csv)
+grep -v ",1_reads\|,2_reads" ${variant_file} > ${variant_file%.csv}_strict.csv
 #
 rm -rf ${outdir}/seqwish_${sample_id}.${graph}/
 #ls ${outdir}/*_files.txt > ${outdir}/${sample_id}_files_rm.txt # keep in dir to avoid re-analyzing samples
