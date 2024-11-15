@@ -100,15 +100,28 @@ if(length(novel_nodes)>0){
 gfa<-rbind(header,sline,lline,pline)
 fwrite(gfa,file=paste0(gsub(".coverage",".depth.gfa",covdat_file)),col.names=F,quote=F,sep="\t")
 # prune low-confidence variants:
-paths_to_prune<-gfa[grep("DP:f:1#",gfa$V2),] 
-nodes_to_prune<-gsub("\\+|\\-","",paths_to_prune$V3)
-for(node in nodes_to_prune){
-    # remove S line = the node
-    # remove both/all L lines containing the node
-    # edit read path associated with the node, simply excise it out -- edit read ID to indicate this
-    # remove P line containing the node-assocaited variant
+paths_to_prune<-gfa[grep("DP:f:1#|DP:f:2#|DP:f:1\\.#|DP:f:2\\.#",gfa$V2),] 
+if(nrow(paths_to_prune)>0){
+    print(paste0("Pruning ",nrow(paths_to_prune)," low-confidence variants"))
+    nodes_to_prune<-gsub("\\+|\\-","",paths_to_prune$V3)
+    # remove single-read supported variants + prep the gfa for vg deconstruct - want variants and alleles to be listed in vcf file
+    sline_orig<-sline
+    pline_orig<-pline
+    lline_orig<-lline
+    for(node in nodes_to_prune){
+        # remove S line = the node
+        sline_filt<-sline[grep(node,sline$V2,invert=T),]
+        lline_filt<-lline[grep(node,lline$V2,invert=T),]
+        lline_filt<-lline_filt[grep(node,lline_filt$V4,invert=T),]
+        # remove both/all L lines containing the node
+        # edit read path associated with the node, simply excise it out -- edit read ID to indicate this
+        pline_filt<-pline[grep(paste0(node,"\\+|",node,"\\-"),pline$V3,invert=T),]
+        # remove P lines containing the putatively spurious node
+        sline<-sline_filt
+        lline<-lline_filt
+        pline<-pline_filt
+    }
 }
-
-
-
-
+pline$V2<-gsub(":path.","#1#",pline$V2);pline$V2<-gsub("#1#_","#1#",pline$V2)
+gfa_filt<-rbind(gfa_header,sline,lline,pline,fill=T)
+fwrite(gfa_filt,file=paste0(gsub(".coverage",".depth.filt.gfa",covdat_file)),col.names=F,quote=F,sep="\t")
