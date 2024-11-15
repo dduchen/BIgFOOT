@@ -11,7 +11,7 @@ gfa_l<-fread(gsub(".coverage",".gfa.llines",covdat_file),sep="\t",fill=T,header=
 gfa_p<-fread(gsub(".coverage",".gfa.plines",covdat_file),sep="\t",fill=T,header=F)
 gfa<-rbind(gfa_header,gfa_s,gfa_l,gfa_p,use.names=F,fill=T)
 gfa_node_order<-gfa[gfa$V1=="S",]$V2
-gfa[gfa$V1=="S",4]<-paste0("RC:i:",as.vector(covdat[gfa_node_order]))
+gfa[gfa$V1=="S",4]<-paste0("DP:f:",as.vector(covdat[gfa_node_order]))
 header<-gfa[1,]
 sline<-gfa[gfa$V1=="S",]
 lline<-gfa[gfa$V1=="L",]
@@ -37,6 +37,7 @@ gene_node_edges<-rbind(lline[lline$V4 %in% gene_nodes_uniq,c(2,4)],lline[lline$V
 # novel_nodes<-intersect(novel_nodes,unlist(gene_node_edges)) # also want edges in/out - otherwise will report node attached to last gene-related node
 novel_nodes<-intersect(novel_nodes,unlist(gene_node_edges)[duplicated(unlist(gene_node_edges))])
 #
+# -- could just get alternative node and extract a local subgraph 'vg mod -x 1'
 if(length(novel_nodes)>0){
     names(novel_nodes)<-paste0(sline[match(as.character(novel_nodes),sline$V2),]$V3,"_",sline[match(as.character(novel_nodes),sline$V2),]$V4)
     for(i in seq_along(novel_nodes)){
@@ -98,3 +99,16 @@ if(length(novel_nodes)>0){
 }
 gfa<-rbind(header,sline,lline,pline)
 fwrite(gfa,file=paste0(gsub(".coverage",".depth.gfa",covdat_file)),col.names=F,quote=F,sep="\t")
+# prune low-confidence variants:
+paths_to_prune<-gfa[grep("DP:f:1#",gfa$V2),] 
+nodes_to_prune<-gsub("\\+|\\-","",paths_to_prune$V3)
+for(node in nodes_to_prune){
+    # remove S line = the node
+    # remove both/all L lines containing the node
+    # edit read path associated with the node, simply excise it out -- edit read ID to indicate this
+    # remove P line containing the node-assocaited variant
+}
+
+
+
+

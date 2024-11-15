@@ -116,8 +116,9 @@ else
     if [ "${simulated}" = true ]; then
         echo "Simulated input - potential issue with fragment-length distribution. Using slightly shorter length to avoid hanging"
         read_length=$(echo ${bam_file} | sed s/".*Length"//g | sed s/"_.*"//g)
+        # should get read length from seqkit not the bam file name
         new_frag_length=$(bc -l <<< "scale=3;${read_length}*2")
-        frag_sd=30
+        frag_sd=$(bc -l <<< "scale=3;${read_length}*0.6")
         time vg giraffe -i -f ${input_aln%.${aln_linear}}.mapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p --fragment-mean ${new_frag_length} --fragment-stdev ${frag_sd} > ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam
     else
         time vg giraffe -i -f ${input_aln%.${aln_linear}}.mapped.fastq.gz -x ${graph_base}.xg -H ${graph_base}.gbwt -d ${graph_base}.dist -m ${graph_base}.min -p > ${input_aln%.${aln_linear}}.bazam.grch38.wg.gam
