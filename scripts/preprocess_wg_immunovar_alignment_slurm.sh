@@ -19,9 +19,6 @@ DATAPATH=${workdir}
 OUTPATH=${workdir}
 cd ${OUTPATH}
 
-export graphdir=${bigfoot_source}
-export graph_base=whole_genome_ig_hla_kir_immunovar
-
 bf_env_load=$(conda info --envs | grep "bigfoot" | awk '{print $NF}')
 curenv=$(declare -p -x)
 source ${HOME}/.bashrc;
