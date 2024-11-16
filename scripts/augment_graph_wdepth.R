@@ -46,10 +46,6 @@ if(length(novel_nodes)>0){
         newpline[,2]<-paste0(sample_identifier,"#1#",gene_interest,"_variant_",node_id,"#",i)
         newpline[,3]<-paste0(novel_nodes[i],"+")
         newpline[,4]<-"*"
-        pline<-rbind(pline,newpline)
-        read_support<-pline[grep(gsub("\\+","",newpline$V3),pline$V3),]
-        ref_convergence<-read_support[grep("grch|chm",read_support$V2),]
-        read_support<-read_support[grep(paste0(gene_interest,"|grch|chm"),read_support$V2,invert=T),]
         # get local sequence + alt sequence
         node_connects<-lline[lline$V4==as.character(novel_nodes[i]) | lline$V2==as.character(novel_nodes[i]),]
         node_connects<-distinct(node_connects)
@@ -71,6 +67,12 @@ if(length(novel_nodes)>0){
         } else {
             print(paste0("Tricky local sequence for variant @ node:",novel_nodes[i],":",names(novel_nodes)[i]," - look at graph"))
         }
+        # append local region to graph
+        newpline$V3<-paste0(node_from,"+,",newpline$V3,",",node_to,"+")
+        pline<-rbind(pline,newpline)
+        read_support<-pline[grep(gsub("\\+","",newpline$V3),pline$V3),]
+        ref_convergence<-read_support[grep("grch|chm",read_support$V2),]
+        read_support<-read_support[grep(paste0(gene_interest,"|grch|chm"),read_support$V2,invert=T),]
 #        nonvar_node<-lline[lline$V4 %in% node_other | lline$V2 %in% node_other,]
 #        nonvar_node<-nonvar_node[grep(as.character(novel_nodes[i]),nonvar_node$V2,invert=T),]
 #        nonvar_node<-nonvar_node[grep(as.character(novel_nodes[i]),nonvar_node$V4,invert=T),]
@@ -100,7 +102,7 @@ if(length(novel_nodes)>0){
 gfa<-rbind(header,sline,lline,pline)
 fwrite(gfa,file=paste0(gsub(".coverage",".depth.gfa",covdat_file)),col.names=F,quote=F,sep="\t")
 # prune low-confidence variants:
-paths_to_prune<-gfa[grep("DP:f:1#|DP:f:2#|DP:f:1\\.#|DP:f:2\\.#",gfa$V2),] 
+paths_to_prune<-gfa[grep("DP:f:0\\.#|DP:f:0#|DP:f:1#|DP:f:2#|DP:f:1\\.#|DP:f:2\\.#",gfa$V2),] 
 if(nrow(paths_to_prune)>0){
     print(paste0("Pruning ",nrow(paths_to_prune)," low-confidence variants"))
     nodes_to_prune<-gsub("\\+|\\-","",paths_to_prune$V3)

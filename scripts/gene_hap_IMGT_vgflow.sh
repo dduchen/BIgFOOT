@@ -91,6 +91,7 @@ mkdir -p ${genotyping_nodes_dir}/gene_graphs/
 ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV" | grep -v "__\|IGHD\|IGHJ" > ${outdir}/gene_list.txt
 #ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGHV" | grep -v "__\|IGHD\|IGHJ" > ${outdir}/gene_list.txt
 export assoc_testing=true
+# should tie number of parallel jobs to the number of compute nodes + memory
 parallel -j 6 'export each={}; \
     . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(cat ${outdir}/gene_list.txt );
 #
