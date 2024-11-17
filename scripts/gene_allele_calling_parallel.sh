@@ -537,7 +537,7 @@ else
                     sed -i 's/^[ \t]*//;s/[ \t]*$//' ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.gfa
                     sed -i 's/^[ \t]*//;s/[ \t]*$//' ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa
                     vg paths -Lv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths
-                    grep "chm\|grch\|${gene_id}" ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths.tmp ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths
+                    grep "chm\|grch\|${gene}" ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths.tmp ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths
                     vg paths -r -p ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths -x ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.pg
                     vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.pg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa
                     grep "^P" ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.plines
@@ -660,7 +660,7 @@ else
                 echo "No association testing performed for ${gene} - set assoc_testing=true to embed reads/prep locus graph for association testing"
             fi
             # remove files we dont need anymore
-            ls ${outdir}/${sample_id}.${graph}.${gene}\.* | grep -v "${gene}.genome_graph_ref.augmented.*gfa\|*vcf\|${gene}.genome_graph_ref.gfa\|${gene}.haplotypes.xg\|${gene}.haplotypes.gam\|annot.fasta\|annot.gfa\|final.gfa\|node_abundance\|depth" > ${outdir}/${sample_id}_${gene}_files.txt
+            ls ${outdir}/${sample_id}.${graph}.${gene}\.* | grep -v "${gene}.genome_graph_ref.augmented.*gfa\|${gene}.genome_graph_ref.gfa\|${gene}.haplotypes.xg\|${gene}.haplotypes.gam\|annot.fasta\|annot.gfa\|final.gfa\|.vcf\|node_abundance\|depth" > ${outdir}/${sample_id}_${gene}_files.txt
             #ls ${outdir}/${gene}\.*  | grep "haps.fasta\|alleles" >> ${outdir}/${sample_id}_${gene}_files.txt
             ls ${outdir}/*${gene}* | grep "asc_" >> ${outdir}/${sample_id}_${gene}_files.txt
             xargs rm < ${outdir}/${sample_id}_${gene}_files.txt
