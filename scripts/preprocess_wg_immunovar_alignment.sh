@@ -53,6 +53,8 @@ echo "Alignment to immunovariation graph-accounting for duplicate IMGT alleles"
 echo "Aligning QC-passed PE reads"
 if [ -s ${sample}.${graph_base##*/}.gam ]; then
     echo "Alignment completed - using: ${sample}.${graph_base##*/}.gam";
+elif [ -s ${sample}.${graph_base##*/}.sorted.gam ]; then
+    echo "gam alignment completed + already sorted" 
 else
     time vg giraffe -Z ${graph_base}.gbz -H ${graph_base}.gbwt -m ${graph_base}.min -d ${graph_base}.dist -f ${sample}_qc_1.fastq.gz -f ${sample}_qc_2.fastq.gz -p --watchdog-timeout 60 > ${sample}.${graph_base##*/}.gam
 fi

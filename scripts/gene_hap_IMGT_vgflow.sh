@@ -89,7 +89,6 @@ mkdir -p ${genotyping_nodes_dir}/gene_graphs/
 # potentially save this as script - run in parallel #https://stackoverflow.com/questions/25158583/exporting-the-full-environment-to-gnu-parallel
 # parallel!
 ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV\|TR" | grep -v "__\|IGHD\|IGHJ\|TR.J\|TR.D" > ${outdir}/gene_list.txt
-#ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGHV" | grep -v "__\|IGHD\|IGHJ" > ${outdir}/gene_list.txt
 export assoc_testing=true
 # should tie number of parallel jobs to the number of compute nodes + memory
 parallel -j 6 'export each={}; \

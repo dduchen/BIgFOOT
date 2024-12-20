@@ -1,0 +1,91 @@
+#!/bin/bash
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=16
+#SBATCH --job-name=FqBIgFOOT
+#SBATCH --time=48:00:00
+#SBATCH --mem=70GB
+#SBATCH --mail-user=dylan.duchen@yale.edu
+#SBATCH --mail-type=FAIL
+#SBATCH --partition=pi_kleinstein
+#SBATCH --output=slurm-%x.%j.out
+
+DATAPATH=${workdir}
+OUTPATH=${workdir}
+cd ${OUTPATH}
+
+export sim_env_load=$(conda info --envs | grep "simulate" | awk '{print $NF}')
+export isr_env_load=$(conda info --envs | grep "immunotyper" | awk '{print $NF}')
+export bf_env_load=$(conda info --envs | grep "bigfoot" | awk '{print $NF}')
+export sample_id="hg002";
+export hg002_ref=${PWD}/hg002v1.0.1.fasta
+export grch38_ref=/home/dd392/tools/refs/annots/GRCh38_full_analysis_set_plus_decoy_hla.fa
+export ReadLength=150
+export ReadCoverage=30
+export iteration=${iteration}
+#
+curenv=$(declare -p -x)
+source ${HOME}/.bashrc;
+eval "$curenv"
+conda activate ${bf_env_load};
+#
+PATH=${tools_dir}:$PATH
+#
+cd ~/palmer_scratch/data/bigfoot_testing/digger/hg002
+#for iteration in {1..50};do echo ${iteration}
+conda activate ${sim_env_load}
+if [ -s ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART.*am ]; then
+    echo "simulation complete for ${ReadLength} and ${ReadCoverage} combination"
+else
+    echo "Simulating 150 - Coverage: $ReadCoverage"
+    ${tools_dir}/art_bin_MountRainier/art_illumina -rs ${iteration} -i ${hg002_ref} -f $(bc -l <<< "scale=3;${ReadCoverage}/2") -p -ss HSXn -l ${ReadLength} -m $(bc -l <<< "scale=3;${ReadLength}*3") -s $(bc -l <<< "scale=3;${ReadLength}*0.6") -na -nf 1 -o ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART
+fi
+# no sam file - just the reads, then qc --> align
+if [ -s ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART_GRCh38.bam ]; then
+    echo "realignment to GRCh38 complete for iteration: ${iteration}"
+else
+    fastp -i ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART1.fq -I ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART2.fq -o ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_qc_ART1.fastq.gz -O ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_qc_ART2.fastq.gz --detect_adapter_for_pe -w 12 --length_required $(bc -l <<< "scale=0;${ReadLength}/4") -h ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART_report_fastp.html -R "${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART fastp Report";
+    rm ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART1.fq
+    rm ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART2.fq
+    time bwa mem -t 16 -M ${grch38_ref} ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_qc_ART1.fastq.gz ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_qc_ART2.fastq.gz | samtools view -Sb - | samtools sort - > ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART_GRCh38.bam;
+    samtools index ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART_GRCh38.bam
+    samtools depth ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART_GRCh38.bam | awk '{sum+=$3; sumsq+=$3*$3} END { print "Average = ",sum/NR; print "Stdev = ",sqrt(sumsq/NR - (sum/NR)**2)}' > ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART_GRCh38_estimated.coverage
+    samtools flagstat ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART_GRCh38.bam > ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART_GRCh38_estimated.stats
+    qualimap bamqc -outdir ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART_GRCh38_qualimap -outfile ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART_GRCh38_qualimap_report -bam ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART_GRCh38.bam --java-mem-size=16G
+    mosdepth -t 8 -n --fast-mode --by 500 mosdepth_${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART_GRCh38 ${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_ART_GRCh38.bam
+fi
+# run bigfoot:
+conda activate ${bf_env_load}
+read_file=${sample_id}_${iteration}_Length${ReadLength}_Cov${ReadCoverage}_qc_ART1.fastq.gz
+read2=${read_file%_qc_ART1.fastq.gz}_qc_ART2.fastq.gz
+if [ -s ${read_file%_qc_1.fastq.gz}_fastq_input_bigfoot.log ]; then
+    echo "realignment to GRCh38 complete for iteration: ${iteration}"
+else
+    mv ${read_file} ${read_file%_qc_ART1.fastq.gz}_qc_1.fastq.gz;
+    mv ${read2} ${read2%_qc_ART2.fastq.gz}_qc_2.fastq.gz;
+    conda activate bigfoot
+    tools_dir=~/tools/
+    PATH=${tools_dir}:$PATH
+    export sample="${read_file%_qc_ART1.fastq.gz}" workdir=${PWD} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged="FALSE" graph="wg_immunovar" valid_alleles=true ref_build="grch38" ref="${bigfoot_source}/GRCh38_full_analysis_set_plus_decoy_hla.fa";
+    if [ -s ${sample}.whole_genome_ig_hla_kir_immunovar.gam ]; then
+        echo "BIgFOOT processing has been attempted for this sample already - manually do it if necessary"
+    else
+        . ${bigfoot_dir}/preprocess_wg_immunovar_alignment.sh > ${read_file%_qc_1.fastq.gz}_fastq_input_bigfoot.log
+    fi
+    rm ${sample}.whole_genome_ig_hla_kir_immunovar.gam
+fi
+# run immunotyper-sr
+conda activate ${isr_env_load}
+mkdir -p ${sample_id}_immunotyper
+mkdir -p ${sample_id}_immunotyper_igl
+mkdir -p ${sample_id}_immunotyper_igk
+if [ -s ${sample_id}_immunotyper/${sample_id}-IGHV_allele_calls.txt ]; then
+    echo "Immunotyper-SR (IGHV) completed for ${sample_id}"
+else
+    immunotyper-SR --output_dir ${sample_id}_immunotyper --gene_type ighv --threads 8 ${sample_id}_ART_GRCh38.bam
+    immunotyper-SR --output_dir ${sample_id}_immunotyper_igl --gene_type iglv --threads 8 ${sample_id}_ART_GRCh38.bam
+    immunotyper-SR --output_dir ${sample_id}_immunotyper_igk --gene_type igkv --threads 8 ${sample_id}_ART_GRCh38.bam
+fi
+# delete large/interim files
+rm ${sample_id}_ART*.bam
+rm ${sample_id}.whole_genome_ig_hla_kir_immunovar.sorted.gam
+rm ${sample_id}*_qc_*gz

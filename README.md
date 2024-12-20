@@ -7,10 +7,10 @@ I hope to expand this workflow to enable genome-to-genome analyses/assessing gen
 <i>Genetic loci where BIgFOOT performs accurate allele calling:</i>
 - IGH
 - IGL
+- IGK
 - HLA (DQA1/DQB1/... more to come)<br>
 
 <i>Infers alleles - but, like bigoot, I have no evidence they're real (WiP):</i><br>
-- IGK
 - TR
 - KIR
 
