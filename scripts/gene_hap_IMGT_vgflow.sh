@@ -78,6 +78,12 @@ export perc_id_filter="0.00"; echo "Using a final pairwise filter of $perc_id_fi
 #
 export outdir=${workdir}/${sample_id}_${graph}_genotyping/familywise_${aln_type}_haplotype_inference
 mkdir -p ${outdir}
+if [ "${reprocess}" = true ]; then
+    echo "Forcing reprocessing - deleting gene txt files"
+    if [ -s $(ls ${outdir}/*files.txt | head -1) ]; then
+        rm $outdir/*files.txt
+    fi
+fi
 echo "Storing output here: ${outdir}"
 mkdir -p ${outdir}/HLA
 #mkdir -p ${outdir}/KIR
@@ -92,7 +98,7 @@ ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV\|TR" | 
 export assoc_testing=true
 # should tie number of parallel jobs to the number of compute nodes + memory
 parallel -j 6 'export each={}; \
-    . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(cat ${outdir}/gene_list.txt );
+    . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(cat ${outdir}/gene_list.txt | head -5 );
 #
 variant_file=$(ls ${outdir}/*putative_variants.csv)
 grep -v ",1_reads\|,2_reads" ${variant_file} > ${variant_file%.csv}_strict.csv
