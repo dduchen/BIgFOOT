@@ -98,7 +98,7 @@ ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV\|TR" | 
 export assoc_testing=true
 # should tie number of parallel jobs to the number of compute nodes + memory
 parallel -j 6 'export each={}; \
-    . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(cat ${outdir}/gene_list.txt | head -5 );
+    . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(cat ${outdir}/gene_list.txt );
 #
 variant_file=$(ls ${outdir}/*putative_variants.csv)
 grep -v ",1_reads\|,2_reads" ${variant_file} > ${variant_file%.csv}_strict.csv

@@ -36,7 +36,7 @@ if [[ ${input_aln} == *"gam" ]]; then
         export aln_type='pe';
         sample=${i%%.*}; sample=${sample##*/};
         sample_immune_graph=${sample}.immune_subset.${graph}.${aln_type};
-        output_graph=${sample_id}_graph.${graph}.${aln_type}
+        output_graph=${sample}_graph.${graph}.${aln_type}
         export i=${sample_immune_graph}.gam workdir=${PWD} sample_id=${sample} aln_type='pe' tools_dir=${tools_dir} use_augmented=FALSE bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged=FALSE graph=${graph} valid_alleles=${valid_alleles};
         . ${bigfoot_dir}/gene_hap_IMGT_vgflow.sh;
         #
