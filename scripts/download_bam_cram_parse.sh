@@ -49,7 +49,7 @@ if [[ ${input_aln} == *"gam" ]]; then
         odgi unitig -i ${output_graph}.sub.gfa -t 31 -t 4 -P > ${output_graph}.sub.unitigs.fa
     fi
 else
-    echo "input is GAM file - reprocessing ${input_aln}"
+    echo "processing ${input_aln}"
     if [ -s ${bigfoot_dir}/../custom_beds/custom_bed.bed ]; then
         echo "Custom bed exists";
     else
