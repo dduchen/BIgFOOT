@@ -38,15 +38,22 @@ if [[ ${input_aln} == *"gam" ]]; then
         sample_immune_graph=${sample}.immune_subset.${graph}.${aln_type};
         output_graph=${sample}_graph.${graph}.${aln_type}
         export i=${sample_immune_graph}.gam workdir=${PWD} sample_id=${sample} aln_type='pe' tools_dir=${tools_dir} use_augmented=FALSE bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} merged=FALSE graph=${graph} valid_alleles=${valid_alleles};
-        . ${bigfoot_dir}/gene_hap_IMGT_vgflow.sh;
-        #
-        cd ${workdir}/${sample_id}_${graph}_genotyping/
-        Rscript ${bigfoot_dir}/clean_genewise_results.R
-        cd ${workdir}
-        echo "fin!"
-        ###########################
-        # -- association explo -- #
-        odgi unitig -i ${output_graph}.sub.gfa -t 31 -t 4 -P > ${output_graph}.sub.unitigs.fa
+        if [ -s ${sample_immune_graph}.gam ]; then
+            . ${bigfoot_dir}/gene_hap_IMGT_vgflow.sh;
+            cd ${workdir}/${sample_id}_${graph}_genotyping/
+            Rscript ${bigfoot_dir}/clean_genewise_results.R
+            cd ${workdir}
+            echo "fin!"
+            ###########################
+            # -- association explo -- #
+            odgi unitig -i ${output_graph}.sub.gfa -t 31 -t 4 -P > ${output_graph}.sub.unitigs.fa
+        elif [[ ${input_aln} == *"bazam.grch38.combined.gam" ]]; then
+            echo "${input_aln} as input - preprocessing + bigfoot analysis";
+            export i=${input_aln} workdir=${PWD} reprocess=true graph=${graph} bigfoot_source=${bigfoot_source} bigfoot_dir=${bigfoot_dir} tools_dir=${tools_dir} valid_alleles=${valid_alleles}
+            . ${bigfoot_dir}/filter_immune_subgraph.sh
+        else
+            echo "${input_aln} inappropriate input format - rerun";
+        fi
     fi
 else
     echo "processing ${input_aln}"
