@@ -688,100 +688,28 @@ else
 #                    vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa
 #                    gfaffix ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.tmp; mv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.tmp ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa
                     # Additional inference - cleaning complex genes + allele inference
-                    careful=false
-                    if [ "${careful}" = true ]; then
-                        echo "Careful mode - Additional round of flow-based inference"
-                        if [ $(grep ${gene} ${bigfoot_dir}../custom_beds/complex_genes.txt | wc -l) -gt 0 ];then
-                            echo "Potential overlap with complex gene - additional round of flow-based inference"
-                            complex_gene=true
-                        fi
-                        if [ "${complex_gene}" = true ]; then
-                            mkdir -p ${outdir}/${gene}_careful; cd ${outdir}/${gene}_careful
-                            echo "Complex gene - additional round of flow-based inference"
-                            gene_aug_orig_graph=${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa
-                            vg convert -g ${gene_aug_orig_graph} -p > ${gene}.index.pg
-                            vg index -t 16 -L -x ${gene}.index.xg ${gene}.index.pg;
-                            vg gbwt -x ${gene}.index.xg -o ${gene}.index.gbwt -P --pass-paths
-                            vg prune -u -g ${gene}.index.gbwt -k 31 -m ${gene}.index.node_mapping ${gene}.index.pg > ${gene}.index.pruned.vg
-                            vg index -g ${gene}.index.gcsa -f ${gene}.index.node_mapping ${gene}.index.pruned.vg
-                            vg map -G ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gam -d ${gene}.index -1 ${gene}.index.gbwt > ${gene}.aug.gam 
-                            vg filter -r 0.95 -P -s 1 -x ${gene}.index.xg -D 0 -fu -t 4 ${gene}.aug.gam -v > ${gene}.aug.filt.gam
-                            vg paths -Lx ${gene}.index.pg | grep -v "grch\|chm" > ${gene}.index.alleles
-                            vg paths -r -p ${gene}.index.alleles -x ${gene}.index.pg > ${gene}.index.careful.vg
-                            vg view -a ${gene}.aug.filt.gam > ${gene}.index.careful.aln.json
-                            vg convert -fW ${gene}.index.careful.vg > ${gene}.index.careful.gfa
-                            python3 ${bigfoot_dir}/parse_graph_vgflow.py --sample ${gene}.index.careful -m 0
-                            python3 ${bigfoot_dir}/vg-flow_immunovar.py --ilp --max_strains $(wc -l ${gene}.index.alleles | cut -f1 -d' ') --careful --optimization_approach ${opt} --min_depth 0 --trim 0 -m 0 -c 0.1 --remove_included_paths 0 ${gene}.index.careful.node_abundance.txt ${gene}.index.careful.final.gfa
-                            mv trimmed_contigs.fasta ${gene}.index.careful.contigs.fasta; mv haps.final.fasta ${gene}.index.careful.haps.final.fasta ; mv genome_graph.gfa ${gene}.index.careful.genome_graph.gfa
-                            Rscript ${bigfoot_dir}/parse_vgflow_output.R ${outdir}/${gene}_careful/${gene}.index.careful.contigs.fasta
-                            echo "Careful allele-level abundance estimation completed for ${gene} ::"
-                            echo "Saving previous sample-specific allele fasta file"
-                            sed s/:path.*:path/:path/g ${gene}.index.careful.haps.final.annot.fasta > ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.careful.fasta
-# add reference paths from original augmented graph - reconstruct augmented graph
-                            echo "Reconstructing augmented graph using cleaned set of alleles"
-                            vg paths -Fx ${gene_aug_orig_graph} | seqkit grep -r -p "chm|grch" > ${gene}.index.ref_paths.fasta
-                            cat ${gene}.index.ref_paths.fasta ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.careful.fasta | sed s/' '/_/g > ${gene}.careful.w_ref_paths.fasta                            
-                            minimap2 -x asm20 -t 16 -c -X ${gene}.careful.w_ref_paths.fasta ${gene}.careful.w_ref_paths.fasta > ${gene}.careful.w_ref_paths.paf
-                            seqwish -s ${gene}.careful.w_ref_paths.fasta -p ${gene}.careful.w_ref_paths.paf -g ${gene}.careful.w_ref_paths.gfa -b ${outdir}/seqwish_${sample_id}.${graph}
-                            gfaffix ${gene}.careful.w_ref_paths.gfa -o ${gene}.careful.w_ref_paths.tmp; mv ${gene}.careful.w_ref_paths.tmp ${gene}.careful.w_ref_paths.gfa
-                            vg mod -n -U 10 -c ${gene}.careful.w_ref_paths.gfa -X 256 > ${gene}.careful.w_ref_paths.vg
-                            vg convert -p ${gene}.careful.w_ref_paths.vg > ${gene}.careful.w_ref_paths.pg
-                            vg convert -fW ${gene}.careful.w_ref_paths.vg > ${gene}.careful.w_ref_paths.gfa
-                            gfaffix ${gene}.careful.w_ref_paths.gfa -o ${gene}.careful.w_ref_paths.gfa.tmp; mv ${gene}.careful.w_ref_paths.gfa.tmp ${gene}.careful.w_ref_paths.gfa
-                            vg index -t 16 -L -x ${gene}.careful.w_ref_paths.xg ${gene}.careful.w_ref_paths.pg;
-                            vg gbwt -x ${gene}.careful.w_ref_paths.xg -o ${gene}.careful.w_ref_paths.gbwt -P --pass-paths
-                            vg gbwt -x ${gene}.careful.w_ref_paths.xg -g ${gene}.careful.w_ref_paths.gbz --gbz-format -P --pass-paths;
-                            vg prune -u -g ${gene}.careful.w_ref_paths.gbwt -k 31 -m ${gene}.careful.w_ref_paths.node_mapping ${gene}.careful.w_ref_paths.pg > ${gene}.careful.w_ref_paths.pruned.vg
-                            vg index -g ${gene}.careful.w_ref_paths.gcsa -f ${gene}.careful.w_ref_paths.node_mapping ${gene}.careful.w_ref_paths.pruned.vg
-                        #   map locus-associated reads to augmented/annotated graph
-                            vg map -N ${sample_id}.${graph}.${gene} -G ${gene}.aug.filt.gam -x ${gene}.careful.w_ref_paths.xg -g ${gene}.careful.w_ref_paths.gcsa -1 ${gene}.careful.w_ref_paths.gbwt -t 4 -M 1 > ${gene}.careful.w_ref_paths.gam
-                            vg filter -r 0.975 -P -s 1 -q 60 -x ${gene}.careful.w_ref_paths.xg -D 0 -fu -t 4 ${gene}.careful.w_ref_paths.gam -v > ${gene}.careful.w_ref_paths.filt.gam
-                            vg depth --gam ${gene}.careful.w_ref_paths.filt.gam ${gene}.careful.w_ref_paths.xg > ${gene}.careful.w_ref_paths.filt.depth;
-                            depth_aug=$(awk -F ' ' '{print $1}' ${gene}.careful.w_ref_paths.filt.depth)
-                            aug_depth=$(bc -l <<< "scale=2;${depth_aug}*0.10"| awk '{printf("%d\n",$1 + 0.5)}')
-                            if [ "${aug_depth}" -gt 3 ]; then
-                                augment_cov=${aug_depth}
-                            else
-                                augment_cov=3
-                            fi
-                            echo "Minimum coverage to add breakpoint: ${augment_cov} (3 <--> 10% of strain depth)"
-                            vg augment -m ${augment_cov} -q 5 -Q 60 ${gene}.careful.w_ref_paths.pg ${gene}.careful.w_ref_paths.filt.gam -A ${gene}.careful.w_ref_paths.augmented.gam > ${gene}.careful.w_ref_paths.augmented.vg;
-                            vg convert -p ${gene}.careful.w_ref_paths.augmented.vg > ${gene}.careful.w_ref_paths.augmented.pg
-                            vg mod -c ${gene}.careful.w_ref_paths.augmented.pg > ${gene}.careful.w_ref_paths.augmented.tmp && mv ${gene}.careful.w_ref_paths.augmented.tmp ${gene}.careful.w_ref_paths.augmented.pg
-                            vg convert -fW ${gene}.careful.w_ref_paths.augmented.pg > ${gene}.careful.w_ref_paths.augmented.gfa
-                            gfaffix ${gene}.careful.w_ref_paths.augmented.gfa -o ${gene}.careful.w_ref_paths.augmented.gfa.tmp; mv ${gene}.careful.w_ref_paths.augmented.gfa.tmp ${gene}.careful.w_ref_paths.augmented.gfa
-                            cp ${gene}.careful.w_ref_paths.augmented.gfa ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.careful.gfa
-                            if [ -s ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.careful.gfa ];then
-                                echo "Using careful augmented graph for association testing"
-                                mv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.careful.gfa ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa
-                            fi
-                            if [ -s ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.careful.fasta ];then
-                                echo "Reporting careful fasta alleles"
-                                mv ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.careful.fasta ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta
-                            fi
-                            if [ "${de_novo}" = true ]; then
-                                echo "De-novo allele inference... WiP"
-                            cd ${outdir}
-                            else
-                                echo "No novel allele inference requested - to perform novel allele inference set de_novo=true"
-                                cd ${outdir}
-                            fi
-                            rm -rf ${outdir}/${gene}_careful
-                        else
-                            echo "No complex gene overlap detected - skipping additional round of fslow-based inference"
-                        fi
-                    else
-                        echo "No additional round of flow-based inference requested - to perform additional round of flow-based inference set careful=true"
-                        if [ "${de_novo}" = true ]; then
-                            echo "De-novo allele inference... WiP"
+                    de_novo=false
+                    if [ "${de_novo}" = true ]; then
+                            echo "De-novo allele inference..."
+                            depth_graph=${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.gfa
+                            head -1 ${depth_graph} > ${depth_graph%.gfa}.header
+                            grep "^P" ${depth_graph} > ${depth_graph%.gfa}.plines
+                            grep "^S" ${depth_graph} > ${depth_graph%.gfa}.slines
+                            grep "^L" ${depth_graph} > ${depth_graph%.gfa}.llines
+                            Rscript ${bigfoot_dir}/phase_locus_depth_graph.R ${depth_graph%.gfa}.plines
+                            grep -P "\tIG|\tOG|\tTR|\tgrch|\tchm" ${depth_graph%.gfa}.cleaned_paths > ${depth_graph%.gfa}.noreads.cleaned_paths
+                            cat ${depth_graph%.gfa}.header ${depth_graph%.gfa}.slines ${depth_graph%.gfa}.llines ${depth_graph%.gfa}.cleaned_paths > ${depth_graph%.gfa}_cleaned.gfa
+                            cat ${depth_graph%.gfa}.header ${depth_graph%.gfa}.slines ${depth_graph%.gfa}.llines ${depth_graph%.gfa}.noreads.cleaned_paths > ${depth_graph%.gfa}_cleaned.filt.gfa
+                            rm ${depth_graph%.gfa}.*cleaned_paths
+                            rm ${depth_graph%.gfa}.*lines
+                            rm ${depth_graph%.gfa}.*header
                             # map - remove nodes with 0/low coverage - unitigs - stitch together using contiguous abundance...
                             # at most number of alleles = ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta + number of nodes without a path
-                            vg view -X ${gene}.careful.w_ref_paths.augmented.gam | seqkit fq2fa - > ${gene}.careful.w_ref_paths.augmented.fasta
-                            odgi unitig -i ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa -t 151 > ${gene}.careful.unitigs.fa 
-                            Bifrost build -r ${gene}.careful.unitigs.fa -k 31 -o ${gene}.careful.bifrost
-                            gunzip ${gene}.careful.bifrost*gfa.gz
-                            ~/tools/SPAdes-4.0.0-Linux/bin/pathracer ${gene}.careful.w_ref_paths.augmented.fasta ${gene}.careful.bifrost.gfa --nt --annotate-graph --output ${gene}.careful.pathracer
-
+#                            vg view -X ${gene}.careful.w_ref_paths.augmented.gam | seqkit fq2fa - > ${gene}.careful.w_ref_paths.augmented.fasta
+#                            odgi unitig -i ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa -t 151 > ${gene}.careful.unitigs.fa 
+#                            Bifrost build -r ${gene}.careful.unitigs.fa -k 31 -o ${gene}.careful.bifrost
+#                            gunzip ${gene}.careful.bifrost*gfa.gz
+#                           ~/tools/SPAdes-4.0.0-Linux/bin/pathracer ${gene}.careful.w_ref_paths.augmented.fasta ${gene}.careful.bifrost.gfa --nt --annotate-graph --output ${gene}.careful.pathracer
                         else
                             echo "No novel allele inference requested - to perform novel allele inference set de_novo=true"
                         fi

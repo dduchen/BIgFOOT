@@ -16,8 +16,9 @@ pathref<-as.list(unique(dat$V2))
 names(pathref)<-pathref
 #-- for each reference (names), entries are all nodes
 for(i in 1:length(unique(dat$V2))){
-  nodes<-as.numeric(strsplit(dat[i,]$V3,split=",")[[1]])
-  pathref[[i]]<-nodes
+#  nodes<-as.numeric(strsplit(dat[i,]$V3,split=",")[[1]])
+  nodes<-as.numeric(unique(strsplit(paste0(dat[dat$V2==unique(dat$V2)[i],]$V3,collapse=","),split=",")[[1]]))
+  pathref[[unique(dat$V2)[i]]]<-nodes
 }
 #
 target_nodes<-unique(unname(unlist(pathref[grep(gsub("^.*wg_immunovar.","",gsub(".haplotypes.*$","",graph_paths_file)),names(pathref))])))
