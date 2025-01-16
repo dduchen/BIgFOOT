@@ -690,19 +690,19 @@ else
                     # Additional inference - cleaning complex genes + allele inference
                     de_novo=false
                     if [ "${de_novo}" = true ]; then
-                            echo "De-novo allele inference..."
-                            depth_graph=${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.gfa
-                            head -1 ${depth_graph} > ${depth_graph%.gfa}.header
-                            grep "^P" ${depth_graph} > ${depth_graph%.gfa}.plines
-                            grep "^S" ${depth_graph} > ${depth_graph%.gfa}.slines
-                            grep "^L" ${depth_graph} > ${depth_graph%.gfa}.llines
-                            Rscript ${bigfoot_dir}/phase_locus_depth_graph.R ${depth_graph%.gfa}.plines
-                            grep -P "\tIG|\tOG|\tTR|\tgrch|\tchm" ${depth_graph%.gfa}.cleaned_paths > ${depth_graph%.gfa}.noreads.cleaned_paths
-                            cat ${depth_graph%.gfa}.header ${depth_graph%.gfa}.slines ${depth_graph%.gfa}.llines ${depth_graph%.gfa}.cleaned_paths > ${depth_graph%.gfa}_cleaned.gfa
-                            cat ${depth_graph%.gfa}.header ${depth_graph%.gfa}.slines ${depth_graph%.gfa}.llines ${depth_graph%.gfa}.noreads.cleaned_paths > ${depth_graph%.gfa}_cleaned.filt.gfa
-                            rm ${depth_graph%.gfa}.*cleaned_paths
-                            rm ${depth_graph%.gfa}.*lines
-                            rm ${depth_graph%.gfa}.*header
+                            echo "De-novo allele inference...";
+                            depth_graph=${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.gfa;
+                            head -1 ${depth_graph} > ${depth_graph%.gfa}.header;
+                            grep "^P" ${depth_graph} > ${depth_graph%.gfa}.plines;
+                            grep "^S" ${depth_graph} > ${depth_graph%.gfa}.slines;
+                            grep "^L" ${depth_graph} > ${depth_graph%.gfa}.llines;
+                            Rscript ${bigfoot_dir}/phase_locus_depth_graph.R ${depth_graph%.gfa}.plines;
+                            grep -P "\tIG|\tOG|\tTR|\tgrch|\tchm" ${depth_graph%.gfa}.cleaned_paths > ${depth_graph%.gfa}.noreads.cleaned_paths;
+                            cat ${depth_graph%.gfa}.header ${depth_graph%.gfa}.slines ${depth_graph%.gfa}.llines ${depth_graph%.gfa}.cleaned_paths > ${depth_graph%.gfa}_cleaned.gfa;
+                            cat ${depth_graph%.gfa}.header ${depth_graph%.gfa}.slines ${depth_graph%.gfa}.llines ${depth_graph%.gfa}.noreads.cleaned_paths > ${depth_graph%.gfa}_cleaned.filt.gfa;
+                            rm ${depth_graph%.gfa}.*cleaned_paths;
+                            rm ${depth_graph%.gfa}.*lines;
+                            rm ${depth_graph%.gfa}.*header;
                             # map - remove nodes with 0/low coverage - unitigs - stitch together using contiguous abundance...
                             # at most number of alleles = ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta + number of nodes without a path
 #                            vg view -X ${gene}.careful.w_ref_paths.augmented.gam | seqkit fq2fa - > ${gene}.careful.w_ref_paths.augmented.fasta

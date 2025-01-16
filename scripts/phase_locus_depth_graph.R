@@ -17,6 +17,7 @@ path_file=args[1]
 #path_file="HG02886.wg_immunovar.IGHV3-9.genome_graph_ref.augmented.depth.plines"
 #path_file="HG03492.wg_immunovar.IGHV3-9.genome_graph_ref.augmented.depth.plines"
 #path_file="NA20787.wg_immunovar.IGHV1-69.genome_graph_ref.augmented.depth.plines"
+#path_file="HG02717.wg_immunovar.IGHV1-69.genome_graph_ref.augmented.depth.plines"
 graph_paths=fread(path_file,header=F)
 dat<-graph_paths[,c(2,3)]
 #dat<-dat[unique(grep("^IM|^IGv|^OGR|^KIR|^HLA",dat$V2,invert=T))]
@@ -268,9 +269,18 @@ if(length(variant_paths)>0){
     # use - phasing_df_alleles -- phasing_df_alleles$haps
     for(allelic_backbone_tmp in unique(phasing_df_alleles$allele_path)){
         if(nrow(phasing_df_alleles[phasing_df_alleles$allele_path==allelic_backbone_tmp & phasing_df_alleles$indep==1,])>1){
-            updating_hap<-min(phasing_df_alleles[phasing_df_alleles$allele_path==allelic_backbone_tmp & phasing_df_alleles$indep==1,]$hap)
-            print("Multiple variants phased to the same allelic backbone, but unphased to other variants - manually merging them")
-            phasing_df_alleles[phasing_df_alleles$allele_path==allelic_backbone_tmp & phasing_df_alleles$indep==1,]$hap<-updating_hap
+            phasing_df_alleles$phased_variants
+            variant_depths_tmp<-as.numeric(gsub(".*:f:","",gsub("#.$","",phasing_df_alleles[phasing_df_alleles$allele_path==allelic_backbone_tmp & phasing_df_alleles$indep==1,]$phased_variants)));
+            allele_depth_tmp<-as.numeric(gsub(".*_","",gsub("x_freq.*","",unique(phasing_df_alleles[phasing_df_alleles$allele_path==allelic_backbone_tmp & phasing_df_alleles$indep==1,]$allele_path))))
+            if(all(variant_depths_tmp <=1.33*allele_depth_tmp) & all(variant_depths_tmp >=0.67*allele_depth_tmp)){
+                print("Multiple unphased variants linked to the same allelic backbone within 33% of allele depth - merging")
+                updating_hap<-min(phasing_df_alleles[phasing_df_alleles$allele_path==allelic_backbone_tmp & phasing_df_alleles$indep==1,]$hap)
+                phasing_df_alleles[phasing_df_alleles$allele_path==allelic_backbone_tmp & phasing_df_alleles$indep==1,]$hap<-updating_hap
+            } else {
+                print("Multiple unphased variants linked to the same allelic backbone of various depths - resulting in allelic/variant ambiguity")
+                phasing_df_alleles[phasing_df_alleles$allele_path==allelic_backbone_tmp & phasing_df_alleles$indep==1,]$allele_path<-"ambiguous"
+                phasing_df_alleles[phasing_df_alleles$allele_path=="ambiguous" & phasing_df_alleles$indep==1,]$indep<-0
+            }
         }
     }
     for(hap in unique(phasing_df_alleles$hap)){
@@ -287,7 +297,7 @@ if(length(variant_paths)>0){
                 #avg_depth<-round(mean(as.numeric(gsub("variant_DP:f:","",gsub("#.*","",variant_replace)))),2)
                 max_depth<-round(max(as.numeric(gsub("variant_DP:f:","",gsub("#.*","",variant_replace)))),2)
                 variant_replace<-paste0("variant_DP:f:",max_depth,"#",hap,"_")
-            } 
+            }
             allele_update<-sub("path.*?_",variant_replace,allele_backbone)
             if(allele_update=="ambiguous"){
                 print("Unable to link variant(s) with alleles")
@@ -299,8 +309,10 @@ if(length(variant_paths)>0){
                 ambiguous_allele_paths$V2<-sub("path.*?_","ambiguous_exact_",ambiguous_allele_paths$V2)
                 graph_paths_update<-rbind(graph_paths_update,variant_graph_paths)
                 # remove allele pahts
-                graph_paths_update<-graph_paths_update[-which(graph_paths_update$V2 %in% names(pathref[grep("^IG|^OG|^TR",names(pathref))])),]
-                graph_paths_update<-rbind(graph_paths_update,ambiguous_allele_paths)
+                if(length(which(graph_paths_update$V2 %in% names(pathref[grep("^IG|^OG|^TR",names(pathref))])))>0){
+                    graph_paths_update<-graph_paths_update[-which(graph_paths_update$V2 %in% names(pathref[grep("^IG|^OG|^TR",names(pathref))])),]
+                    graph_paths_update<-rbind(graph_paths_update,ambiguous_allele_paths)
+                }
             } else {
                 allele_graph_path_replace<-graph_paths[grep(allele_backbone_pattern,graph_paths$V2),];
                 variant_graph_path<-graph_paths[which(graph_paths$V2 %in% phased_df_tmp$phased_variants),];
