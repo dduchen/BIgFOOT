@@ -90,15 +90,34 @@ mkdir -p ${outdir}/HLA
 # note: coeliac succesptibility genes - DQA1/DQB1/HLA-C/IGHV gene
 # prefetch locus-specific graphs from following directory if possible:
 mkdir -p ${genotyping_nodes_dir}/gene_graphs/
+mkdir -p ${genotyping_nodes_dir}/ig_asc/gene_graphs/
 # IG/TR inference
 #for each in $(ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^DQA1\|^DQB1\|^C\\." | grep -v "__\|IGHD\|IGHJ");do echo $each;
 # potentially save this as script - run in parallel #https://stackoverflow.com/questions/25158583/exporting-the-full-environment-to-gnu-parallel
 # parallel!
-ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV\|TR" | grep -v "__\|IGHD\|IGHJ\|TR.J\|TR.D" > ${outdir}/gene_list.txt
 export assoc_testing=true
 # should tie number of parallel jobs to the number of compute nodes + memory
-parallel -j 6 'export each={}; \
-    . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(cat ${outdir}/gene_list.txt );
+ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV\|TR" | grep -v "__\|IGHD\|IGHJ\|TR.J\|TR.D" | > ${outdir}/gene_list.txt
+# asc cluster-based approach vs. gene-based approach
+ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV\|TR" | grep -v "__\|IGHD\|IGHJ\|TR.J\|TR.D" | grep -v "^IGHV\|^IGLV\|^IGKV" > ${outdir}/asc_gene_list.txt
+ls ${genotyping_nodes_dir}/ig_asc/ | grep "nodes.txt" | grep "^IGHV_\|^IGLV_\|^IGKV_" >> ${outdir}/asc_gene_list.txt
+#
+export asc_inference=false
+#
+if [ "${asc_inference}" = true ]; then
+    parallel -j 6 'export each={}; \
+        if [[ ${each} == *"IG.V_"* ]]; then
+            . ${bigfoot_dir}/gene_asc_allele_calling_parallel.sh
+        else
+            . ${bigfoot_dir}/gene_allele_calling_parallel.sh
+        fi' :::: <(cat ${outdir}/asc_gene_list.txt );
+else
+    parallel -j 6 'export each={}; \
+        . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(cat ${outdir}/gene_list.txt );
+fi
+#    . ${bigfoot_dir}/gene_asc_allele_calling_parallel.sh' :::: <(cat ${outdir}/asc_gene_list.txt );
+#parallel -j 6 'export each={}; \
+#    . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(cat ${outdir}/gene_list.txt );
 #
 variant_file=$(ls ${outdir}/*putative_variants.csv)
 grep -v ",1_reads\|,2_reads" ${variant_file} > ${variant_file%.csv}_strict.csv
@@ -107,6 +126,33 @@ rm -rf ${outdir}/seqwish_${sample_id}.${graph}/
 #ls ${outdir}/*_files.txt > ${outdir}/${sample_id}_files_rm.txt # keep in dir to avoid re-analyzing samples
 #ls -d ${outdir}/seqwish* >> ${outdir}/${sample_id}_files_rm.txt
 #xargs rm -rf < ${outdir}/${sample_id}_files_rm.txt
+#
+# parse results
+if [ "${asc_inference}" = true ]; then
+    echo -e ${sample_id} "mean" "sd" | sed s/" "/'\t'/g > ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.asc.txt;
+    grep ">" ${outdir%haplotype_inference*}"haplotype_inference"/*annot.fasta | sed s/"^.*>"/''/ | sed s/' or '/'_or_'/g > "${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.results_raw.txt";
+    if [ "${de_novo}" = true ]; then
+        for novel_alleles in $(ls ${outdir}/*_cleaned.filt.gfa); do echo ${novel_alleles};
+            vg paths -F -x ${novel_alleles} | seqkit grep -r -p "\*" | grep ">" | sed s/"^.*>"/''/ | sed s/' or '/'_or_'/g >> "${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.results_raw.denovo.txt";
+        done
+    fi
+    for each in $(ls ${outdir%haplotype_inference*}"haplotype_inference"/*.filtered.depth); do echo -e $(echo -ne ${each%.filtered.depth} ' ' | 
+        sed s/"__"/"\/"/; echo $(cut -f1,2 $each)) | sed s/" "/'\t'/g | sed s/".*wg_immunovar."//g >> ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.asc.txt;
+    done
+    # Revert ASC genes to average gene-based depths
+    Rscript parse_ASC_clusters_to_genes.R ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.asc.txt;
+else
+    echo -e ${sample_id} "mean" "sd" | sed s/" "/'\t'/g > ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.txt;
+    grep ">" ${outdir%haplotype_inference*}"haplotype_inference"/*annot.fasta | sed s/"^.*>"/''/ | sed s/' or '/'_or_'/g > "${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.results_raw.txt";
+    for each in $(ls ${outdir%haplotype_inference*}"haplotype_inference"/*.filtered.depth); do echo -e $(echo -ne ${each%.filtered.depth} ' ' |
+        sed s/"__"/"\/"/; echo $(cut -f1,2 $each)) | sed s/" "/'\t'/g | sed s/".*wg_immunovar."//g >> ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.txt;
+    done
+    if [ "${de_novo}" = true ]; then
+        for novel_alleles in $(ls ${outdir}/*_cleaned.filt.gfa); do echo ${novel_alleles};
+            vg paths -F -x ${novel_alleles} | seqkit grep -r -p "\*" | grep ">" | sed s/"^.*>"/''/ | sed s/' or '/'_or_'/g >> "${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.results_raw.denovo.txt";
+        done
+    fi
+fi
 # parse results
 grep ">" ${outdir%haplotype_inference*}"haplotype_inference"/*annot.fasta | sed s/"^.*>"/''/ | sed s/' or '/'_or_'/g > "${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.results_raw.txt";
 echo -e ${sample_id} "mean" "sd" | sed s/" "/'\t'/g > ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.txt;
