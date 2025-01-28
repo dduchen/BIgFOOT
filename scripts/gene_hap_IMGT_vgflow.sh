@@ -97,18 +97,21 @@ mkdir -p ${genotyping_nodes_dir}/ig_asc/gene_graphs/
 # parallel!
 export assoc_testing=true
 # should tie number of parallel jobs to the number of compute nodes + memory
-ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV\|TR" | grep -v "__\|IGHD\|IGHJ\|TR.J\|TR.D" | > ${outdir}/gene_list.txt
+ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV\|TR" | grep -v "__\|IGHD\|IGHJ\|TR.J\|TR.D" > ${outdir}/gene_list.txt;
 # asc cluster-based approach vs. gene-based approach
-ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV\|TR" | grep -v "__\|IGHD\|IGHJ\|TR.J\|TR.D" | grep -v "^IGHV\|^IGLV\|^IGKV" > ${outdir}/asc_gene_list.txt
-ls ${genotyping_nodes_dir}/ig_asc/ | grep "nodes.txt" | grep "^IGHV_\|^IGLV_\|^IGKV_" >> ${outdir}/asc_gene_list.txt
+ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV\|TR" | grep -v "__\|IGHD\|IGHJ\|TR.J\|TR.D" | grep -v "^IGHV\|^IGLV\|^IGKV" > ${outdir}/asc_gene_list.txt;
+ls ${genotyping_nodes_dir}/ig_asc/ | grep "nodes.txt" | grep "^IGHV_\|^IGLV_\|^IGKV_" >> ${outdir}/asc_gene_list.txt;
 #
 export asc_inference=false
+export de_novo=true
 #
 if [ "${asc_inference}" = true ]; then
     parallel -j 6 'export each={}; \
-        if [[ ${each} == *"IG.V_"* ]]; then
+        if [[ ${each} =~ IG[H|L|K]V_ ]]; then
+            echo "ASC-allele-focused inference"
             . ${bigfoot_dir}/gene_asc_allele_calling_parallel.sh
         else
+            echo "Gene-focused inference"
             . ${bigfoot_dir}/gene_allele_calling_parallel.sh
         fi' :::: <(cat ${outdir}/asc_gene_list.txt );
 else
@@ -140,7 +143,8 @@ if [ "${asc_inference}" = true ]; then
         sed s/"__"/"\/"/; echo $(cut -f1,2 $each)) | sed s/" "/'\t'/g | sed s/".*wg_immunovar."//g >> ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.asc.txt;
     done
     # Revert ASC genes to average gene-based depths
-    Rscript parse_ASC_clusters_to_genes.R ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.asc.txt;
+    Rscript ${bigfoot_dir}/parse_ASC_clusters_to_genes.R ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.asc.txt ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv
+    mv ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.asc.recode.txt ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.txt
 else
     echo -e ${sample_id} "mean" "sd" | sed s/" "/'\t'/g > ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.txt;
     grep ">" ${outdir%haplotype_inference*}"haplotype_inference"/*annot.fasta | sed s/"^.*>"/''/ | sed s/' or '/'_or_'/g > "${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.results_raw.txt";
@@ -153,12 +157,6 @@ else
         done
     fi
 fi
-# parse results
-grep ">" ${outdir%haplotype_inference*}"haplotype_inference"/*annot.fasta | sed s/"^.*>"/''/ | sed s/' or '/'_or_'/g > "${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.results_raw.txt";
-echo -e ${sample_id} "mean" "sd" | sed s/" "/'\t'/g > ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.txt;
-for each in $(ls ${outdir%haplotype_inference*}"haplotype_inference"/*.filtered.depth); do echo -e $(echo -ne ${each%.filtered.depth} ' ' |
-    sed s/"__"/"\/"/; echo $(cut -f1,2 $each)) | sed s/" "/'\t'/g | sed s/".*wg_immunovar."//g >> ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.depth_raw.txt;
-done
 # append HLA results if they exist
 if [ -s ${outdir%haplotype_inference*}"haplotype_inference"/HLA/*annot.fasta ]; then
     grep ">" ${outdir%haplotype_inference*}"haplotype_inference"/HLA/*annot.fasta | sed s/"^.*>"/''/ >> ${outdir%haplotype_inference*}"haplotype_inference"/../${sample_id}.results_raw.txt;

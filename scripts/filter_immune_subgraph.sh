@@ -159,7 +159,21 @@ if [ -s ${sorted_gam} ]; then
     fi
     #
     cd ${workdir}/${sample_id}_${graph}_genotyping/
+    echo "Checking for de-novo allelic inference"
+    ls ./familywise_pe_haplotype_inference/*depth_cleaned.gfa > ${sample_id}.${graph}_allelic_inference.txt
+    rm ${sample_id}.${graph}.alleles.fasta;
+    for allele_fasta in $(cat ${sample_id}.${graph}_allelic_inference.txt); do echo "Extracting alleles: ${allele_fasta}"
+        vg paths -Fv ${allele_fasta} | seqkit grep -r -p "IG|TR" >> ${sample_id}.${graph}.alleles.fasta
+    done
+    mkdir -p ${sample_id}.${graph}_vcf
+#    rm ${sample_id}.${graph}_vcf/*
+    mv ${outdir}/*vcf ${sample_id}.${graph}_vcf
+    rm $outdir/*plines; rm $outdir/*paths
+#   update clean_genewise_results script to parse alleles
     Rscript ${bigfoot_dir}/clean_genewise_results.R
+    tar -czvf ${sample_id}.${graph}_allelic_inference.tar.gz -T ${sample_id}.${graph}_allelic_inference.txt --remove-files
+    ls ${outdir}/* > ${sample_id}.${graph}_other_materials.txt
+    tar -czvf ${sample_id}.${graph}_other_materials.tar.gz -T ${sample_id}.${graph}_other_materials.txt --remove-files
     cd ${workdir}
     echo "fin!"
     ###########################

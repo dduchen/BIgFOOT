@@ -5,19 +5,8 @@ suppressMessages(suppressWarnings(library(data.table)))
 suppressMessages(suppressWarnings(library(stringr)))
 args<-commandArgs(TRUE)
 path_file=args[1]
-#path_file="NA18874.wg_immunovar.IGHV3-9.genome_graph_ref.augmented.depth.plines" # many variants - multi-haps
-#path_file="NA18559.wg_immunovar.IGHV3-9.genome_graph_ref.augmented.depth.plines" # 2 variants
-#path_file="NA19916.wg_immunovar.IGHV3-9.genome_graph_ref.augmented.depth.plines" # 2 variants, 1 below thresh
-#path_file="HG00451.wg_immunovar.IGHV3-9.genome_graph_ref.augmented.depth.plines"
-#path_file="HG00119.wg_immunovar.IGHV3-9.genome_graph_ref.augmented.depth.plines"
-#path_file="HG02182.wg_immunovar.IGHV3-9.genome_graph_ref.augmented.depth.plines" #< -- mismatch found - figure this out
-#path_file="HG02886.wg_immunovar.IGHV3-9.genome_graph_ref.augmented.depth.plines"
-#path_file="HG02620.wg_immunovar.IGHV3-9.genome_graph_ref.augmented.depth.plines"
-#path_file="HG02622.wg_immunovar.IGHV3-9.genome_graph_ref.augmented.depth.plines"
-#path_file="HG02886.wg_immunovar.IGHV3-9.genome_graph_ref.augmented.depth.plines"
-#path_file="HG03492.wg_immunovar.IGHV3-9.genome_graph_ref.augmented.depth.plines"
-#path_file="NA20787.wg_immunovar.IGHV1-69.genome_graph_ref.augmented.depth.plines"
-#path_file="HG02717.wg_immunovar.IGHV1-69.genome_graph_ref.augmented.depth.plines"
+# asc-based inference
+#path_file="NA21130.wg_immunovar.IGHV_F12-G65.genome_graph_ref.augmented.depth.plines"
 graph_paths=fread(path_file,header=F)
 dat<-graph_paths[,c(2,3)]
 #dat<-dat[unique(grep("^IM|^IGv|^OGR|^KIR|^HLA",dat$V2,invert=T))]
@@ -38,6 +27,10 @@ for(i in 1:length(unique(dat$V2))){
 }
 #
 variant_paths<-pathref[grep("variant",names(pathref))]
+deletion_paths<-pathref[grep("deletion",names(pathref))]
+#
+aln_nodes<-graph_paths[grep("IG|TR|grch38|chm13",graph_paths$V2,invert=T),c(2,3)]
+#
 variant_paths_filt<-variant_paths[grep(":f:1#|:f:2#",names(variant_paths),invert=T)]
 if(length(setdiff(names(variant_paths),names(variant_paths_filt)))>0){
     path_remove<-setdiff(names(variant_paths),names(variant_paths_filt))
@@ -45,24 +38,54 @@ if(length(setdiff(names(variant_paths),names(variant_paths_filt)))>0){
 }
 variant_paths<-variant_paths_filt
 #
-allele_paths<-pathref[grep("^IG|^OG|^TR",names(pathref))]
-names(allele_paths)<-gsub("\\*","::",names(allele_paths))
-allele_paths_phasing_nodes<-allele_paths
-pseudoploidy=length(allele_paths)
-read_paths<-pathref[grep("variant|grch|chm|^IG|^OG|^TR",names(pathref),invert=T)]
+deletion_paths_filt<-deletion_paths[grep(":f:1#|:f:2#",names(deletion_paths),invert=T)]
+if(length(setdiff(names(deletion_paths),names(deletion_paths_filt)))>0){
+    path_remove<-setdiff(names(deletion_paths),names(deletion_paths_filt))
+    graph_paths<-graph_paths[grep(paste(path_remove,collapse="|"),graph_paths$V2,invert=T),]
+}
+deletion_paths<-deletion_paths_filt
+if(length(deletion_paths)>0){
+    variant_paths<-c(variant_paths,deletion_paths)
+}
+#
+allele_paths<-pathref[grep("^IG|^OG|^TR",names(pathref))];
+names(allele_paths)<-gsub("\\*","::",names(allele_paths));
+allele_paths_phasing_nodes<-allele_paths;
+pseudoploidy=length(allele_paths);
+read_paths<-pathref[grep("variant|deletion|grch|chm|^IG|^OG|^TR",names(pathref),invert=T)];
+generate_pairs <- function(vec) {
+  combn(vec, 2, simplify = TRUE)  # Generate pairs of co-occurring values
+}
+convert_columns_to_list <- function(df) {
+  return(lapply(df, function(col) as.vector(col)))
+}
 if(pseudoploidy>1){
 #    allele_paths<-allele_paths[grep("freq=0.0",names(allele_paths),invert=T)]
     for(allele in names(allele_paths)){
+        print(allele)
+        allele_gene<-gsub("::.*","::",allele);
         alt_alleles<-allele_paths[grep(allele,names(allele_paths),invert=T)]
         allele_nodes_tmp<-setdiff(allele_paths[[allele]],unname(unlist(alt_alleles)))
-        # if no singularly distinct nodes - use nodes that differentiate the allele from each other allele and rely on table...
-        if(length(allele_nodes_tmp)==0){
-            for(alt_allele_tmp in names(alt_alleles)){
-                allele_nodes_tmp<-c(allele_nodes_tmp,setdiff(allele_paths[[allele]],alt_alleles[[alt_allele_tmp]]))
-            }
-        } else {
-            allele_nodes_tmp<-setdiff(allele_paths[[allele]],unname(unlist(alt_alleles)))
+        # if no singularly distinct nodes - use combination of nodes to differentiate the allele from each other allele and rely on table...
+#        if(length(allele_nodes_tmp)==0){
+        print("Also using unique co-occuring pairs of nodes to aid allelic phasing")
+        allele_combns<-allele_paths[grep(allele,names(allele_paths),invert=F)]
+        allele_combns <- lapply(allele_combns, generate_pairs)
+        allele_combns <- convert_columns_to_list(data.frame(allele_combns))
+        for(iter in seq_along(allele_combns)){
+            allele_combns[[iter]]<-paste0(sort(allele_combns[[iter]]),collapse=",")
         }
+        alt_allele_combns_combined<-list()
+        for(alt_allele_tmp in names(alt_alleles)){
+            alt_allele_combns <- lapply(allele_paths[grep(alt_allele_tmp,names(allele_paths),invert=F)], generate_pairs)
+            alt_allele_combns <- convert_columns_to_list(data.frame(alt_allele_combns))
+            alt_allele_combns_combined<-c(alt_allele_combns_combined,alt_allele_combns)
+            for(iter in seq_along(alt_allele_combns_combined)){
+                alt_allele_combns_combined[[iter]]<-paste0(sort(alt_allele_combns_combined[[iter]]),collapse=",")
+            }
+        }
+        allele_nodes_tmp<-c(allele_nodes_tmp,unname(unlist(setdiff(allele_combns,alt_allele_combns_combined))))
+#        } 
         allele_paths_phasing_nodes[[allele]]<-as.vector(allele_nodes_tmp)
     }
 }
@@ -70,17 +93,32 @@ if(length(variant_paths)>0){
     if(length(variant_paths)>1){
         multivar=TRUE
         var_df <- do.call(rbind, lapply(names(variant_paths), function(name) {
-            filtered_content <- variant_paths[[name]][-c(1, length(variant_paths[[name]]))]
+            variant_path <- variant_paths[[name]]
+            # If there are only two values, keep both in the same row
+            if (length(variant_path) == 2) {
+                filtered_content <- paste(variant_path, collapse = ",")  # Combine the two values into a single string
+            } else {
+                # Otherwise, exclude the first and last values
+                filtered_content <- variant_path[-c(1, length(variant_path))]
+            }
             data.frame(variant = name,
-                node = filtered_content,
-                stringsAsFactors = FALSE)
+                    node = filtered_content,
+                    stringsAsFactors = FALSE)
         }))
-        phasing_reads<-read_paths[sapply(read_paths, function(vec) any(var_df$node %in% vec))]
+#        var_df <- do.call(rbind, lapply(names(variant_paths), function(name) {
+#            filtered_content <- variant_paths[[name]][-c(1, length(variant_paths[[name]]))]
+#            data.frame(variant = name,
+#                node = filtered_content,
+#                stringsAsFactors = FALSE)
+#        }))
+        phasing_reads<-read_paths[sapply(read_paths, function(vec) any(unlist(strsplit(as.character(var_df$node),",")) %in% vec))]
+#        phasing_reads<-read_paths[sapply(read_paths, function(vec) any(var_df$node %in% vec))]
         # find co-occurring variants
         var_df$cooc_var<-"NA"
         for(varcomb in 1:ncol(data.frame(combn(var_df$node,2)))){
             cooc_nodes<-data.frame(combn(var_df$node,2))[,varcomb]
-            cooc_reads<-read_paths[sapply(read_paths, function(vec) all(cooc_nodes %in% vec))]
+            cooc_nodes_wdel<-unlist(strsplit(as.character(cooc_nodes),","))
+            cooc_reads<-read_paths[sapply(read_paths, function(vec) all(cooc_nodes_wdel %in% vec))]
             if(length(cooc_reads)>0){
                 var_df$cooc_var[var_df$node %in% cooc_nodes]<-paste0(sort(var_df$variant[var_df$node %in% cooc_nodes]),collapse=" ")
             }
@@ -134,30 +172,64 @@ if(length(variant_paths)>0){
     names(allele_depth)<-gsub(":path.*","",names(allele_paths));
     variant_processing_order<-order(variant_depths,decreasing=T);
     for(variant in variant_processing_order){
+        #"NA21130#1#IGHV_variant_DP:f:14#4"
         print(names(variant_paths)[variant])
-      #  if(names(variant_paths)[variant] %in% linked_vars_total){
-      #      print("Variant already phased")
-      #      next
-      #  }
         variant_nodes<-variant_paths[[names(variant_paths)[variant]]];
-        variant_nodes<-variant_nodes[-c(1,length(variant_nodes))]
-        if(multivar==TRUE & multivar_indep==FALSE & var_df[var_df$node==variant_nodes,]$cooc_var!="NA"){
+        if(length(variant_nodes)==3){
+            variant_nodes<-variant_nodes[-c(1,length(variant_nodes))]
+        } else {
+            variant_nodes<-variant_nodes
+        }
+        if(multivar==TRUE & multivar_indep==FALSE & var_df[var_df$node==paste0(variant_nodes,collapse=","),]$cooc_var!="NA"){
             # parse var_df table to indetify full set of linked reads
-            linked_vars<-unique(unlist(strsplit(var_df[var_df$node %in% variant_nodes,]$cooc_var,split=" ")));
+            linked_vars<-unique(unlist(strsplit(var_df[var_df$node==paste0(variant_nodes,collapse=","),]$cooc_var,split=" ")));
             variant_nodes<-var_df[var_df$variant %in% linked_vars,]$node;
+            # paste0(variant_nodes,collapse=",")
             while(length(setdiff(var_df[var_df$variant %in% c(unique(unlist(strsplit(var_df[var_df$node %in% variant_nodes,]$cooc_var,split=" ")))),]$variant,linked_vars)>0)){
                 linked_vars<-unique(unlist(strsplit(var_df[var_df$node %in% variant_nodes,]$cooc_var,split=" ")))
                 variant_nodes<-var_df[var_df$variant %in% linked_vars,]$node;
             }
-            phasing_reads<-read_paths[sapply(read_paths, function(vec) any(variant_nodes %in% vec))]
+            # allele should have flanking nodes in common with variant nodes
+            in_node<-unlist(unname(sapply(variant_paths[var_df[var_df$node %in% variant_nodes,]$variant], function(x) x[1])))
+            out_node<-unlist(unname(sapply(variant_paths[var_df[var_df$node %in% variant_nodes,]$variant], function(x) x[length(x)])))
+            reqd_nodes<-unique(c(in_node,out_node))
+            phasing_reads<-read_paths[sapply(read_paths, function(vec) any(unlist(strsplit(as.character(variant_nodes),split=",")) %in% vec))]
+            candidate_alleles<-vector()
             for(allele in names(allele_paths_phasing_nodes)){
-                phasing_reads_tmp<-phasing_reads[sapply(phasing_reads, function(vec) any(unname(unlist(allele_paths_phasing_nodes[allele])) %in% vec))]
-                if(length(phasing_reads_tmp)>0){
-                    phasing_df[allele,names(variant_paths)[variant]]<-length(phasing_reads_tmp)
+                print(allele)
+                allele_paths[[allele]]
+                if(all(reqd_nodes %in% allele_paths[[allele]])){
+                    candidate_alleles<-unique(c(candidate_alleles,allele))
+                    print(paste0("Candidate allele: ", allele," contains topology consistent with variant call"));
                 }
-                # update the phasing_df_alleles table
+            }
+            if(length(candidate_alleles)==0 | length(candidate_alleles)>1){
+                candidate_alleles<-vector() # try use co-occuring nodes to find single backbone allele
+                for(allele in names(allele_paths_phasing_nodes)){
+                    phasing_reads_tmp<-phasing_reads[sapply(phasing_reads, function(vec) any(unname(unlist(allele_paths_phasing_nodes[allele])[grep(",",unlist(allele_paths_phasing_nodes[allele]),invert=T)]) %in% vec))]
+                    for(node_pairs in unname(unlist(allele_paths_phasing_nodes[allele])[grep(",",unlist(allele_paths_phasing_nodes[allele]),invert=F)])){
+                        node_pairs<-strsplit(node_pairs,split=",")[[1]]
+#                        print(phasing_reads[sapply(phasing_reads, function(vec) all(node_pairs %in% vec))])
+                        phasing_reads_tmp<-c(phasing_reads_tmp,phasing_reads[sapply(phasing_reads, function(vec) all(node_pairs %in% vec))])
+                    }
+                    if(length(phasing_reads_tmp)>0){
+                        candidate_alleles<-unique(c(candidate_alleles,allele))
+                    }
+                }
+            }
+            for(allele in candidate_alleles){
+                print(paste0("Candidate allele: ", allele));
+                phasing_reads_tmp<-phasing_reads[sapply(phasing_reads, function(vec) any(unname(unlist(allele_paths_phasing_nodes[allele])[grep(",",unlist(allele_paths_phasing_nodes[allele]),invert=T)]) %in% vec))]
+                for(node_pairs in unname(unlist(allele_paths_phasing_nodes[allele])[grep(",",unlist(allele_paths_phasing_nodes[allele]),invert=F)])){
+                    node_pairs<-strsplit(node_pairs,split=",")[[1]]
+#                    print(phasing_reads[sapply(phasing_reads, function(vec) all(node_pairs %in% vec))])
+                    phasing_reads_tmp<-c(phasing_reads_tmp,phasing_reads[sapply(phasing_reads, function(vec) all(node_pairs %in% vec))])
+                }
                 var_ids_temp<-var_df[var_df$node %in% variant_nodes,]$variant
+#                phasing_df[allele,names(variant_paths)[variant]]<-length(phasing_reads_tmp)
+                # update the phasing_df_alleles table
                 if(length(intersect(var_ids_temp,phasing_df_alleles$phased_variant))==0){
+                    phasing_df[allele,var_ids_temp]<-length(phasing_reads_tmp)
                     colindex<-which(colnames(phasing_df) %in% var_ids_temp)
                     if(nrow(phasing_df)>1 & any(phasing_df[,colindex]>0)){
 #                        allele_w_max_vardepth <- rownames(phasing_df)[which.max(phasing_df[,colindex])]
@@ -174,13 +246,16 @@ if(length(variant_paths)>0){
                         var_ids_temp<-var_ids_temp[var_ids_temp %in% names(variant_paths)]
                         phasing_df_alleles <- data.frame(rbind(phasing_df_alleles, data.frame(phased_variants = var_ids_temp, allele_path = allele_w_max_vardepth, indep=0,hap=hap)),check.names=F)
                     } else {
-                        print("Unable to phase variants with a specific allele")
+                        print("Unable to phase variants with a specific allele 1")
                         hap=hap+1
                         var_ids_temp<-var_ids_temp[var_ids_temp %in% names(variant_paths)]
                         phasing_df_alleles <- data.frame(rbind(phasing_df_alleles, data.frame(phased_variants = var_ids_temp, allele_path = "ambiguous", indep=0,hap=hap)),check.names=F)
                     }
                 } else {
                     # check for conflicts and if not - use phasing_df_alleles
+                    if(phasing_df[allele,names(variant_paths)[variant]]<length(phasing_reads_tmp)){
+                        phasing_df[allele,names(variant_paths)[variant]]<-length(phasing_reads_tmp)
+                    }
                     colindex<-which(colnames(phasing_df) %in% var_ids_temp)
                     if(nrow(phasing_df)>1 & any(phasing_df[,colindex]>0)){
                         subset_data<-as.matrix(phasing_df[, colindex])
@@ -217,22 +292,53 @@ if(length(variant_paths)>0){
             linked_vars_total<-c(linked_vars_total,linked_vars)
         } else {
             print("Link this independent variant to specific allele")
-            phasing_reads<-read_paths[sapply(read_paths, function(vec) any(variant_nodes %in% vec))]
+            in_node<-unlist(unname(sapply(variant_paths[var_df[var_df$node %in% variant_nodes,]$variant], function(x) x[1])))
+            out_node<-unlist(unname(sapply(variant_paths[var_df[var_df$node %in% variant_nodes,]$variant], function(x) x[3])))
+            reqd_nodes<-unique(c(in_node,out_node))
+            candidate_alleles<-vector()
             for(allele in names(allele_paths_phasing_nodes)){
-                phasing_reads_tmp<-phasing_reads[sapply(phasing_reads, function(vec) any(unname(unlist(allele_paths_phasing_nodes[allele])) %in% vec))]
-                if(length(phasing_reads_tmp)>0){
-                    phasing_df[allele,names(variant_paths)[variant]]<-length(phasing_reads_tmp)
+                print(allele)
+                allele_paths[[allele]]
+                if(all(reqd_nodes %in% allele_paths[[allele]])){
+                    candidate_alleles<-unique(c(candidate_alleles,allele))
+                    print(paste0("Candidate allele: ", allele," contains topology consistent with variant call"));
                 }
             }
-            var_ids_temp<-var_df[var_df$node %in% variant_nodes,]$variant
-            if(length(intersect(var_ids_temp,phasing_df_alleles$phased_variants))==0){
-                colindex<-which(colnames(phasing_df) %in% var_ids_temp)
-                allele_w_max_vardepth <- rownames(phasing_df)
-                if(nrow(phasing_df)>1){
-                    allele_w_max_vardepth <- rownames(phasing_df)[which.max(phasing_df[,colindex])]
+            phasing_reads<-read_paths[sapply(read_paths, function(vec) any(variant_nodes %in% vec))]
+            if(length(candidate_alleles)>0){
+                for(allele in candidate_alleles){
+                    phasing_reads_tmp<-phasing_reads[sapply(phasing_reads, function(vec) any(unname(unlist(allele_paths_phasing_nodes[allele])) %in% vec))]
+                    if(length(phasing_reads_tmp)>0){
+                        phasing_df[allele,names(variant_paths)[variant]]<-length(phasing_reads_tmp)
+                    }
                 }
-                hap=hap+1
-                phasing_df_alleles <- data.frame(rbind(phasing_df_alleles, data.frame(phased_variants = var_ids_temp, allele_path = allele_w_max_vardepth, indep=1,hap=hap)),check.names=F)
+                var_ids_temp<-var_df[var_df$node %in% variant_nodes,]$variant
+                if(length(intersect(var_ids_temp,phasing_df_alleles$phased_variants))==0){
+                    colindex<-which(colnames(phasing_df) %in% var_ids_temp)
+                    allele_w_max_vardepth <- rownames(phasing_df)
+                    if(nrow(phasing_df)>1){
+                        allele_w_max_vardepth <- rownames(phasing_df)[which.max(phasing_df[,colindex])]
+                    }
+                    hap=hap+1
+                    phasing_df_alleles <- data.frame(rbind(phasing_df_alleles, data.frame(phased_variants = var_ids_temp, allele_path = allele_w_max_vardepth, indep=1,hap=hap)),check.names=F)
+                }
+            } else {
+                for(allele in names(allele_paths_phasing_nodes)){
+                    phasing_reads_tmp<-phasing_reads[sapply(phasing_reads, function(vec) any(unname(unlist(allele_paths_phasing_nodes[allele])) %in% vec))]
+                    if(length(phasing_reads_tmp)>0){
+                        phasing_df[allele,names(variant_paths)[variant]]<-length(phasing_reads_tmp)
+                    }
+                }
+                var_ids_temp<-var_df[var_df$node %in% variant_nodes,]$variant
+                if(length(intersect(var_ids_temp,phasing_df_alleles$phased_variants))==0){
+                    colindex<-which(colnames(phasing_df) %in% var_ids_temp)
+                    allele_w_max_vardepth <- rownames(phasing_df)
+                    if(nrow(phasing_df)>1){
+                        allele_w_max_vardepth <- rownames(phasing_df)[which.max(phasing_df[,colindex])]
+                    }
+                    hap=hap+1
+                    phasing_df_alleles <- data.frame(rbind(phasing_df_alleles, data.frame(phased_variants = var_ids_temp, allele_path = allele_w_max_vardepth, indep=1,hap=hap)),check.names=F)
+                }
             }
         }
     }
@@ -283,64 +389,136 @@ if(length(variant_paths)>0){
             }
         }
     }
+    #function to check for duplication in allele sequence
+    trim_duplicates <- function(string) {
+        elements <- unlist(strsplit(string, ","))
+        # Loop through the elements to check for the first duplication
+        seen <- character(0)  # Vector to track seen elements
+        for (i in 1:length(elements)) {
+        if (elements[i] %in% seen) {
+            # Identify the sequence before and after the duplicate
+            initial_sequence <- elements[1:(i-1)]
+            initial_sequence_collapsed<-paste0(initial_sequence,collapse=",")
+            remaining_sequence <- elements[(i):length(elements)]
+            remaining_sequence_collapsed<-paste0(remaining_sequence,collapse=",")
+            if(startsWith(initial_sequence_collapsed, remaining_sequence_collapsed)){
+            #print("Duplicate sequence found - excluding duplicate region")
+            return(initial_sequence_collapsed)
+            break
+            }
+        }
+        seen <- c(seen, elements[i])
+        }
+        # Return the original string if no duplicates found
+        return(string)
+    }
     for(hap in unique(phasing_df_alleles$hap)){
         phased_df_tmp<-phasing_df_alleles[phasing_df_alleles$hap==hap,]
         allele_backbone<-unique(phasing_df_alleles[phasing_df_alleles$hap==hap,]$allele_path)
         allele_backbone<-allele_backbone[!is.na(allele_backbone)]
         allele_backbone_pattern<-gsub(".*::","",allele_backbone)
         if(length(allele_backbone)>1){
-            print("error - multiple alleles tagged for the same haplotype")
+            print("Multiple alleles tagged for the same haplotype - Rescue attempt using the backbone with consistently high read support")
+            best_allele<-vector()
+            for(iter in 1:ncol(phasing_df[phasing_df_alleles[phasing_df_alleles$hap==hap,]$allele_path,phasing_df_alleles[phasing_df_alleles$hap==hap,]$phased_variants])){
+                best_allele<-c(best_allele,which.max(phasing_df[phasing_df_alleles[phasing_df_alleles$hap==hap,]$allele_path,phasing_df_alleles[phasing_df_alleles$hap==hap,]$phased_variants][,iter]))
+            }
+            if(length(unique(best_allele))==1){
+                allele_backbone<-rownames(phasing_df[phasing_df_alleles[phasing_df_alleles$hap==hap,]$allele_path,phasing_df_alleles[phasing_df_alleles$hap==hap,]$phased_variants])[unique(best_allele)]
+                allele_backbone<-gsub("\\.1$|\\.2$","",allele_backbone)
+                allele_backbone_pattern<-gsub(".*::","",allele_backbone)
+                variant_replace<-paste0(gsub(".*_variant","variant",gsub("#1","",phased_df_tmp$phased_variant)),"#1_")
+            } else {
+                phasing_df_alleles[phasing_df_alleles$allele_path %in% allele_backbone & phasing_df_alleles$hap==hap,]$allele_path<-"ambiguous"
+                phasing_df_alleles[phasing_df_alleles$allele_path=="ambiguous",]$indep<-0
+            }
         } else {
             variant_replace<-paste0(gsub(".*_variant","variant",gsub("#1","",phased_df_tmp$phased_variant)),"#1_")
-            if(length(variant_replace)>1){
-                var_length<-length(variant_replace)
-                #avg_depth<-round(mean(as.numeric(gsub("variant_DP:f:","",gsub("#.*","",variant_replace)))),2)
-                max_depth<-round(max(as.numeric(gsub("variant_DP:f:","",gsub("#.*","",variant_replace)))),2)
-                variant_replace<-paste0("variant_DP:f:",max_depth,"#",hap,"_")
+            variant_replace<-paste0(gsub(".*_deletion","deletion",gsub("#1","",variant_replace)),"#1_")
+        }
+        if(length(variant_replace)>1){
+            var_length<-length(variant_replace)
+            #avg_depth<-round(mean(as.numeric(gsub("#.*","",gsub("variant_DP:f:|deletion_DP:f:","",gsub("_#.*","",variant_replace))))),2)
+            max_depth<-round(max(as.numeric(gsub("#.*","",gsub("variant_DP:f:|deletion_DP:f:","",gsub("_#.*","",variant_replace))))),2)
+            variant_replace<-paste0("variant_DP:f:",max_depth,"#",hap,"_")
+        }
+        allele_update<-sub("path.*?_",variant_replace,allele_backbone)
+        if(allele_update=="ambiguous"){
+            print("Unable to link variant(s) with alleles")
+            variant_graph_paths<-graph_paths[graph_paths$V2 %in% phased_df_tmp[phased_df_tmp$allele_path=="ambiguous",]$phased_variants,]
+            variant_graph_paths$V2<-gsub("^.*#1#","",gsub("_variant_DP",":ambiguous_variant",variant_graph_paths$V2))
+            # could potentially condense the variant space - if variants are phased and share immediate nodes with each other
+            # cant say there are any exact matches to reference alleles for this individual - set to ambiguous
+            ambiguous_allele_paths<-graph_paths_update[graph_paths_update$V2 %in% names(pathref[grep("^IG|^OG|^TR",names(pathref))]),]
+            ambiguous_allele_paths$V2<-sub("path.*?_","ambiguous_exact_",ambiguous_allele_paths$V2)
+            graph_paths_update<-rbind(graph_paths_update,variant_graph_paths)
+            # remove allele pahts
+            if(length(which(graph_paths_update$V2 %in% names(pathref[grep("^IG|^OG|^TR",names(pathref))])))>0){
+                graph_paths_update<-graph_paths_update[-which(graph_paths_update$V2 %in% names(pathref[grep("^IG|^OG|^TR",names(pathref))])),]
+                graph_paths_update<-rbind(graph_paths_update,ambiguous_allele_paths)
             }
-            allele_update<-sub("path.*?_",variant_replace,allele_backbone)
-            if(allele_update=="ambiguous"){
-                print("Unable to link variant(s) with alleles")
-                variant_graph_paths<-graph_paths[graph_paths$V2 %in% phased_df_tmp[phased_df_tmp$allele_path=="ambiguous",]$phased_variants,]
-                variant_graph_paths$V2<-gsub("^.*#1#","",gsub("_variant_DP",":ambiguous_variant",variant_graph_paths$V2))
-                # could potentially condense the variant space - if variants are phased and share immediate nodes with each other
-                # cant say there are any exact matches to reference alleles for this individual - set to ambiguous
-                ambiguous_allele_paths<-graph_paths_update[graph_paths_update$V2 %in% names(pathref[grep("^IG|^OG|^TR",names(pathref))]),]
-                ambiguous_allele_paths$V2<-sub("path.*?_","ambiguous_exact_",ambiguous_allele_paths$V2)
-                graph_paths_update<-rbind(graph_paths_update,variant_graph_paths)
-                # remove allele pahts
-                if(length(which(graph_paths_update$V2 %in% names(pathref[grep("^IG|^OG|^TR",names(pathref))])))>0){
-                    graph_paths_update<-graph_paths_update[-which(graph_paths_update$V2 %in% names(pathref[grep("^IG|^OG|^TR",names(pathref))])),]
-                    graph_paths_update<-rbind(graph_paths_update,ambiguous_allele_paths)
-                }
-            } else {
-                allele_graph_path_replace<-graph_paths[grep(allele_backbone_pattern,graph_paths$V2),];
-                variant_graph_path<-graph_paths[which(graph_paths$V2 %in% phased_df_tmp$phased_variants),];
-                allele_graph_path_replace$V2<-sub("path.*?_",variant_replace,allele_graph_path_replace$V2)
-                for(new_nodes_iterate in variant_graph_path$V3){
-                    new_nodes<-gsub("\\+|\\-","",new_nodes_iterate)
-                    new_nodes<-as.numeric((strsplit(paste0(new_nodes,collapse=","),split=",")[[1]]))
-                    old_nodes<-allele_graph_path_replace$V3
-                    old_nodes<-gsub("\\+|\\-","",allele_graph_path_replace$V3)
-                    old_nodes<-as.numeric((strsplit(paste0(old_nodes,collapse=","),split=",")[[1]]))
-                    old_nodes_replace<-old_nodes[which(old_nodes==new_nodes[1]):which(old_nodes==new_nodes[length(new_nodes)])]
-                    old_nodes_replace<-setdiff(old_nodes_replace,new_nodes)
-                    new_nodes_replace<-setdiff(new_nodes,old_nodes)
-                    old_pattern_pos<-paste0(",",old_nodes_replace,"\\+|^",old_nodes_replace,"\\+")
-                    old_pattern_neg<-paste0(",",old_nodes_replace,"\\-|^",old_nodes_replace,"\\-")
+        } else {
+            allele_graph_path_replace<-graph_paths[grep(allele_backbone_pattern,graph_paths$V2),];
+            check_duplication<-trim_duplicates(allele_graph_path_replace$V3)
+            if(check_duplication!=allele_graph_path_replace$V3){
+                print("Duplicate sequence found - excluding duplicate region")
+                allele_graph_path_replace$V3<-check_duplication
+            }
+            variant_graph_path<-graph_paths[which(graph_paths$V2 %in% phased_df_tmp$phased_variants),];
+            allele_graph_path_replace$V2<-sub("path.*?_",variant_replace,allele_graph_path_replace$V2)
+            for(new_nodes_iterate in variant_graph_path$V3){
+                new_nodes<-gsub("\\+|\\-","",new_nodes_iterate)
+                new_nodes<-as.numeric((strsplit(paste0(new_nodes,collapse=","),split=",")[[1]]))
+                old_nodes<-allele_graph_path_replace$V3
+                old_nodes<-gsub("\\+|\\-","",allele_graph_path_replace$V3)
+                old_nodes<-as.numeric((strsplit(paste0(old_nodes,collapse=","),split=",")[[1]]))
+                old_nodes_replace<-old_nodes[which(old_nodes==new_nodes[1]):which(old_nodes==new_nodes[length(new_nodes)])]
+                old_nodes_replace<-setdiff(old_nodes_replace,new_nodes)
+                new_nodes_replace<-setdiff(new_nodes,old_nodes)
+                old_pattern_pos<-paste0(",",old_nodes_replace,"\\+|^",old_nodes_replace,"\\+")
+                old_pattern_neg<-paste0(",",old_nodes_replace,"\\-|^",old_nodes_replace,"\\-")
+                if(length(old_nodes_replace)==1){
                     if(length(grep(old_pattern_pos,allele_graph_path_replace$V3))>0){
                         allele_graph_path_replace$V3<-gsub(old_pattern_pos,paste0(new_nodes_replace,"\\+"),allele_graph_path_replace$V3)
-                        allele_graph_path_replace$V3<-gsub(paste0("\\+",new_nodes_replace),paste0("+,",new_nodes_replace),allele_graph_path_replace$V3)
-                        allele_graph_path_replace$V3<-gsub(paste0("\\-",new_nodes_replace),paste0("-,",new_nodes_replace),allele_graph_path_replace$V3)
+                        allele_graph_path_replace$V3<-gsub("\\+\\+","+",allele_graph_path_replace$V3)
+                        if(length(new_nodes_replace)>0){
+                            allele_graph_path_replace$V3<-gsub(paste0("\\+",new_nodes_replace),paste0("+,",new_nodes_replace),allele_graph_path_replace$V3)
+                            allele_graph_path_replace$V3<-gsub(paste0("\\-",new_nodes_replace),paste0("-,",new_nodes_replace),allele_graph_path_replace$V3)
+                        }
                     } else {
                         allele_graph_path_replace$V3<-gsub(old_pattern_neg,paste0(new_nodes_replace,"\\-"),allele_graph_path_replace$V3)
-                        allele_graph_path_replace$V3<-gsub(paste0("\\+",new_nodes_replace),paste0("+,",new_nodes_replace),allele_graph_path_replace$V3)
-                        allele_graph_path_replace$V3<-gsub(paste0("\\-",new_nodes_replace),paste0("-,",new_nodes_replace),allele_graph_path_replace$V3)
+                        if(length(new_nodes_replace)>0){
+                            allele_graph_path_replace$V3<-gsub(paste0("\\+",new_nodes_replace),paste0("+,",new_nodes_replace),allele_graph_path_replace$V3)
+                            allele_graph_path_replace$V3<-gsub(paste0("\\-",new_nodes_replace),paste0("-,",new_nodes_replace),allele_graph_path_replace$V3)
+                        }
+                    }
+                } else {
+                    print("Insertion")
+                    insert_me<-strsplit(new_nodes_iterate,split=",")[[1]]
+                    if(length(grep(gsub("\\+","\\\\+",gsub(paste0(new_nodes_replace,".,"),"",new_nodes_iterate)),allele_graph_path_replace$V3))==1){
+                        allele_graph_path_replace$V3<-gsub(gsub("\\+","\\\\+",gsub(paste0(new_nodes_replace,".,"),"",new_nodes_iterate)),new_nodes_iterate,allele_graph_path_replace$V3)
+                    } else {
+                        print("Complex insertion - unable to resolve")
+                        next
                     }
                 }
-                #remove appropriate backbone path/allele
-                graph_paths_update<-rbind(graph_paths_update,allele_graph_path_replace)
             }
+            #remove appropriate backbone path/allele
+            aln_nodes_candidates<-aln_nodes[grep(gsub("\\+|-",".",allele_graph_path_replace$V3),aln_nodes$V3),]$V3
+            if(length(aln_nodes_candidates)>0){
+                first_node<-substr(allele_graph_path_replace$V3, 1, 2)
+                first_node<-gsub("\\+|-","",first_node)
+                final_node <- gsub(".*,","",new_nodes_iterate)
+                final_node <- gsub("\\+|-","",final_node)
+                aln_nodes_candidates<-gsub(paste0("^.*",first_node),first_node,aln_nodes_candidates)
+                aln_nodes_candidates<-gsub(paste0(final_node,"+.*"),paste0(final_node,"+"),aln_nodes_candidates)
+                aln_nodes_candidates<-gsub(paste0(final_node,"-.*"),paste0(final_node,"-"),aln_nodes_candidates)
+                new_varpath_update<-names(which.max(table(aln_nodes_candidates)))
+                if(length(new_varpath_update)>0){
+                    allele_graph_path_replace$V3<-new_varpath_update
+                }
+            }
+            graph_paths_update<-rbind(graph_paths_update,allele_graph_path_replace)
         }
     }
     for(orig_allele in unique(gsub(":variant_DP.*","",graph_paths_update$V2[grep(":variant_DP", graph_paths_update$V2)]))){
@@ -349,7 +527,7 @@ if(length(variant_paths)>0){
         backbone_depth_tmp<-graph_paths_update[grep(gsub("\\*","\\\\*",orig_allele),graph_paths_update$V2)]$V2;
 #        backbone_depth_tmp<-backbone_depth_tmp[grep("exact",backbone_depth_tmp,invert=T)];
         backbone_depth_tmp_allele<-as.numeric(gsub(".*_","",gsub("x_freq.*","",backbone_depth_tmp[grep("variant",backbone_depth_tmp,invert=T)])));
-        backbone_depth_tmp_variants<-sum(as.numeric(gsub("#.*","",gsub(".*variant_DP:f:","",backbone_depth_tmp[grep("variant",backbone_depth_tmp,invert=F)]))));
+        backbone_depth_tmp_variants<-sum(as.numeric(gsub("#.*","",gsub("_#.*","",gsub(".*variant_DP:f:","",backbone_depth_tmp[grep("variant",backbone_depth_tmp,invert=F)])))));
         if(length(backbone_depth_tmp_allele)>0){
             if(backbone_depth_tmp_allele>5 & backbone_depth_tmp_variants/backbone_depth_tmp_allele<0.667){ # ambiguous_exact
                 differential_depth<-backbone_depth_tmp_allele-backbone_depth_tmp_variants

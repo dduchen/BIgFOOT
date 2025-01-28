@@ -395,12 +395,12 @@ else
 #                    vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
 #                    vg filter -r 0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
                     vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg -g ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
-                    vg filter -r 0.95 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+                    vg filter -r 0.0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
                     cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg
                     cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.pg ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg
                 else
                     echo "Complex locus detected for ${gene} - however the multiple ASC clusters contain only taget gene alleles - retaining all reads"
-                    vg filter -r 0 -P -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+                    vg filter -r 0.0 -P -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
                 fi
             elif [ $(vg paths -Lv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa | grep "IMGT\|IGv2\|OGRDB" | grep -v "${gene}\*\|${gene}_\|${gene}" | wc -l) -gt 0 ]; then
                 echo "Complex locus detected for ${gene} - single ASC cluster but additional genes present - filtering out reads aligning to non-gene nodes"
@@ -424,7 +424,7 @@ else
                 fi
             else
                 echo "Non-ASC-based analysis for ${gene}"
-                vg filter -r 0 -P -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+                vg filter -r 0.0 -P -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
             fi
             vg depth --gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg > ${outdir}/${sample_id}.${graph}.${gene}.filtered.depth;
             echo "1) Performing inference on haplotype graph labled only with alleles of interest";
@@ -666,7 +666,8 @@ else
                     grep "^L" ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.llines
 #                    cat ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.noplines ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.plines > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa
                     gafpack -g ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa -a ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gaf -l > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.coverage
-                    Rscript ${bigfoot_dir}/augment_graph_wdepth.R ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.coverage >> ${outdir}/${sample_id}.putative_variants.csv
+                    #Rscript ${bigfoot_dir}/augment_graph_wdepth.R ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.coverage >> ${outdir}/${sample_id}.putative_variants.csv
+                    Rscript ${bigfoot_dir}/augment_graph_wdepth_asc.R ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.coverage >> ${outdir}/${sample_id}.putative_variants.csv
                     sed -i 's/^[ \t]*//;s/[ \t]*$//' ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.gfa
                     sed -i 's/^[ \t]*//;s/[ \t]*$//' ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa
                     vg paths -Lv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths
@@ -688,31 +689,30 @@ else
 #                    vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa
 #                    gfaffix ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.tmp; mv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.tmp ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa
                     # Additional inference - cleaning complex genes + allele inference
-                    de_novo=false
                     if [ "${de_novo}" = true ]; then
-                            echo "De-novo allele inference...";
-                            depth_graph=${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.gfa;
-                            head -1 ${depth_graph} > ${depth_graph%.gfa}.header;
-                            grep "^P" ${depth_graph} > ${depth_graph%.gfa}.plines;
-                            grep "^S" ${depth_graph} > ${depth_graph%.gfa}.slines;
-                            grep "^L" ${depth_graph} > ${depth_graph%.gfa}.llines;
-                            Rscript ${bigfoot_dir}/phase_locus_depth_graph.R ${depth_graph%.gfa}.plines;
-                            grep -P "\tIG|\tOG|\tTR|\tgrch|\tchm" ${depth_graph%.gfa}.cleaned_paths > ${depth_graph%.gfa}.noreads.cleaned_paths;
-                            cat ${depth_graph%.gfa}.header ${depth_graph%.gfa}.slines ${depth_graph%.gfa}.llines ${depth_graph%.gfa}.cleaned_paths > ${depth_graph%.gfa}_cleaned.gfa;
-                            cat ${depth_graph%.gfa}.header ${depth_graph%.gfa}.slines ${depth_graph%.gfa}.llines ${depth_graph%.gfa}.noreads.cleaned_paths > ${depth_graph%.gfa}_cleaned.filt.gfa;
-                            rm ${depth_graph%.gfa}.*cleaned_paths;
-                            rm ${depth_graph%.gfa}.*lines;
-                            rm ${depth_graph%.gfa}.*header;
-                            # map - remove nodes with 0/low coverage - unitigs - stitch together using contiguous abundance...
-                            # at most number of alleles = ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta + number of nodes without a path
+                        echo "De-novo allele inference...";
+                        depth_graph=${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.gfa;
+                        head -1 ${depth_graph} > ${depth_graph%.gfa}.header;
+                        grep "^P" ${depth_graph} > ${depth_graph%.gfa}.plines;
+                        grep "^S" ${depth_graph} > ${depth_graph%.gfa}.slines;
+                        grep "^L" ${depth_graph} > ${depth_graph%.gfa}.llines;
+#                        Rscript ${bigfoot_dir}/phase_locus_depth_graph.R ${depth_graph%.gfa}.plines;
+                        Rscript ${bigfoot_dir}/phase_locus_depth_graph_asc.R ${depth_graph%.gfa}.plines;
+                        grep -P "\tIG|\tOG|\tTR|\tgrch|\tchm" ${depth_graph%.gfa}.cleaned_paths > ${depth_graph%.gfa}.noreads.cleaned_paths;
+                        cat ${depth_graph%.gfa}.header ${depth_graph%.gfa}.slines ${depth_graph%.gfa}.llines ${depth_graph%.gfa}.cleaned_paths > ${depth_graph%.gfa}_cleaned.gfa;
+                        cat ${depth_graph%.gfa}.header ${depth_graph%.gfa}.slines ${depth_graph%.gfa}.llines ${depth_graph%.gfa}.noreads.cleaned_paths > ${depth_graph%.gfa}_cleaned.filt.gfa;
+                        rm ${depth_graph%.gfa}.*cleaned_paths;
+                        rm ${depth_graph%.gfa}.*lines;
+                        rm ${depth_graph%.gfa}.*header;
+                        # map - remove nodes with 0/low coverage - unitigs - stitch together using contiguous abundance...
+                        # at most number of alleles = ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta + number of nodes without a path
 #                            vg view -X ${gene}.careful.w_ref_paths.augmented.gam | seqkit fq2fa - > ${gene}.careful.w_ref_paths.augmented.fasta
 #                            odgi unitig -i ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa -t 151 > ${gene}.careful.unitigs.fa 
 #                            Bifrost build -r ${gene}.careful.unitigs.fa -k 31 -o ${gene}.careful.bifrost
 #                            gunzip ${gene}.careful.bifrost*gfa.gz
 #                           ~/tools/SPAdes-4.0.0-Linux/bin/pathracer ${gene}.careful.w_ref_paths.augmented.fasta ${gene}.careful.bifrost.gfa --nt --annotate-graph --output ${gene}.careful.pathracer
-                        else
-                            echo "No novel allele inference requested - to perform novel allele inference set de_novo=true"
-                        fi
+                    else
+                        echo "No novel allele inference requested - to perform novel allele inference set de_novo=true"
                     fi
                 else
                     echo "Insuffient coverage to infer alleles for $gene - not trying to embed variation"
@@ -723,8 +723,8 @@ else
             # remove files we dont need anymore
             ls ${outdir}/${sample_id}.${graph}.${gene}\.* | grep -v "${gene}.genome_graph_ref.augmented.*gfa\|${gene}.genome_graph_ref.gfa\|${gene}.haplotypes.xg\|${gene}.haplotypes.gam\|annot.fasta\|annot.gfa\|final.gfa\|.vcf\|node_abundance\|depth" > ${outdir}/${sample_id}_${gene}_files.txt
             #ls ${outdir}/${gene}\.*  | grep "haps.fasta\|alleles" >> ${outdir}/${sample_id}_${gene}_files.txt
-            ls ${outdir}/*${gene}* | grep "asc_" >> ${outdir}/${sample_id}_${gene}_files.txt
-            xargs rm < ${outdir}/${sample_id}_${gene}_files.txt
+            ls ${outdir}/*${gene}* | grep "asc_" >> ${outdir}/${sample_id}_${gene}_files.txt;
+            xargs rm < ${outdir}/${sample_id}_${gene}_files.txt;
         else 
             echo "No reads aligning for ${gene}"
             ls ${outdir}/${sample_id}.${graph}.${gene}\.* | grep -v  "${gene}.genome_graph_ref.augmented.gfa\|${gene}.genome_graph_ref.gfa\|${gene}.haplotypes.xg\|${gene}.haplotypes.gam\|annot.fasta\|annot.gfa\|final.gfa\|node_abundance\|depth" > ${outdir}/${sample_id}_${gene}_files.txt

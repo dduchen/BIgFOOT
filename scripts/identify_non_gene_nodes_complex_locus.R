@@ -21,9 +21,24 @@ for(i in 1:length(unique(dat$V2))){
   pathref[[unique(dat$V2)[i]]]<-nodes
 }
 #
+gene_id=gsub("^.*wg_immunovar.","",gsub(".haplotypes.*$","",graph_paths_file));
 target_nodes<-unique(unname(unlist(pathref[grep(gsub("^.*wg_immunovar.","",gsub(".haplotypes.*$","",graph_paths_file)),names(pathref))])))
 off_target_nodes<-unique(unname(unlist(pathref[grep(gsub("^.*wg_immunovar.","",gsub(".haplotypes.*$","",graph_paths_file)),names(pathref),invert = T)])))
 nodes_for_filtering<-setdiff(off_target_nodes,target_nodes)
+#
+if(length(target_nodes)==0){
+  nodes_for_filtering<-NULL
+  gene_prefix<-gsub("^.*wg_immunovar.","",gsub(".haplotypes.*$","",graph_paths_file))
+  #check for orphon alleles -- if orphon involvement, this is on another component of the graph - all nodes should be used for filtering
+  if(length(grep("/",names(pathref)))>0){
+    orphon_nodes<-unique(unname(unlist(pathref[grep("/",names(pathref))])))
+    nodes_for_filtering<-orphon_nodes
+    if(length(grep("/",names(pathref),invert=T))==0){
+      print("Orphon-only ASC cluster")
+      nodes_for_filtering<-NULL
+    }
+  }
+}
 ###############################################################################################################
-fwrite(data.frame(nodes_for_filtering),file=gsub("pathnodes","filteringnodes",graph_paths_file),quote=F,sep="\t",col.names=F,row.names=F)
+suppressMessages(suppressWarnings(fwrite(data.frame(nodes_for_filtering),file=gsub("pathnodes","filteringnodes",graph_paths_file),quote=F,sep="\t",col.names=F,row.names=F)))
 ###############################################################################################################

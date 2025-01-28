@@ -55,7 +55,13 @@ if [[ ${input_aln} == *"gam" ]]; then
         if [ -s ${sample_immune_graph}.gam ]; then
             . ${bigfoot_dir}/gene_hap_IMGT_vgflow.sh;
             cd ${workdir}/${sample_id}_${graph}_genotyping/
+            mkdir -p ${sample_id}.${graph}_vcf
+            mv ${outdir}/*vcf ${sample_id}.${graph}_vcf
+            rm $outdir/*plines; rm $outdir/*paths
             Rscript ${bigfoot_dir}/clean_genewise_results.R
+            tar -czvf ${sample_id}.${graph}_allelic_inference.tar.gz -T ${sample_id}.${graph}_allelic_inference.txt --remove-files
+            ls ${outdir}/* > ${sample_id}.${graph}_other_materials.txt
+            tar -czvf ${sample_id}.${graph}_other_materials.tar.gz -T ${sample_id}.${graph}_other_materials.txt --remove-files
             cd ${workdir}
             echo "fin!"
             ###########################

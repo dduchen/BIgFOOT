@@ -33,6 +33,7 @@ igh_depth<-read.table(relevant_depth_file[grep("immune",relevant_depth_file)])
 depth_file=list.files(pattern="depth_raw.txt")
 graph_results_file<-list.files(pattern="results_raw.txt")
 depth<-fread(paste0(depth_file),header=T)
+depth<-depth[,1:3]
 graph_results<-fread(paste0(graph_results_file),header=F)
 #
 if(sample_id==colnames(depth)[1]){
@@ -86,6 +87,10 @@ if(sample_id==colnames(depth)[1]){
     #
     deletion_candidates<-list.files(path="familywise_pe_haplotype_inference",pattern="_files.txt")
     deletion_candidates_gene<-gsub(paste0(sample_id,"_"),"",gsub("_files.txt","",deletion_candidates))
+    # for asc-based inference - ignore these 'gene ids'
+    deletion_candidates_gene<-deletion_candidates_gene[grep("IGHV_F",deletion_candidates_gene,invert=T)]
+    deletion_candidates_gene<-deletion_candidates_gene[grep("IGLV_F",deletion_candidates_gene,invert=T)]
+    deletion_candidates_gene<-deletion_candidates_gene[grep("IGKV_F",deletion_candidates_gene,invert=T)]
     depth_del<-depth;colnames(depth_del)<-c("gene","mean","sd")
     deletion_candidates_gene<-deletion_candidates_gene[-which(deletion_candidates_gene %in% depth_del[depth_del$mean>=1,]$gene)]
     graph_results_wDels<-graph_results
@@ -99,6 +104,28 @@ if(sample_id==colnames(depth)[1]){
         temp_row[,6:7]<-0;
         temp_row[,8]<-"FALSE";
         graph_results_wDels<-rbind(graph_results_wDels,temp_row)
+    }
+    if(length(list.files(pattern="alleles.fasta"))>0){
+        alleles<-Biostrings::readDNAStringSet(list.files(pattern="alleles.fasta"))
+        alleles_novel<-alleles[grep("variant",names(alleles))]
+        alleles_novel<-alleles_novel[grep("ambiguous",names(alleles_novel),invert=T)]
+        alleles_exact<-alleles[grep("exact",names(alleles))]
+        alleles_exact<-alleles_exact[grep("ambiguous",names(alleles_exact),invert=T)]
+        alleles_ambig<-alleles[grep("ambiguous",names(alleles))]
+        alleles_ambig_var<-alleles_ambig[grep("variant",names(alleles_ambig),invert=F)]
+        graph_results_wDels$novel<-""
+        graph_results_wDels$fasta<-""
+        for(seqid in unique(names(alleles_novel))){
+            seqid_match<-gsub(":.*","",seqid)
+            graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$novel<-seqid
+            graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$fasta<-as.character(alleles_novel[seqid])[[1]]
+        }
+        for(seqid in unique(names(alleles_exact))){
+            seqid_match<-gsub(":.*","",seqid)
+            graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$novel<-seqid
+            graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$fasta<-as.character(alleles_exact[seqid])[[1]]
+        }
+        # add ambiguous exact alleles?
     }
     fwrite(graph_results_wDels,file=paste0(sample_id,"_",graph_results$aln_type[1],"_",graph,"_results_cleaned.txt"),sep="\t",col.names=T,row.names=F,quote=F)
     #################################################################

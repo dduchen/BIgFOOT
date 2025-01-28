@@ -17,11 +17,23 @@ sline<-gfa[gfa$V1=="S",]
 lline<-gfa[gfa$V1=="L",]
 pline<-gfa[gfa$V1=="P",]
 # alignment-implied nodes?
-gene_interest<-gsub(".*\\.","",gsub(".genome_graph_ref.*","",covdat_file))
-sample_identifier<-gsub(".*\\/","",gsub(paste0(".wg_immunovar.",gene_interest,".*"),"",covdat_file))
-gene_nodes<-pline[grep(paste0(gene_interest),pline$V2),]$V3
+# account for asc_inference approach:
+gene_interest_fullpaths<-unique(pline[[2]][grep("TR|IG",pline[[2]])])
+gene_interest<-unique(gsub("\\*.*","",pline[[2]][grep("TR|IG",pline[[2]])]))
+gene_interest_prefix<-unique(gsub(".-.*","",gene_interest))
+if(length(grep("/",gene_interest_prefix))>0){
+    print("Orphon involvement")
+    gene_interest_prefix<-gsub(".$","",gene_interest_prefix[1])
+}
+if(all(gene_interest_prefix %in% c("IGKV","IGKV1","IGKV2","IGKV3","IGKV4","IGKV5","IGKV6","IGKV7"))){
+    print("IGKV + IGKV2 ASC cluster")
+    gene_interest_prefix<-gsub("2$","",gene_interest_prefix[1])
+}
+#gene_interest<-gsub(".*\\.","",gsub(".genome_graph_ref.*","",covdat_file))
+sample_identifier<-gsub(".*\\/","",gsub(".wg_immunovar.*","",covdat_file))
+gene_nodes<-pline[pline$V2 %in% gene_interest_fullpaths,]$V3
 ref_path_nodes<-pline[grep(paste0("grch38|chm13"),pline$V2),]$V3
-aln_nodes<-pline[grep(paste0(gene_interest,"|grch38|chm13"),pline$V2,invert=T),]$V3
+aln_nodes<-pline[grep("IG|TR|grch38|chm13",pline$V2,invert=T),]$V3
 #
 gene_nodes_uniq<-unique(unlist(strsplit(paste(gsub("\\+|\\-","",gene_nodes),collapse=","),split=",")))
 ref_path_nodes_uniq<-unique(unlist(strsplit(paste(gsub("\\+|\\-","",ref_path_nodes),collapse=","),split=",")))
@@ -37,14 +49,63 @@ gene_node_edges<-rbind(lline[lline$V4 %in% gene_nodes_uniq,c(2,4)],lline[lline$V
 # novel_nodes<-intersect(novel_nodes,unlist(gene_node_edges)) # also want edges in/out - otherwise will report node attached to last gene-related node
 novel_nodes<-intersect(novel_nodes,unlist(gene_node_edges)[duplicated(unlist(gene_node_edges))])
 #
+# -- deletion: edges not traversed by alleles - get reads that support the traveral to get read support and embed this as a novel variant - perhaps by including a node with no sequence?
+aln_nodes_candidates<-vector()
+for(iter in seq_along(gene_nodes)){
+    aln_nodes_candidates_tmp<-aln_nodes[grep(gsub("\\+","\\\\+",gsub(",","|",gene_nodes[iter])),aln_nodes)]
+    aln_nodes_candidates<-unique(c(aln_nodes_candidates,aln_nodes_candidates_tmp))
+}
+aln_nodes_candidates<-aln_nodes[aln_nodes %in% aln_nodes_candidates]
+#
+# look for alns which skip any nodes - require adequate support 
+gene_node_pairs<-combn(gene_nodes_uniq,2,simplify=F)
+names(gene_node_pairs)<-0
+for(i in seq_along(gene_node_pairs)){
+    combo<-paste0(gene_node_pairs[[i]],collapse=",")
+    combo_rev<-paste0(rev(gene_node_pairs[[i]]),collapse=",")
+    if(length(grep(paste0(combo,"|",combo_rev),paste0(gsub("\\+|-","",gene_nodes))))>0){
+        gene_node_pairs[[i]]<-NA
+    } else {
+        # get number of reads supporting the combo - putative deletion - exact matches to node ids
+        names(gene_node_pairs)[i]<-length(grep(paste0("^",combo,"$|^",combo,",|^",combo_rev,"$|^",combo_rev,","),paste0(gsub("\\+|-","",aln_nodes))))
+    }
+}
+gene_node_pairs<-gene_node_pairs[!is.na(gene_node_pairs)]
+gene_node_pairs_candidates<-gene_node_pairs[as.numeric(names(gene_node_pairs))>2]
+#
+# -- add the deletion path (2 nodes) to the graph
+for(i in seq_along(gene_node_pairs_candidates)){
+        newpline<-gfa[gfa$V1=="P",][1,];
+        deletion_path<-gene_node_pairs_candidates[i];
+        deletion_path_id<-paste0(sample_identifier,"#1#",gene_interest_prefix,"_deletion_DP:f:",names(gene_node_pairs_candidates[i]),"#",i);
+        newpline[,2]<-deletion_path_id;
+        node1<-deletion_path[[1]][1];
+        node2<-deletion_path[[1]][2];
+        node_connects<-lline[lline$V4==as.character(node1) & lline$V2==as.character(node2) | lline$V4==as.character(node2) & lline$V2==as.character(node1),];
+        node_connects<-distinct(node_connects);
+        if(nrow(node_connects)==1){
+        newpline[,3]<-paste0(node_connects$V2,node_connects$V3,",",node_connects$V4,node_connects$V5)
+        } else {
+            print(paste0("Tricky local sequence for deletion @ node:",node1,"-",node2," - look at graph"))
+        }
+        pline<-rbind(pline,newpline)
+}
 # -- could just get alternative node and extract a local subgraph 'vg mod -x 1'
 if(length(novel_nodes)>0){
     names(novel_nodes)<-paste0(sline[match(as.character(novel_nodes),sline$V2),]$V3,"_",sline[match(as.character(novel_nodes),sline$V2),]$V4)
     for(i in seq_along(novel_nodes)){
         newpline<-gfa[gfa$V1=="P",][1,]
         node_id<-gsub(".*_","",names(novel_nodes)[i])
-        newpline[,2]<-paste0(sample_identifier,"#1#",gene_interest,"_variant_",node_id,"#",i)
-        newpline[,3]<-paste0(novel_nodes[i],"+")
+        newpline[,2]<-paste0(sample_identifier,"#1#",gene_interest_prefix,"_variant_",node_id,"#",i)
+        # we care about direction:
+        node_support<-aln_nodes[grep(paste0(",",novel_nodes[[i]],"\\+|,",novel_nodes[[i]],"\\-"),aln_nodes)]
+        suffix_pos<-length(grep(paste0(",",novel_nodes[[i]],"\\+"),node_support))
+        suffix_neg<-length(grep(paste0(",",novel_nodes[[i]],"\\-"),node_support))
+        if(suffix_pos>=suffix_neg){
+            newpline[,3]<-paste0(novel_nodes[i],"+")
+        } else {
+            newpline[,3]<-paste0(novel_nodes[i],"-")
+        }
         newpline[,4]<-"*"
         # get local sequence + alt sequence
         node_connects<-lline[lline$V4==as.character(novel_nodes[i]) | lline$V2==as.character(novel_nodes[i]),]
@@ -68,11 +129,25 @@ if(length(novel_nodes)>0){
             print(paste0("Tricky local sequence for variant @ node:",novel_nodes[i],":",names(novel_nodes)[i]," - look at graph"))
         }
         # append local region to graph
-        newpline$V3<-paste0(node_from,"+,",newpline$V3,",",node_to,"+")
+        sign_in_pos<-length(grep(paste0(node_to,"\\+,",newpline[,3]),node_support))
+        sign_in_neg<-length(grep(paste0(node_to,"\\-,",newpline[,3]),node_support))
+        if(sign_in_pos>=sign_in_neg){
+            sign_in="+"
+        } else {
+            sign_in="-"
+        }
+        sign_out_pos<-length(grep(paste0(",",gsub("\\+","\\\\+",newpline[,3]),",",node_to,"\\+"),node_support))
+        sign_out_neg<-length(grep(paste0(",",gsub("\\+","\\\\+",newpline[,3]),",",node_to,"-"),node_support))
+        if(sign_out_pos>=sign_out_neg){
+            sign_out="+"
+        } else {
+            sign_out="-"
+        }
+        newpline$V3<-paste0(node_from,sign_in,",",newpline$V3,",",node_to,sign_out)
         pline<-rbind(pline,newpline)
         read_support<-pline[grep(gsub("\\+|\\-","",newpline$V3),gsub("\\+|\\-","",pline$V3)),]
         ref_convergence<-read_support[grep("grch|chm",read_support$V2),]
-        read_support<-read_support[grep(paste0(gene_interest,"|grch|chm"),read_support$V2,invert=T),]
+        read_support<-read_support[grep(paste0(gene_interest_prefix,"|grch|chm"),read_support$V2,invert=T),]
 #        nonvar_node<-lline[lline$V4 %in% node_other | lline$V2 %in% node_other,]
 #        nonvar_node<-nonvar_node[grep(as.character(novel_nodes[i]),nonvar_node$V2,invert=T),]
 #        nonvar_node<-nonvar_node[grep(as.character(novel_nodes[i]),nonvar_node$V4,invert=T),]
@@ -111,17 +186,30 @@ if(nrow(paths_to_prune)>0){
     pline_orig<-pline
     lline_orig<-lline
     for(node in nodes_to_prune){
+        variant_node<-strsplit(node,split=",")[[1]][2]
+        edge_in<-strsplit(node,split=",")[[1]][1:2]
+        edge_out<-strsplit(node,split=",")[[1]][2:3]
         # remove S line = the node
-        sline_filt<-sline[grep(node,sline$V2,invert=T),]
-        lline_filt<-lline[grep(node,lline$V2,invert=T),]
-        lline_filt<-lline_filt[grep(node,lline_filt$V4,invert=T),]
+        sline_filt<-sline[grep(paste0("^",variant_node,"$"),sline$V2,invert=T),]
+        lline_filt<-lline[-intersect(which(lline$V2 %in% edge_in),which(lline$V4 %in% edge_in)),]
+        lline_filt<-lline_filt[-intersect(which(lline_filt$V2 %in% edge_out),which(lline_filt$V4 %in% edge_out)),]
         # remove both/all L lines containing the node
         # edit read path associated with the node, simply excise it out -- edit read ID to indicate this
-        pline_filt<-pline[grep(paste0(node,"\\+|",node,"\\-"),pline$V3,invert=T),]
+        pline_filt<-pline[grep(node,gsub("\\+|\\-","",pline$V3),invert=T),]
+        # remove paths containing filtered-out variant node provided they are just read paths
+        other_var_paths<-pline_filt[grep(variant_node,gsub("\\+|\\-","",pline_filt$V3),invert=F),]
+        if(nrow(other_var_paths)>0 & length(grep("grch|chm|^IG|^TR",other_var_paths$V2))>0){
+            print("Important path also traverses the variant node - not removing")
+            next
+        } else {
         # remove P lines containing the putatively spurious node
-        sline<-sline_filt
-        lline<-lline_filt
-        pline<-pline_filt
+            if(nrow(other_var_paths)>0){
+                pline_filt<-pline_filt[-which(pline_filt$V2 %in% other_var_paths$V2),]
+            }
+            sline<-sline_filt
+            lline<-lline_filt
+            pline<-pline_filt
+        }
     }
 }
 pline$V2<-gsub(":path.","#1#",pline$V2);pline$V2<-gsub("#1#_","#1#",pline$V2)
