@@ -56,6 +56,11 @@ if [[ ${input_aln} == *"gam" ]]; then
             . ${bigfoot_dir}/gene_hap_IMGT_vgflow.sh;
             cd ${workdir}/${sample_id}_${graph}_genotyping/
             mkdir -p ${sample_id}.${graph}_vcf
+            ls ./familywise_pe_haplotype_inference/*depth_cleaned.gfa > ${sample_id}.${graph}_allelic_inference.txt
+            rm ${sample_id}.${graph}.alleles.fasta;
+            for allele_fasta in $(cat ${sample_id}.${graph}_allelic_inference.txt); do echo "Extracting alleles: ${allele_fasta}"
+                vg paths -Fv ${allele_fasta} | seqkit grep -r -p "IG|TR" >> ${sample_id}.${graph}.alleles.fasta
+            done
             mv ${outdir}/*vcf ${sample_id}.${graph}_vcf
             rm $outdir/*plines; rm $outdir/*paths
             Rscript ${bigfoot_dir}/clean_genewise_results.R
