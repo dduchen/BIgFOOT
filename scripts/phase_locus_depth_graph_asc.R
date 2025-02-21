@@ -70,21 +70,25 @@ if(pseudoploidy>1){
 #        if(length(allele_nodes_tmp)==0){
         print("Also using unique co-occuring pairs of nodes to aid allelic phasing")
         allele_combns<-allele_paths[grep(allele,names(allele_paths),invert=F)]
-        allele_combns <- lapply(allele_combns, generate_pairs)
-        allele_combns <- convert_columns_to_list(data.frame(allele_combns))
-        for(iter in seq_along(allele_combns)){
-            allele_combns[[iter]]<-paste0(sort(allele_combns[[iter]]),collapse=",")
+        if(length(unlist(allele_paths[grep(allele,names(allele_paths),invert=F)]))>1){
+            allele_combns <- lapply(allele_combns, generate_pairs)
+            allele_combns <- convert_columns_to_list(data.frame(allele_combns))
+            for(iter in seq_along(allele_combns)){
+                allele_combns[[iter]]<-paste0(sort(allele_combns[[iter]]),collapse=",")
+            }
         }
         alt_allele_combns_combined<-list()
         for(alt_allele_tmp in names(alt_alleles)){
-            alt_allele_combns <- lapply(allele_paths[grep(alt_allele_tmp,names(allele_paths),invert=F)], generate_pairs)
-            alt_allele_combns <- convert_columns_to_list(data.frame(alt_allele_combns))
-            alt_allele_combns_combined<-c(alt_allele_combns_combined,alt_allele_combns)
-            for(iter in seq_along(alt_allele_combns_combined)){
-                alt_allele_combns_combined[[iter]]<-paste0(sort(alt_allele_combns_combined[[iter]]),collapse=",")
+            if(length(unlist(allele_paths[grep(alt_allele_tmp,names(allele_paths),invert=F)]))>1){
+                alt_allele_combns <- lapply(allele_paths[grep(alt_allele_tmp,names(allele_paths),invert=F)], generate_pairs)
+                alt_allele_combns <- convert_columns_to_list(data.frame(alt_allele_combns))
+                alt_allele_combns_combined<-c(alt_allele_combns_combined,alt_allele_combns)
+                for(iter in seq_along(alt_allele_combns_combined)){
+                    alt_allele_combns_combined[[iter]]<-paste0(sort(alt_allele_combns_combined[[iter]]),collapse=",")
+                }
             }
         }
-        allele_nodes_tmp<-c(allele_nodes_tmp,unname(unlist(setdiff(allele_combns,alt_allele_combns_combined))))
+        allele_nodes_tmp<-unique(c(allele_nodes_tmp,unname(unlist(setdiff(allele_combns,alt_allele_combns_combined)))))
 #        } 
         allele_paths_phasing_nodes[[allele]]<-as.vector(allele_nodes_tmp)
     }

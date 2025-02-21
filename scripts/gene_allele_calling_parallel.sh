@@ -622,7 +622,7 @@ else
                             rm ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.adding.fasta;
                         fi
                     else
-                        cat ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.fasta
+                        cat ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta <(seqkit grep -r -p $ref_backbone ${outdir}/${sample_id}.${graph}.${gene}.haplotypes_ref.fasta) > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.fasta
                         echo "Embedding novel variation with adequate support (~strain depth) to inferred flow graph + local CHM13 reference sequence"
                         sed s/' '/_/g -i ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.fasta
                         minimap2 -x asm20 -t 16 -c -X ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.fasta ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.fasta > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.paf
