@@ -1,8 +1,8 @@
 # BIgFOOT: Biomarkers of Immunovariation via Graph FOOTprinting
-### Current version: 0.0.1
+### Current version: 0.1.0
 
-This workflow infers alleles, calls novel variation, and constructs sample-specific sequence variation graphs for immunoglobulin(Ig)/other immune-related loci which can be used to perform genetic association tests. The workflow inolves a combination of various graph-construction steps, sequence-to-graph alignment, flow graph decomposition, and unitig calling.<br>
-I hope to expand this workflow to enable genome-to-genome analyses/assessing genetic associations between host germline immunovariation and pathogen/metagenomic genetic variation/diversity (i.e., searching for immunological <b>FOOTprints</b> using joint host-pathogen genomic data).
+This workflow infers the closest known reference allele, embeds/calls sample-specific variation within each gene, and infers novel allelic sequences via iterative graph construction and sequence-to-graph alignment. With a focus on poorly characterized immunoglobulin(Ig)/other adaptive immune receptor repertoire (AIRR)-related genes - BIgFOOT aims to identify AIRR loci/subgraphs/<b>FOOTprints</b> associated with the host immune responseusing widely available NGS data.<br>
+I plan to expand this workflow to enable genome-to-genome analyses/genetic association testing to interrogate the role of germline AIRR variation in immune-mediated diseases (including infectious disease).
 
 <i>Genetic loci where BIgFOOT performs accurate allele calling:</i>
 - IGH
@@ -29,9 +29,10 @@ conda activate bigfoot </code><br>
 Ensure you have an active gurobi licence:<br>
 <code>gurobi_cl</code><br>
 <i>We also use the following R/bioconductor packages: </i><br>
-- data.table;
-- dplyr;
+<code>- data.table;dplyr;stringr
 - Biostrings/DECIPHER </code>
+<i>If sample-specific variant calling is desired: </i><br>
+<code>- bcftools;tabix</code>
 
 3) We also use some external tools which need to be accessible in your PATH<br>
 <code>tools_dir=~/tools;</code> # (wherever you normally install+store software)<br>
@@ -97,7 +98,6 @@ Ready for BIgFOOT<br>
 . ${bigfoot_dir}/filter_immune_subgraph.sh
 ################################################################</code><br>
 
+This is still very much a work in progress - many parameters/options exist but have not been fully documented here, and this repo is under active development.
 
-This is still very much a work in progress - many parameters/options exist but have not been fully documented here - for example, to limit inference to the IGenotyper set of alleles, you can set valid_alleles=igenotyper and there are options to skip allelic inference altogether if you're only interested in the reads/unitigs obtained from the immunovariation subgraph.
-
-Please reach out if you feel this tool might be useful in your work - or if you'd like some added functionality - open an issue or [email](mailto:dylan.duchen@yale.edu?subject=[GitHub]%20BIgFOOT:)
+Please reach out if you feel this tool might be useful in your work, you have questions regarding its use, or if you'd like some added functionality - you can open an issue or [email](mailto:dylan.duchen@yale.edu?subject=[GitHub]%20BIgFOOT:)
