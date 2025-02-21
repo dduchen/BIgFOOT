@@ -524,7 +524,7 @@ if(length(variant_paths)>0){
     for(orig_allele in unique(gsub(":variant_DP.*","",graph_paths_update$V2[grep(":variant_DP", graph_paths_update$V2)]))){
         print(orig_allele)
         # if sum of variant haplotype depths <0.667*sum of backbone allele depth - then ambiguous exact
-        backbone_depth_tmp<-graph_paths_update[grep(gsub("\\*","\\\\*",orig_allele),graph_paths_update$V2)]$V2;
+        backbone_depth_tmp<-graph_paths_update[grep(paste0(gsub("\\*","\\\\*",orig_allele),":"),graph_paths_update$V2)]$V2;
 #        backbone_depth_tmp<-backbone_depth_tmp[grep("exact",backbone_depth_tmp,invert=T)];
         backbone_depth_tmp_allele<-as.numeric(gsub(".*_","",gsub("x_freq.*","",backbone_depth_tmp[grep("variant",backbone_depth_tmp,invert=T)])));
         backbone_depth_tmp_variants<-sum(as.numeric(gsub("#.*","",gsub("_#.*","",gsub(".*variant_DP:f:","",backbone_depth_tmp[grep("variant",backbone_depth_tmp,invert=F)])))));

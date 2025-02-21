@@ -92,7 +92,11 @@ if(sample_id==colnames(depth)[1]){
     deletion_candidates_gene<-deletion_candidates_gene[grep("IGLV_F",deletion_candidates_gene,invert=T)]
     deletion_candidates_gene<-deletion_candidates_gene[grep("IGKV_F",deletion_candidates_gene,invert=T)]
     depth_del<-depth;colnames(depth_del)<-c("gene","mean","sd")
-    deletion_candidates_gene<-deletion_candidates_gene[-which(deletion_candidates_gene %in% depth_del[depth_del$mean>=1,]$gene)]
+    # update v low coverage
+    for(gene_low_depth in intersect(depth_del$gene,graph_results[graph_results$V2=="0x",]$gene)){
+        graph_results[graph_results$V2=="0x" & graph_results$gene==gene_low_depth,]$V2<-paste0(round(depth_del[depth_del$gene==gene_low_depth,]$mean,2),"x")
+    }
+    deletion_candidates_gene<-deletion_candidates_gene[-which(deletion_candidates_gene %in% depth_del[depth_del$mean>0,]$gene)]
     graph_results_wDels<-graph_results
     for(i in seq_along(deletion_candidates_gene)){
         temp_row<-graph_results[1,];

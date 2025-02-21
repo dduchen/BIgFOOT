@@ -74,6 +74,17 @@ if [[ ${input_aln} == *"gam" ]]; then
         else
             echo "${input_aln} inappropriate input format - rerun";
         fi
+    else
+        if [ -s ${input_aln%%\.*}*.bazam.grch38.combined.sorted.gam ]; then
+            echo "Looks like we're re-running BIgFOOT - using ${input_aln%.${aln_linear}}.bazam.grch38.combined.sorted.gam"
+            export i=$(ls ${input_aln%%\.*}*.bazam.grch38.combined.sorted.gam);
+            . ${bigfoot_dir}/filter_immune_subgraph.sh
+        elif [ -s ${input_aln%%\.*}*.bazam.grch38.combined.gam ]; then
+            export i=$(ls ${input_aln%%\.*}*.bazam.grch38.combined.gam)
+            . ${bigfoot_dir}/filter_immune_subgraph.sh
+        else 
+            echo "Restart from scratch for this sample"
+        fi
     fi
 else
     echo "processing ${input_aln}"
