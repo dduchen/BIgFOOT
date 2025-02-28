@@ -96,7 +96,9 @@ if(sample_id==colnames(depth)[1]){
     for(gene_low_depth in intersect(depth_del$gene,graph_results[graph_results$V2=="0x",]$gene)){
         graph_results[graph_results$V2=="0x" & graph_results$gene==gene_low_depth,]$V2<-paste0(round(depth_del[depth_del$gene==gene_low_depth,]$mean,2),"x")
     }
-    deletion_candidates_gene<-deletion_candidates_gene[-which(deletion_candidates_gene %in% depth_del[depth_del$mean>0,]$gene)]
+    # not necessarily raw depth - reads can be filtered out --> off-target alignment
+#    deletion_candidates_gene<-deletion_candidates_gene[-which(deletion_candidates_gene %in% depth_del[depth_del$mean>0,]$gene)]
+    deletion_candidates_gene<-deletion_candidates_gene[-which(deletion_candidates_gene %in% intersect(deletion_candidates_gene,unique(graph_results$gene)))]
     graph_results_wDels<-graph_results
     for(i in seq_along(deletion_candidates_gene)){
         temp_row<-graph_results[1,];
@@ -117,6 +119,7 @@ if(sample_id==colnames(depth)[1]){
         alleles_exact<-alleles_exact[grep("ambiguous",names(alleles_exact),invert=T)]
         alleles_ambig<-alleles[grep("ambiguous",names(alleles))]
         alleles_ambig_var<-alleles_ambig[grep("variant",names(alleles_ambig),invert=F)]
+        alleles_ambig_ref<-alleles_ambig[grep("variant",names(alleles_ambig),invert=T)]
         graph_results_wDels$novel<-""
         graph_results_wDels$fasta<-""
         for(seqid in unique(names(alleles_novel))){
@@ -129,7 +132,14 @@ if(sample_id==colnames(depth)[1]){
             graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$novel<-seqid
             graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$fasta<-as.character(alleles_exact[seqid])[[1]]
         }
-        # add ambiguous exact alleles?
+        # for missing due to ambiguity - use ambiguous exact alleles
+        for(seqid in unique(names(alleles_ambig_ref))){
+            seqid_match<-gsub(":.*","",seqid)
+            if(graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$fasta==""){
+                graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$novel<-seqid
+                graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$fasta<-as.character(alleles_ambig_ref[seqid])[[1]]
+            }
+        }
     }
     fwrite(graph_results_wDels,file=paste0(sample_id,"_",graph_results$aln_type[1],"_",graph,"_results_cleaned.txt"),sep="\t",col.names=T,row.names=F,quote=F)
     #################################################################
