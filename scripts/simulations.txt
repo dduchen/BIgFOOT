@@ -2,7 +2,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --job-name=FqBIgFOOT
-#SBATCH --time=48:00:00
+#SBATCH --time=60:00:00
 #SBATCH --mem=70GB
 #SBATCH --mail-user=dylan.duchen@yale.edu
 #SBATCH --mail-type=FAIL
@@ -17,7 +17,10 @@ export sim_env_load=$(conda info --envs | grep "simulate" | awk '{print $NF}')
 export isr_env_load=$(conda info --envs | grep "immunotyper" | awk '{print $NF}')
 export bf_env_load=$(conda info --envs | grep "bigfoot" | awk '{print $NF}')
 export sample_id="hg002";
-export hg002_ref=${PWD}/hg002v1.0.1.fasta
+#export hg002_ref=${PWD}/hg002v1.0.1.fasta
+export hg002_ref=${PWD}/hg002v1.1.fasta
+# if we want to update to v2 for future work: https://s3-us-west-2.amazonaws.com/human-pangenomics/T2T/CHM13/assemblies/analysis_set/chm13v2.0.fa.gz
+
 export grch38_ref=/home/dd392/tools/refs/annots/GRCh38_full_analysis_set_plus_decoy_hla.fa
 export ReadLength=150
 export ReadCoverage=30
