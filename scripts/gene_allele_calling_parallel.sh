@@ -430,6 +430,7 @@ else
             echo "1) Performing inference on haplotype graph labled only with alleles of interest";
             # if variable gene -- limit to OGRDB validated set of alleles?
             vg paths -Lv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg | grep "IMGT\|IGv2\|OGRDB" > ${outdir}/${sample_id}.${graph}.${gene}.alleles
+            valid_alleles=true
             if [ "${valid_alleles}" = true ]; then
                 echo "Where possible - retaining path labels only for OGRDB validated set of ${gene_actual} alleles";
                 if [[ ${gene} == *"IGHV"* ]]; then
@@ -505,8 +506,12 @@ else
 #                vg map -f ${outdir}/${sample_id}.${graph}.${gene}.valid.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.valid.prefilt.gam
 #                vg filter -r 0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.valid.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
 #            fi
-            vg view -a ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.aln.json
-            vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.vg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa
+            # Avoid parse_graph_vgflow.py  script completely - bug, and not needed - or update script to just use tmp1.gfa
+            vg convert -G ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf
+            gafpack -g ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa -a ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf -lc | grep -v "#" | awk '{print NR-1 ":" $0}' > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt
+            vg ids -i -1 ${outdir}/${sample_id}.${graph}.${gene}.vg | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa #need to increase by -1, cant decrease by 1 lol
+#            vg view -a ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.aln.json
+#            vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.vg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa
             # gene-specific read depth for minimum strain-level coverage
             depth_locus=$(awk -F ' ' '{print $1}' ${outdir}/${sample_id}.${graph}.${gene}.filtered.depth)
             # min_strain_depth=$(bc -l <<< "scale=3;${depth_locus}/$gene_min_len")
@@ -519,7 +524,15 @@ else
             cd ${outdir}
             # allele inference:
             mkdir -p ${outdir}/${gene}_allele_inference
-            python3 ${bigfoot_dir}/parse_graph_vgflow.py --sample ${outdir}/${sample_id}.${graph}.${gene}.vgflow -m 0
+#            python3 ${bigfoot_dir}/parse_graph_vgflow.py --sample ${outdir}/${sample_id}.${graph}.${gene}.vgflow -m 0
+#            vg paths -Ev ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa > vgflow_paths.txt
+#            orig_len=$(cut -f2 vgflow_paths.txt | sort | uniq)
+#            vg paths -Ev ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa > vgflow_paths.final.txt
+#            parsed_len=$(cut -f2 vgflow_paths.final.txt | sort | uniq)
+#            if [ $(echo ${orig_len}) -gt $(echo ${parsed_len}) ]; then
+#                echo "Compress graph bug - allele truncated - using previous gfa"
+#                mv ${outdir}/${sample_id}.${graph}.${gene}.vgflow.tmp2.gfa ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa;                
+#            fi
             for opt in {2..2}; do #relative difference performs best on average
                 echo "basing inference on haplotypes + alleles embedded in graph"
                 cd ${outdir}/${gene}_allele_inference
@@ -652,8 +665,18 @@ else
                     echo "Minimum coverage to add breakpoint: ${augment_cov} (3 <--> 10% of strain depth)"
                     vg augment -m ${augment_cov} -q 5 -Q 60 ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.pg ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.filt.gam -A ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gam > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.vg;
                     vg convert -p ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.vg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pg
+                    #
+                    vg index -t 16 -L -x ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.xg ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pg;
+                    vg gbwt -x ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.xg -o ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gbwt -P --pass-paths
+                    vg gbwt -x ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.xg -g ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gbz --gbz-format -P --pass-paths;
+                    vg prune -u -g ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gbwt -k 31 -m ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.node_mapping ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pruned.vg
+                    vg index -g ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gcsa -f ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.node_mapping ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pruned.vg
+                #   retain only 100% identity aligned reads
+                    vg map -G ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gam -x ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.xg -g ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gbwt -t 4 -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented2.gam
+                    vg filter -r 1 -P -s 1 -q 60 -x ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented2.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.exact.gam
                     # gaf of reads aligned to augmented graph - gafpack to get coverage/depth
-                    vg convert -G ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gam ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gaf
+                    #vg convert -G ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gam ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gaf
+                    vg convert -G ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.exact.gam ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gaf
                     # paired-end, append identified to duplicate read ids
                     awk -F'\t' -v OFS='\t' 'NR==FNR{f[$1]++} NR>FNR{if (f[$1]>1) {$1=$1 "-" (++count[$1])}; print}' ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gaf ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gaf > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.dedup.gaf
                     # add read ids for testing/validation:
@@ -667,18 +690,22 @@ else
 #                    cat ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.noplines ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.plines > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa
                     gafpack -g ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa -a ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gaf -l > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.coverage
                     #Rscript ${bigfoot_dir}/augment_graph_wdepth.R ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.coverage >> ${outdir}/${sample_id}.putative_variants.csv
-                    Rscript ${bigfoot_dir}/augment_graph_wdepth_asc.R ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.coverage >> ${outdir}/${sample_id}.putative_variants.csv
-                    sed -i 's/^[ \t]*//;s/[ \t]*$//' ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.gfa
-                    sed -i 's/^[ \t]*//;s/[ \t]*$//' ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa
-                    vg paths -Lv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths
-                    grep "chm\|grch\|${gene}" ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths.tmp ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths
-                    vg paths -r -p ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths -x ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.pg
-                    vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.pg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa
-                    grep "^P" ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.plines
-                    grep "^P" -v ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.noplines
-                    cat ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.noplines ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.plines > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa
-                    # should really re-align reads and then pack/call variants so we can incorporate depth info
-                    vg deconstruct -a -n -L 1 -P "chm" -P "grch" ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa > ${outdir}/${sample_id}.${graph}.${gene}.coding.vcf
+                    Rscript ${bigfoot_dir}/augment_graph_wdepth_asc.R ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.coverage >> ${outdir}/${sample_id}.putative_variants.csv;
+                    sed -i 's/^[ \t]*//;s/[ \t]*$//' ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.gfa;
+                    sed -i 's/^[ \t]*//;s/[ \t]*$//' ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa;
+                    vg mod -N -X 256 -n -U10 ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.gfa | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.tmp.gfa;
+                    mv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.tmp.gfa ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.gfa;
+                    vg mod -N -X 256 -n -U10 ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.tmp.gfa;
+                    mv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.tmp.gfa ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa;
+                    vg paths -Lv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths;
+                    grep "chm\|grch\|${gene}" ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths.tmp ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths;
+                    vg paths -r -p ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.paths -x ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.pg;
+                    vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.pg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa;
+                    grep "^P" ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.plines;
+                    grep "^P" -v ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.noplines;
+                    cat ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.noplines ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.plines > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa;
+                    # potentially re-align reads and then pack/call variants so we can incorporate depth info
+                    vg deconstruct -a -n -L 1 -P "chm" -P "grch" ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa > ${outdir}/${sample_id}.${graph}.${gene}.coding.vcf;
                     rm ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.header
                     rm ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.slines
                     rm ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.llines

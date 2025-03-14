@@ -57,8 +57,12 @@ for(iter in seq_along(gene_nodes)){
 }
 aln_nodes_candidates<-aln_nodes[aln_nodes %in% aln_nodes_candidates]
 #
-# look for alns which skip any nodes - require adequate support 
-gene_node_pairs<-combn(gene_nodes_uniq,2,simplify=F)
+# look for alns which skip any nodes - require adequate support
+if(length(gene_nodes_uniq)>1){
+    gene_node_pairs<-combn(gene_nodes_uniq,2,simplify=F)
+    } else {
+    gene_node_pairs<-gene_nodes_uniq
+}
 names(gene_node_pairs)<-0
 for(i in seq_along(gene_node_pairs)){
     combo<-paste0(gene_node_pairs[[i]],collapse=",")
@@ -174,9 +178,9 @@ if(length(novel_nodes)>0){
 #        print(paste0(gene_interest,": Alignment-implied sample specific variation implies ",length(novel_nodes)," variants totaling ",sum(nchar(names(novel_nodes)))," nt deviation from known alleles"))
     }
 }
-gfa<-rbind(header,sline,lline,pline)
-fwrite(gfa,file=paste0(gsub(".coverage",".depth.gfa",covdat_file)),col.names=F,quote=F,sep="\t")
 # prune low-confidence variants:
+gfa<-rbind(header,sline,lline,pline)
+#
 paths_to_prune<-gfa[grep("DP:f:0\\.#|DP:f:0#|DP:f:1#|DP:f:2#|DP:f:1\\.#|DP:f:2\\.#",gfa$V2),] 
 if(nrow(paths_to_prune)>0){
     print(paste0("Pruning ",nrow(paths_to_prune)," low-confidence variants"))
@@ -195,14 +199,34 @@ if(nrow(paths_to_prune)>0){
         lline_filt<-lline_filt[-intersect(which(lline_filt$V2 %in% edge_out),which(lline_filt$V4 %in% edge_out)),]
         # remove both/all L lines containing the node
         # edit read path associated with the node, simply excise it out -- edit read ID to indicate this
-        pline_filt<-pline[grep(node,gsub("\\+|\\-","",pline$V3),invert=T),]
+        paths_traversing_variant_path<-pline[grep(node,gsub("\\+|\\-","",pline$V3))]$V2
+        if(length(grep("grch|chm|^IG|^TR",paths_traversing_variant_path))>0){
+            print("Important path also traverses the variant chunk - removing read path ID only - not topology")
+            specific_path_to_remove<-paths_traversing_variant_path[grep("grch|chm|^IG|^TR",paths_traversing_variant_path,invert=T)]
+            if(length(specific_path_to_remove)>0){
+                pline_filt<-pline[-which(pline$V2 %in% specific_path_to_remove),]
+                pline<-pline_filt
+            }
+            #sline<-sline_filt
+            #lline<-lline_filt
+        } else {
+            pline_filt<-pline[grep(node,gsub("\\+|\\-","",pline$V3),invert=T),]
+            pline<-pline_filt
+        }
         # remove paths containing filtered-out variant node provided they are just read paths
         other_var_paths<-pline_filt[grep(variant_node,gsub("\\+|\\-","",pline_filt$V3),invert=F),]
-        if(nrow(other_var_paths)>0 & length(grep("grch|chm|^IG|^TR",other_var_paths$V2))>0){
-            print("Important path also traverses the variant node - not removing")
-            next
+        if(all(nrow(other_var_paths)>0 & length(grep("grch|chm|^IG|^TR",other_var_paths$V2))>0)){
+            print("Important path also traverses the variant node - removing read path ID only - not topology")
+            specific_path_to_remove<-other_var_paths[grep("grch|chm|^IG|^TR",other_var_paths$V2,invert=T)]
+            if(length(specific_path_to_remove$V2)>0){
+                pline_filt<-pline[grep(specific_path_to_remove$V2,pline$V2,invert=T),]
+                pline<-pline_filt
+            }
+            #sline<-sline_filt
+            #lline<-lline_filt
+            #next
         } else {
-        # remove P lines containing the putatively spurious node
+        # remove other P lines containing the putatively spurious node
             if(nrow(other_var_paths)>0){
                 pline_filt<-pline_filt[-which(pline_filt$V2 %in% other_var_paths$V2),]
             }
@@ -212,6 +236,10 @@ if(nrow(paths_to_prune)>0){
         }
     }
 }
+#
+gfa<-rbind(header,sline,lline,pline)
+fwrite(gfa,file=paste0(gsub(".coverage",".depth.gfa",covdat_file)),col.names=F,quote=F,sep="\t")
+#
 pline$V2<-gsub(":path.","#1#",pline$V2);pline$V2<-gsub("#1#_","#1#",pline$V2)
 gfa_filt<-rbind(gfa_header,sline,lline,pline,fill=T)
 fwrite(gfa_filt,file=paste0(gsub(".coverage",".depth.filt.gfa",covdat_file)),col.names=F,quote=F,sep="\t")
