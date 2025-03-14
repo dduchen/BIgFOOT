@@ -2,7 +2,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
 #SBATCH --job-name=FqBIgFOOT
-#SBATCH --time=48:00:00
+#SBATCH --time=60:00:00
 #SBATCH --mem=70GB
 #SBATCH --mail-user=dylan.duchen@yale.edu
 #SBATCH --mail-type=FAIL
@@ -28,7 +28,7 @@ source ${HOME}/.bashrc;
 eval "$curenv"
 conda activate ${bf_env_load};
 #
-PATH=${tools_dir}:$PATH
+export PATH=${tools_dir}:$PATH
 #
 cd ~/palmer_scratch/data/bigfoot_testing/digger/hg002
 #for iteration in {1..50};do echo ${iteration}

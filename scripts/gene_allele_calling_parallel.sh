@@ -506,8 +506,12 @@ else
 #                vg map -f ${outdir}/${sample_id}.${graph}.${gene}.valid.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.valid.prefilt.gam
 #                vg filter -r 0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.valid.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
 #            fi
-            vg view -a ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.aln.json
-            vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.vg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa
+            # Avoid parse_graph_vgflow.py  script completely - bug, and not needed - or update script to just use tmp1.gfa
+            vg convert -G ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf
+            gafpack -g ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa -a ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf -lc | grep -v "#" | awk '{print NR-1 ":" $0}' > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt
+            vg ids -i -1 ${outdir}/${sample_id}.${graph}.${gene}.vg | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa #need to increase by -1, cant decrease by 1 lol
+#            vg view -a ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.aln.json
+#            vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.vg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa
             # gene-specific read depth for minimum strain-level coverage
             depth_locus=$(awk -F ' ' '{print $1}' ${outdir}/${sample_id}.${graph}.${gene}.filtered.depth)
             # min_strain_depth=$(bc -l <<< "scale=3;${depth_locus}/$gene_min_len")
@@ -520,7 +524,15 @@ else
             cd ${outdir}
             # allele inference:
             mkdir -p ${outdir}/${gene}_allele_inference
-            python3 ${bigfoot_dir}/parse_graph_vgflow.py --sample ${outdir}/${sample_id}.${graph}.${gene}.vgflow -m 0
+#            python3 ${bigfoot_dir}/parse_graph_vgflow.py --sample ${outdir}/${sample_id}.${graph}.${gene}.vgflow -m 0
+#            vg paths -Ev ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa > vgflow_paths.txt
+#            orig_len=$(cut -f2 vgflow_paths.txt | sort | uniq)
+#            vg paths -Ev ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa > vgflow_paths.final.txt
+#            parsed_len=$(cut -f2 vgflow_paths.final.txt | sort | uniq)
+#            if [ $(echo ${orig_len}) -gt $(echo ${parsed_len}) ]; then
+#                echo "Compress graph bug - allele truncated - using previous gfa"
+#                mv ${outdir}/${sample_id}.${graph}.${gene}.vgflow.tmp2.gfa ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa;                
+#            fi
             for opt in {2..2}; do #relative difference performs best on average
                 echo "basing inference on haplotypes + alleles embedded in graph"
                 cd ${outdir}/${gene}_allele_inference
