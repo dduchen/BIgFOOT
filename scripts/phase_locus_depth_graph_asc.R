@@ -8,6 +8,7 @@ path_file=args[1]
 # asc-based inference
 #path_file="NA21130.wg_immunovar.IGHV_F12-G65.genome_graph_ref.augmented.depth.plines"
 graph_paths=fread(path_file,header=F)
+link_edges<-fread(gsub(".plines",".llines",path_file),header=F)
 dat<-graph_paths[,c(2,3)]
 #dat<-dat[unique(grep("^IM|^IGv|^OGR|^KIR|^HLA",dat$V2,invert=T))]
 dat$V3<-gsub("\\+","",dat$V3)
@@ -530,7 +531,7 @@ if(length(variant_paths)>0){
                 new_nodes_replace<-setdiff(new_nodes,old_nodes)
                 old_pattern_pos<-paste0(",",old_nodes_replace,"\\+|^",old_nodes_replace,"\\+")
                 old_pattern_neg<-paste0(",",old_nodes_replace,"\\-|^",old_nodes_replace,"\\-")
-                print(paste0(new_nodes_iterate,": part 2"))
+                #print(paste0(new_nodes_iterate,": part 2"))
                 if(all(length(old_nodes_replace)==1 & length(new_nodes_replace)==1)){
                     if(length(grep(old_pattern_pos,allele_graph_path_replace$V3))>0){
                         allele_graph_path_replace$V3<-gsub(old_pattern_pos,paste0(new_nodes_replace,"\\+"),allele_graph_path_replace$V3)
@@ -555,6 +556,7 @@ if(length(variant_paths)>0){
                     } else {
                         print("Insertion")
                         insert_me<-strsplit(new_nodes_iterate,split=",")[[1]]
+                        link_edges
                         if(length(grep(gsub("\\+","\\\\+",gsub(paste0(new_nodes_replace,".,",collapse=""),"",new_nodes_iterate)),allele_graph_path_replace$V3))==1){
                             allele_graph_path_replace$V3<-gsub(gsub("\\+","\\\\+",gsub(paste0(new_nodes_replace,".,"),"",new_nodes_iterate)),new_nodes_iterate,allele_graph_path_replace$V3)
                         } else {
