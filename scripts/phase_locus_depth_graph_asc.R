@@ -405,7 +405,7 @@ if(length(variant_paths)>0){
 #        }
 #    }
 #
-    print("Multiple alleles inferred")
+#    print("Multiple alleles inferred")
     graph_paths_update<-graph_paths[-which(graph_paths$V2 %in% phasing_df_alleles$phased_variants),]
     # use - phasing_df_alleles -- phasing_df_alleles$haps
     for(allelic_backbone_tmp in unique(phasing_df_alleles$allele_path)){
@@ -473,9 +473,10 @@ if(length(variant_paths)>0){
         }
         if(length(variant_replace)>1){
             var_length<-length(variant_replace)
-            #avg_depth<-round(mean(as.numeric(gsub("#.*","",gsub("variant_DP:f:|deletion_DP:f:","",gsub("_#.*","",variant_replace))))),2)
-            max_depth<-round(max(as.numeric(gsub("#.*","",gsub("variant_DP:f:|deletion_DP:f:","",gsub("_#.*","",variant_replace))))),2)
-            variant_replace<-paste0("variant_DP:f:",max_depth,"#",hap,"_")
+            avg_depth<-round(mean(as.numeric(gsub("#.*","",gsub("variant_DP:f:|deletion_DP:f:","",gsub("_#.*","",variant_replace))))),2)
+            variant_replace<-paste0("variant_DP:f:",avg_depth,"#",hap,"_")
+            #max_depth<-round(max(as.numeric(gsub("#.*","",gsub("variant_DP:f:|deletion_DP:f:","",gsub("_#.*","",variant_replace))))),2)
+            #variant_replace<-paste0("variant_DP:f:",max_depth,"#",hap,"_")
         }
         allele_update<-sub("path.*?_",variant_replace,allele_backbone)
         if(allele_update=="ambiguous"){
@@ -502,7 +503,7 @@ if(length(variant_paths)>0){
             variant_graph_path<-graph_paths[which(graph_paths$V2 %in% phased_df_tmp$phased_variants),];
             allele_graph_path_replace$V2<-sub("path.*?_",variant_replace,allele_graph_path_replace$V2)
             for(new_nodes_iterate in variant_graph_path$V3){
-                #print(new_nodes_iterate)
+                print(new_nodes_iterate)
                 new_nodes<-gsub("\\+|\\-","",new_nodes_iterate)
                 new_nodes<-as.numeric((strsplit(paste0(new_nodes,collapse=","),split=",")[[1]]))
                 old_nodes<-allele_graph_path_replace$V3
@@ -529,10 +530,18 @@ if(length(variant_paths)>0){
                 new_nodes_replace<-setdiff(new_nodes,old_nodes)
                 old_pattern_pos<-paste0(",",old_nodes_replace,"\\+|^",old_nodes_replace,"\\+")
                 old_pattern_neg<-paste0(",",old_nodes_replace,"\\-|^",old_nodes_replace,"\\-")
-                if(length(old_nodes_replace)==1){
+                print(paste0(new_nodes_iterate,": part 2"))
+                if(all(length(old_nodes_replace)==1 & length(new_nodes_replace)==1)){
                     if(length(grep(old_pattern_pos,allele_graph_path_replace$V3))>0){
                         allele_graph_path_replace$V3<-gsub(old_pattern_pos,paste0(new_nodes_replace,"\\+"),allele_graph_path_replace$V3)
                         allele_graph_path_replace$V3<-gsub("\\+\\+","+",allele_graph_path_replace$V3)
+                        if(length(new_nodes_replace)>0){
+                            allele_graph_path_replace$V3<-gsub(paste0("\\+",new_nodes_replace),paste0("+,",new_nodes_replace),allele_graph_path_replace$V3)
+                            allele_graph_path_replace$V3<-gsub(paste0("\\-",new_nodes_replace),paste0("-,",new_nodes_replace),allele_graph_path_replace$V3)
+                        }
+                    } else if(length(grep(old_pattern_neg,allele_graph_path_replace$V3))>0){
+                        allele_graph_path_replace$V3<-gsub(old_pattern_neg,paste0(new_nodes_replace,"\\-"),allele_graph_path_replace$V3)
+                        allele_graph_path_replace$V3<-gsub("\\-\\-","-",allele_graph_path_replace$V3)
                         if(length(new_nodes_replace)>0){
                             allele_graph_path_replace$V3<-gsub(paste0("\\+",new_nodes_replace),paste0("+,",new_nodes_replace),allele_graph_path_replace$V3)
                             allele_graph_path_replace$V3<-gsub(paste0("\\-",new_nodes_replace),paste0("-,",new_nodes_replace),allele_graph_path_replace$V3)
@@ -546,10 +555,47 @@ if(length(variant_paths)>0){
                     } else {
                         print("Insertion")
                         insert_me<-strsplit(new_nodes_iterate,split=",")[[1]]
-                        if(length(grep(gsub("\\+","\\\\+",gsub(paste0(new_nodes_replace,".,"),"",new_nodes_iterate)),allele_graph_path_replace$V3))==1){
+                        if(length(grep(gsub("\\+","\\\\+",gsub(paste0(new_nodes_replace,".,",collapse=""),"",new_nodes_iterate)),allele_graph_path_replace$V3))==1){
                             allele_graph_path_replace$V3<-gsub(gsub("\\+","\\\\+",gsub(paste0(new_nodes_replace,".,"),"",new_nodes_iterate)),new_nodes_iterate,allele_graph_path_replace$V3)
                         } else {
-                            print("Complex insertion - unable to resolve")
+                            print("Multi-node insertion - trying to resolve")
+                            flank_node1=insert_me[1];flank_node2=insert_me[length(insert_me)];
+                            allele_seq_nodes_tmp<-strsplit(allele_graph_path_replace$V3,split=",")[[1]];
+                            flank_node1_pos<-grep(paste0("^",gsub("\\+|-",".",flank_node1),"$"),allele_seq_nodes_tmp);
+                            flank_node2_pos<-grep(paste0("^",gsub("\\+|-",".",flank_node2),"$"),allele_seq_nodes_tmp);
+                            if(flank_node1_pos<flank_node2_pos){
+                                if(flank_node1_pos==1){
+                                    allele_seq_nodes_tmp_p1<-allele_seq_nodes_tmp[1];
+                                } else {
+                                    allele_seq_nodes_tmp_p1<-allele_seq_nodes_tmp[1:(flank_node1_pos)];
+                                }
+                                #allele_seq_nodes_tmp_p2<-allele_seq_nodes_tmp[(flank_node1_pos+1):(flank_node2_pos-1)];
+                                if(flank_node2_pos==length(allele_seq_nodes_tmp)){
+                                    allele_seq_nodes_tmp_p3<-allele_seq_nodes_tmp[length(allele_seq_nodes_tmp)];
+                                } else {
+                                    allele_seq_nodes_tmp_p3<-allele_seq_nodes_tmp[(flank_node2_pos):length(allele_seq_nodes_tmp)];
+                                }
+                                insert_me_clipped<-insert_me[-c(1,length(insert_me))];
+                                seq_replace<-paste0(paste0(allele_seq_nodes_tmp_p1,collapse=","),",",paste0(insert_me_clipped,collapse=","),",",paste0(allele_seq_nodes_tmp_p3,collapse=","),collapse=",")
+                                seq_replace<-gsub("^,","",seq_replace);seq_replace<-gsub(",$","",seq_replace);seq_replace<-gsub(",,",",",seq_replace);
+                                allele_graph_path_replace$V3<-seq_replace
+                            } else if(flank_node1_pos>flank_node2_pos){
+                                if(flank_node2_pos==1){
+                                    allele_seq_nodes_tmp_p1<-allele_seq_nodes_tmp[1];
+                                } else {
+                                    allele_seq_nodes_tmp_p1<-allele_seq_nodes_tmp[1:(flank_node2_pos)];
+                                }
+                                #allele_seq_nodes_tmp_p2<-allele_seq_nodes_tmp[flank_node1_pos:flank_node2_pos];
+                                if(flank_node1_pos==length(allele_seq_nodes_tmp)){
+                                    allele_seq_nodes_tmp_p3<-allele_seq_nodes_tmp[length(allele_seq_nodes_tmp)];
+                                } else {
+                                    allele_seq_nodes_tmp_p3<-allele_seq_nodes_tmp[(flank_node1_pos):length(allele_seq_nodes_tmp)];
+                                }
+                                insert_me_clipped<-insert_me[-c(1,length(insert_me))];
+                                seq_replace<-paste0(paste0(allele_seq_nodes_tmp_p1,collapse=","),",",paste0(rev(insert_me_clipped),collapse=","),",",paste0(allele_seq_nodes_tmp_p3,collapse=","),collapse=",")
+                                seq_replace<-gsub("^,","",seq_replace);seq_replace<-gsub(",$","",seq_replace);seq_replace<-gsub(",,",",",seq_replace);
+                                allele_graph_path_replace$V3<-seq_replace
+                            }
                             next
                         }
                     }

@@ -101,10 +101,31 @@ if(length(novel_nodes)>0){
         newpline<-gfa[gfa$V1=="P",][1,]
         node_id<-gsub(".*_","",names(novel_nodes)[i])
         newpline[,2]<-paste0(sample_identifier,"#1#",gene_interest_prefix,"_variant_",node_id,"#",i)
-        # we care about direction:
+        # we care about direction - try match with adjacent nodes if they're in allele sequences:
         node_support<-aln_nodes[grep(paste0(",",novel_nodes[[i]],"\\+|,",novel_nodes[[i]],"\\-"),aln_nodes)]
         suffix_pos<-length(grep(paste0(",",novel_nodes[[i]],"\\+"),node_support))
+        local_read_pos<-node_support[grep(paste0(",",novel_nodes[[i]],"\\+"),node_support)]
+        local_read_pos<-strsplit(local_read_pos,",")
+        # checking allele paths for direction - if not then use the number of reads supporting the node as a proxy for the direction
+        for(j in seq_along(local_read_pos)){
+            local_read_pos[[j]]<-local_read_pos[[j]][c((grep(novel_nodes[[i]],local_read_pos[[j]])-1),(grep(novel_nodes[[i]],local_read_pos[[j]]))+1)]
+            if(all(local_read_pos[[j]] %in% unlist(strsplit(gene_nodes,",")))){
+                names(local_read_pos)[j]<-"1"
+            }
+        }
         suffix_neg<-length(grep(paste0(",",novel_nodes[[i]],"\\-"),node_support))
+        local_read_neg<-node_support[grep(paste0(",",novel_nodes[[i]],"\\-"),node_support)]
+        local_read_neg<-strsplit(local_read_neg,",")
+        for(j in seq_along(local_read_neg)){
+            local_read_neg[[j]]<-local_read_neg[[j]][c((grep(novel_nodes[[i]],local_read_neg[[j]])-1),(grep(novel_nodes[[i]],local_read_neg[[j]]))+1)]
+            if(all(local_read_neg[[j]] %in% unlist(strsplit(gene_nodes,",")))){
+                names(local_read_neg)[j]<-"1"
+            }
+        }
+        if(any(as.numeric(c(names(local_read_neg),names(local_read_pos)))>0)){
+            suffix_neg<-sum(as.numeric(names(local_read_neg)))
+            suffix_pos<-sum(as.numeric(names(local_read_pos)))
+        }
         if(suffix_pos>=suffix_neg){
             newpline[,3]<-paste0(novel_nodes[i],"+")
         } else {
