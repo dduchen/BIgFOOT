@@ -189,7 +189,7 @@ if(length(variant_paths)>0){
         if(all(multivar==TRUE & multivar_indep==FALSE & var_df[which(var_df$variant==variant_id_tmp),]$cooc_var!="NA")){
             # parse var_df table to indetify full set of linked reads
             #linked_vars<-unique(unlist(strsplit(var_df[var_df$node==paste0(variant_nodes,collapse=","),]$cooc_var,split=" ")));
-            linked_vars<-unique(unlist(strsplit(var_df[var_df$node %in% variant_nodes,]$cooc_var,split=" ")));
+            linked_vars<-unique(unlist(strsplit(var_df[var_df$node %in% paste0(variant_nodes,collapse=","),]$cooc_var,split=" ")));
             variant_nodes<-var_df[var_df$variant %in% linked_vars,]$node;
             # paste0(variant_nodes,collapse=",")
             while(length(setdiff(var_df[var_df$variant %in% c(unique(unlist(strsplit(var_df[var_df$node %in% variant_nodes,]$cooc_var,split=" ")))),]$variant,linked_vars)>0)){
@@ -504,7 +504,7 @@ if(length(variant_paths)>0){
             variant_graph_path<-graph_paths[which(graph_paths$V2 %in% phased_df_tmp$phased_variants),];
             allele_graph_path_replace$V2<-sub("path.*?_",variant_replace,allele_graph_path_replace$V2)
             for(new_nodes_iterate in variant_graph_path$V3){
-                print(new_nodes_iterate)
+                #print(new_nodes_iterate)
                 new_nodes<-gsub("\\+|\\-","",new_nodes_iterate)
                 new_nodes<-as.numeric((strsplit(paste0(new_nodes,collapse=","),split=",")[[1]]))
                 old_nodes<-allele_graph_path_replace$V3
@@ -533,30 +533,56 @@ if(length(variant_paths)>0){
                 old_pattern_neg<-paste0(",",old_nodes_replace,"\\-|^",old_nodes_replace,"\\-")
                 #print(paste0(new_nodes_iterate,": part 2"))
                 if(all(length(old_nodes_replace)==1 & length(new_nodes_replace)==1)){
+                    # check if signs match up with link_edges - if not invert the order/signs
+                    old_nodes_wsigns<-strsplit(allele_graph_path_replace$V3,split=",")[[1]][which(old_nodes %in% new_nodes[new_nodes %in% old_nodes])]
+                    varlocus_wsigns<-strsplit(new_nodes_iterate,split=",")[[1]]
+                    varlocus_wsigns_flip<-rev(varlocus_wsigns)
+                    varlocus_wsigns_flip[grep("\\+",varlocus_wsigns)]<-gsub("\\+","-",varlocus_wsigns[grep("\\+",varlocus_wsigns)]);
+                    varlocus_wsigns_flip[grep("-",varlocus_wsigns)]<-gsub("-","\\+",varlocus_wsigns_flip[grep("-",varlocus_wsigns)]);
                     if(length(grep(old_pattern_pos,allele_graph_path_replace$V3))>0){
-                        allele_graph_path_replace$V3<-gsub(old_pattern_pos,paste0(new_nodes_replace,"\\+"),allele_graph_path_replace$V3)
-                        allele_graph_path_replace$V3<-gsub("\\+\\+","+",allele_graph_path_replace$V3)
-                        if(length(new_nodes_replace)>0){
+                        if(sum(old_nodes_wsigns %in% varlocus_wsigns)>=sum(old_nodes_wsigns %in% varlocus_wsigns_flip)){
+                            allele_graph_path_replace$V3<-gsub(old_pattern_pos,paste0(new_nodes_replace,"\\+"),allele_graph_path_replace$V3)
+                            allele_graph_path_replace$V3<-gsub("\\+\\+","+",allele_graph_path_replace$V3)
+                            allele_graph_path_replace$V3<-gsub(paste0("\\+",new_nodes_replace),paste0("+,",new_nodes_replace),allele_graph_path_replace$V3)
+                            allele_graph_path_replace$V3<-gsub(paste0("\\-",new_nodes_replace),paste0("-,",new_nodes_replace),allele_graph_path_replace$V3)
+                        } else {
+                            allele_graph_path_replace$V3<-gsub(old_pattern_pos,paste0(new_nodes_replace,"\\-"),allele_graph_path_replace$V3)
+                            allele_graph_path_replace$V3<-gsub("\\+\\+","+",allele_graph_path_replace$V3)
                             allele_graph_path_replace$V3<-gsub(paste0("\\+",new_nodes_replace),paste0("+,",new_nodes_replace),allele_graph_path_replace$V3)
                             allele_graph_path_replace$V3<-gsub(paste0("\\-",new_nodes_replace),paste0("-,",new_nodes_replace),allele_graph_path_replace$V3)
                         }
                     } else if(length(grep(old_pattern_neg,allele_graph_path_replace$V3))>0){
-                        allele_graph_path_replace$V3<-gsub(old_pattern_neg,paste0(new_nodes_replace,"\\-"),allele_graph_path_replace$V3)
-                        allele_graph_path_replace$V3<-gsub("\\-\\-","-",allele_graph_path_replace$V3)
-                        if(length(new_nodes_replace)>0){
+                        if(sum(old_nodes_wsigns %in% varlocus_wsigns)>=sum(old_nodes_wsigns %in% varlocus_wsigns_flip)){
+                            allele_graph_path_replace$V3<-gsub(old_pattern_neg,paste0(new_nodes_replace,"\\-"),allele_graph_path_replace$V3)
+                            allele_graph_path_replace$V3<-gsub("\\-\\-","-",allele_graph_path_replace$V3)
+                            allele_graph_path_replace$V3<-gsub(paste0("\\+",new_nodes_replace),paste0("+,",new_nodes_replace),allele_graph_path_replace$V3)
+                            allele_graph_path_replace$V3<-gsub(paste0("\\-",new_nodes_replace),paste0("-,",new_nodes_replace),allele_graph_path_replace$V3)
+                        } else {
+                            allele_graph_path_replace$V3<-gsub(old_pattern_neg,paste0(new_nodes_replace,"\\+"),allele_graph_path_replace$V3)
+                            allele_graph_path_replace$V3<-gsub("\\-\\-","-",allele_graph_path_replace$V3)
                             allele_graph_path_replace$V3<-gsub(paste0("\\+",new_nodes_replace),paste0("+,",new_nodes_replace),allele_graph_path_replace$V3)
                             allele_graph_path_replace$V3<-gsub(paste0("\\-",new_nodes_replace),paste0("-,",new_nodes_replace),allele_graph_path_replace$V3)
                         }
+                    } else {
+                        print(paste0("Investigate me: ",allele_graph_path_replace$V3))
                     }
                 } else {
                     if(redundant_var==T){
                         print("No difference from partially updated graph")
                         redundant_var=F
                         next
+                    } else if(length(new_nodes_replace)==0){
+                        print("Putative deletion")
+                        for(node_del in old_nodes_replace){
+                            candidate_path_del<-gsub(paste0(old_nodes_replace,"."),"",allele_graph_path_replace$V3)
+                            candidate_path_del<-gsub("^,","",candidate_path_del);candidate_path_del<-gsub(",$","",candidate_path_del);candidate_path_del<-gsub(",,",",",candidate_path_del);
+                            allele_graph_path_replace$V3<-candidate_path_del
+                        #    print(allele_graph_path_replace$V3)
+                        }
                     } else {
-                        print("Insertion")
+                        print("Putative insertion")
                         insert_me<-strsplit(new_nodes_iterate,split=",")[[1]]
-                        link_edges
+                        #link_edges
                         if(length(grep(gsub("\\+","\\\\+",gsub(paste0(new_nodes_replace,".,",collapse=""),"",new_nodes_iterate)),allele_graph_path_replace$V3))==1){
                             allele_graph_path_replace$V3<-gsub(gsub("\\+","\\\\+",gsub(paste0(new_nodes_replace,".,"),"",new_nodes_iterate)),new_nodes_iterate,allele_graph_path_replace$V3)
                         } else {
@@ -605,19 +631,23 @@ if(length(variant_paths)>0){
             }
             #remove appropriate backbone path/allele
             aln_nodes_candidates<-aln_nodes[grep(gsub("\\+|-",".",allele_graph_path_replace$V3),aln_nodes$V3),]$V3
-            if(length(aln_nodes_candidates)>0){
-                first_node<-substr(allele_graph_path_replace$V3, 1, 2)
-                first_node<-gsub("\\+|-","",first_node)
-                final_node <- gsub(".*,","",new_nodes_iterate)
-                final_node <- gsub("\\+|-","",final_node)
-                aln_nodes_candidates<-gsub(paste0("^.*",first_node),first_node,aln_nodes_candidates)
-                aln_nodes_candidates<-gsub(paste0(final_node,"+.*"),paste0(final_node,"+"),aln_nodes_candidates)
-                aln_nodes_candidates<-gsub(paste0(final_node,"-.*"),paste0(final_node,"-"),aln_nodes_candidates)
-                new_varpath_update<-names(which.max(table(aln_nodes_candidates)))
-                if(length(new_varpath_update)>0){
-                    allele_graph_path_replace$V3<-new_varpath_update
-                }
-            }
+            # -- use links from reads to re-orient signs/directions of things if those edges arent in the graph already...
+            # if node = 1 bp, then it doesnt matter which direction!
+
+            # --- confirm whether this step is necessary ---    
+            #if(length(aln_nodes_candidates)>0){
+            #    first_node<-substr(allele_graph_path_replace$V3, 1, 2)
+            #    first_node<-gsub("\\+|-","",first_node)
+            #    final_node <- gsub(".*,","",new_nodes_iterate)
+            #    final_node <- gsub("\\+|-","",final_node)
+            #    aln_nodes_candidates<-gsub(paste0("^.*",first_node),first_node,aln_nodes_candidates)
+            #    aln_nodes_candidates<-gsub(paste0(final_node,"+.*"),paste0(final_node,"+"),aln_nodes_candidates)
+            #    aln_nodes_candidates<-gsub(paste0(final_node,"-.*"),paste0(final_node,"-"),aln_nodes_candidates)
+            #    new_varpath_update<-names(which.max(table(aln_nodes_candidates)))
+            #    if(length(new_varpath_update)>0){
+            #        allele_graph_path_replace$V3<-new_varpath_update
+            #    }
+            #}
             graph_paths_update<-rbind(graph_paths_update,allele_graph_path_replace)
         }
     }

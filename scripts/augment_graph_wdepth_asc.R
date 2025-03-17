@@ -161,14 +161,42 @@ if(length(novel_nodes)>0){
         } else {
             sign_in="-"
         }
-        sign_out_pos<-length(grep(paste0(",",gsub("\\+","\\\\+",newpline[,3]),",",node_to,"\\+"),node_support))
-        sign_out_neg<-length(grep(paste0(",",gsub("\\+","\\\\+",newpline[,3]),",",node_to,"-"),node_support))
+        sign_out_pos<-length(grep(paste0(",",gsub("\\+","\\\\+",newpline[,3]),",",node_from,"\\+"),node_support))
+        sign_out_neg<-length(grep(paste0(",",gsub("\\+","\\\\+",newpline[,3]),",",node_from,"-"),node_support))
         if(sign_out_pos>=sign_out_neg){
             sign_out="+"
         } else {
             sign_out="-"
         }
-        newpline$V3<-paste0(node_from,sign_in,",",newpline$V3,",",node_to,sign_out)
+ #      overwrite signs based on existing graph links
+        connector_match<-distinct(lline[c(grep(paste0("^",node_to,"$|^",node_from,"$"),lline$V2),grep(paste0("^",node_to,"$|^",node_from,"$"),lline$V4)),])
+        connector_match<-connector_match[connector_match$V2 %in% c(as.character(novel_nodes[i])) | connector_match$V4 %in% c(as.character(novel_nodes[i])),]
+        sign_in_pos<-nrow(connector_match[connector_match$V2==node_to & connector_match$V3=="+" | connector_match$V4==node_to & connector_match$V5=="+",])
+        sign_in_neg<-nrow(connector_match[connector_match$V2==node_to & connector_match$V3=="-" | connector_match$V4==node_to & connector_match$V5=="-",])
+        sign_out_pos<-nrow(connector_match[connector_match$V2==node_from & connector_match$V3=="+" | connector_match$V4==node_from & connector_match$V5=="+",])
+        sign_out_neg<-nrow(connector_match[connector_match$V2==node_from & connector_match$V3=="-" | connector_match$V4==node_from & connector_match$V5=="-",])
+        if(sign_out_pos>=sign_out_neg){
+            sign_out="+"
+            final_signs<-connector_match[connector_match$V2==node_from & connector_match$V3=="+" | connector_match$V4==node_from & connector_match$V5=="+",]            
+        } else {
+            sign_out="-"
+            final_signs<-connector_match[connector_match$V2==node_from & connector_match$V3=="-" | connector_match$V4==node_from & connector_match$V5=="-",]            
+        }
+        if(sign_in_pos>=sign_in_neg){
+            sign_in="+"
+            final_signs<-rbind(final_signs,connector_match[connector_match$V2==node_to & connector_match$V3=="+" | connector_match$V4==node_to & connector_match$V5=="+",])
+            final_signs<-distinct(final_signs)
+        } else {
+            sign_in="-"
+            final_signs<-rbind(final_signs,connector_match[connector_match$V2==node_to & connector_match$V3=="-" | connector_match$V4==node_to & connector_match$V5=="-",])
+            final_signs<-distinct(final_signs)
+        }
+        varnode_sign<-as.character(unique(rbind(final_signs[final_signs$V2 %in% c(as.character(novel_nodes[i])),V3],final_signs[final_signs$V4 %in% c(as.character(novel_nodes[i])),V5])))
+        if(length(varnode_sign)==1){
+            newpline$V3<-paste0(node_from,sign_in,",",as.character(novel_nodes[i]),varnode_sign,",",node_to,sign_out)
+        } else {
+            newpline$V3<-paste0(node_from,sign_in,",",newpline$V3,",",node_to,sign_out)
+        }
         pline<-rbind(pline,newpline)
         read_support<-pline[grep(gsub("\\+|\\-","",newpline$V3),gsub("\\+|\\-","",pline$V3)),]
         ref_convergence<-read_support[grep("grch|chm",read_support$V2),]
