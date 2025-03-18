@@ -191,9 +191,17 @@ if(length(variant_paths)>0){
         } else {
             variant_nodes<-variant_nodes
         }
+        linked_vars<-unique(unlist(strsplit(var_df[var_df$node %in% c(paste0(variant_nodes,collapse=","),variant_nodes),]$cooc_var,split=" ")));
 #        if(multivar==TRUE & multivar_indep==FALSE & var_df[var_df$node==paste0(variant_nodes,collapse=","),]$cooc_var!="NA"){
         variant_id_tmp<-names(variant_paths)[variant]
         if(all(multivar==TRUE & multivar_indep==FALSE & var_df[which(var_df$variant==variant_id_tmp),]$cooc_var!="NA")){
+            variant_nodes<-var_df[var_df$variant %in% linked_vars,]$node;
+            variant_nodes_strict<-variant_nodes
+            while(length(setdiff(var_df[var_df$variant %in% c(unique(unlist(strsplit(var_df[var_df$node %in% variant_nodes,]$cooc_var,split=" ")))),]$variant,linked_vars)>0)){
+                linked_vars<-unique(unlist(strsplit(var_df[var_df$node %in% variant_nodes,]$cooc_var,split=" ")))
+                variant_nodes<-var_df[var_df$variant %in% linked_vars,]$node;
+            }
+#            variant_nodes<-variant_nodes_strict
             # parse var_df table to indetify full set of linked reads
             #linked_vars<-unique(unlist(strsplit(var_df[var_df$node==paste0(variant_nodes,collapse=","),]$cooc_var,split=" ")));
             in_node<-unlist(unname(sapply(variant_paths[var_df[var_df$node %in% variant_nodes,]$variant], function(x) x[1])))
@@ -209,9 +217,8 @@ if(length(variant_paths)>0){
                 }
             }
             if(length(candidate_alleles)>1){
-                linked_vars<-unique(unlist(strsplit(var_df[var_df$node %in% c(paste0(variant_nodes,collapse=","),variant_nodes),]$cooc_var,split=" ")));
+                linked_vars<-unique(unlist(strsplit(var_df[var_df$node %in% c(paste0(variant_nodes_strict,collapse=","),variant_nodes_strict),]$cooc_var,split=" ")));
                 variant_nodes<-var_df[var_df$variant %in% linked_vars,]$node;
-                variant_nodes_strict<-variant_nodes
                 while(length(setdiff(var_df[var_df$variant %in% c(unique(unlist(strsplit(var_df[var_df$node %in% variant_nodes,]$cooc_var,split=" ")))),]$variant,linked_vars)>0)){
                     linked_vars<-unique(unlist(strsplit(var_df[var_df$node %in% variant_nodes,]$cooc_var,split=" ")))
                     variant_nodes<-var_df[var_df$variant %in% linked_vars,]$node;
