@@ -115,7 +115,7 @@ if [ "${asc_inference}" = true ]; then
             . ${bigfoot_dir}/gene_allele_calling_parallel.sh
         fi' :::: <(cat ${outdir}/asc_gene_list.txt );
 else
-    parallel -j 6 'export each={}; \
+    parallel -j 1 'export each={}; \
         . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(cat ${outdir}/gene_list.txt );
 fi
 #    . ${bigfoot_dir}/gene_asc_allele_calling_parallel.sh' :::: <(cat ${outdir}/asc_gene_list.txt );

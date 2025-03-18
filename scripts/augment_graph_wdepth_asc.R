@@ -123,8 +123,8 @@ if(length(novel_nodes)>0){
             }
         }
         if(any(as.numeric(c(names(local_read_neg),names(local_read_pos)))>0)){
-            suffix_neg<-sum(as.numeric(names(local_read_neg)))
-            suffix_pos<-sum(as.numeric(names(local_read_pos)))
+            suffix_neg<-sum(as.numeric(names(local_read_neg)),na.rm=T)
+            suffix_pos<-sum(as.numeric(names(local_read_pos)),na.rm=T)
         }
         if(suffix_pos>=suffix_neg){
             newpline[,3]<-paste0(novel_nodes[i],"+")
@@ -249,6 +249,7 @@ if(nrow(paths_to_prune)>0){
         # remove both/all L lines containing the node
         # edit read path associated with the node, simply excise it out -- edit read ID to indicate this
         paths_traversing_variant_path<-pline[grep(node,gsub("\\+|\\-","",pline$V3))]$V2
+        paths_traversing_variant_path<-unique(c(paths_traversing_variant_path,pline$V2[grep(paste0("^",variant_node,"\\+|^",variant_node,"-|,",variant_node,"\\+|,",variant_node,"-"), pline$V3)]))
         if(length(grep("grch|chm|^IG|^TR",paths_traversing_variant_path))>0){
             print("Important path also traverses the variant chunk - removing read path ID only - not topology")
             specific_path_to_remove<-paths_traversing_variant_path[grep("grch|chm|^IG|^TR",paths_traversing_variant_path,invert=T)]
@@ -263,7 +264,7 @@ if(nrow(paths_to_prune)>0){
             pline<-pline_filt
         }
         # remove paths containing filtered-out variant node provided they are just read paths
-        other_var_paths<-pline_filt[grep(variant_node,gsub("\\+|\\-","",pline_filt$V3),invert=F),]
+        other_var_paths<-pline_filt[grep(paste0("^",variant_node,"\\+|^",variant_node,"-|,",variant_node,"\\+|,",variant_node,"-"),pline_filt$V3,invert=F),]
         if(all(nrow(other_var_paths)>0 & length(grep("grch|chm|^IG|^TR",other_var_paths$V2))>0)){
             print("Important path also traverses the variant node - removing read path ID only - not topology")
             specific_path_to_remove<-other_var_paths[grep("grch|chm|^IG|^TR",other_var_paths$V2,invert=T)]

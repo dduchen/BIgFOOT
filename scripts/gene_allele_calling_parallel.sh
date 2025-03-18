@@ -5,8 +5,12 @@ gene=${each%.nodes.txt}
 gene=${gene%.immune_subset}
 gene_actual=$(echo $gene | sed 's!__!/!g')
 #
-loci=$(vg paths -Lv ${graph_base}.xg | grep "#1#${gene}\*" | cut -f1 -d"#" | sort | uniq | grep "IMGT\|HLA\|KIR")
-echo "$gene --> $loci"
+loci=$(vg paths -Lv ${graph_base}.xg | grep "#1#${gene}\*" | cut -f1 -d"#" | sort | uniq | grep "IMGT\|OGRDB\|HLA\|KIR")
+echo "$gene --> $(echo $loci)"
+if [[ $(echo $loci | grep "OGRDB" | wc -l) -ge 1 ]]; then
+    echo "OGRDB alleles"
+    loci="IMGT"
+fi
 #
 unset asc_cluster #ensure no carryover of variables from previous gene analysis
 if [[ "$loci" =~ ^(HLA)$ ]]; then
