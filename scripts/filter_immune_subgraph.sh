@@ -172,7 +172,7 @@ if [ -s ${sorted_gam} ]; then
 #   update clean_genewise_results script to parse alleles
     Rscript ${bigfoot_dir}/clean_genewise_results.R
     tar -czvf ${sample_id}.${graph}_allelic_inference.tar.gz -T ${sample_id}.${graph}_allelic_inference.txt --remove-files
-    ls ${outdir}/* > ${sample_id}.${graph}_other_materials.txt
+    ls ./familywise_pe_haplotype_inference/* > ${sample_id}.${graph}_other_materials.txt
     tar -czvf ${sample_id}.${graph}_other_materials.tar.gz -T ${sample_id}.${graph}_other_materials.txt --remove-files
     cd ${workdir}
     echo "fin!"

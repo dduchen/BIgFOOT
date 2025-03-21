@@ -83,7 +83,7 @@ if(sample_id==colnames(depth)[1]){
     }
     other_info<-gsub("^.*/","",getwd())
     graph_results$aln_type<-ifelse(grepl("_pe_",subdir)==1,"PE","NGmerge")
-    graph_results$augmented_graph<-ifelse(grepl("_augmented_",other_info)==1,T,F)
+    graph_results$augmented_graph<-""
     #
     deletion_candidates<-list.files(path="familywise_pe_haplotype_inference",pattern="_files.txt")
     deletion_candidates_gene<-gsub(paste0(sample_id,"_"),"",gsub("_files.txt","",deletion_candidates))
@@ -122,6 +122,7 @@ if(sample_id==colnames(depth)[1]){
         alleles_ambig_ref<-alleles_ambig[grep("variant",names(alleles_ambig),invert=T)]
         graph_results_wDels$novel<-""
         graph_results_wDels$fasta<-""
+        graph_results_wDels<-dplyr::distinct(graph_results_wDels)
         for(seqid in unique(names(alleles_novel))){
             seqid_match<-gsub(":.*","",seqid)
             graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$novel<-seqid
@@ -129,8 +130,14 @@ if(sample_id==colnames(depth)[1]){
         }
         for(seqid in unique(names(alleles_exact))){
             seqid_match<-gsub(":.*","",seqid)
-            graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$novel<-seqid
-            graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$fasta<-as.character(alleles_exact[seqid])[[1]]
+            if(nchar(graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$novel)==0){
+                graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$novel<-seqid
+                graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$fasta<-as.character(alleles_exact[seqid])[[1]]
+            } else {
+                graph_results_wDels<-rbind(graph_results_wDels,graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,])
+                graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$novel[2]<-seqid
+                graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$fasta[2]<-as.character(alleles_exact[seqid])[[1]]
+            }
         }
         # for missing due to ambiguity - use ambiguous exact alleles
         for(seqid in unique(names(alleles_ambig_ref))){
@@ -138,6 +145,24 @@ if(sample_id==colnames(depth)[1]){
             if(graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$fasta==""){
                 graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$novel<-seqid
                 graph_results_wDels[graph_results_wDels$gene==gsub("\\*.*","",seqid_match) & graph_results_wDels$allele==gsub("^.*\\*","",seqid_match) ,]$fasta<-as.character(alleles_ambig_ref[seqid])[[1]]
+            }
+        }
+    # Use coverage.tsv to obtain confidence result - based on minimum node depth
+        for(gene_id in unique(graph_results_wDels$gene)){
+            if(length(list.files(path="familywise_pe_haplotype_inference",pattern=paste0(gene_id,".variant.coverage.tsv")))>0){
+                covdat<-fread(paste0("familywise_pe_haplotype_inference/",list.files(path="familywise_pe_haplotype_inference",pattern=paste0(gene_id,".variant.coverage.tsv"))))
+                covdat$bplen<-covdat$V3-covdat$V2
+                for(allele in unique(covdat$V1)){
+                    print(allele)
+                    if(length(grep("variant|:exact",allele))>0){
+                        allele_mincov<-min(covdat[covdat$V1==allele,]$V4)
+                        mincov_prop<-sum(covdat[covdat$V1==allele & covdat$V4==allele_mincov,]$bplen)/sum(covdat[covdat$V1==allele,]$bplen)
+                        covindex_match<-grep(gsub("#.*$","",gsub("\\*","\\\\*",allele)),graph_results_wDels$novel)
+                        if(length(covindex_match)>0){
+                            graph_results_wDels[covindex_match,]$augmented_graph<-paste0(allele_mincov,":",round(mincov_prop*100,2))
+                        }
+                    }
+                }
             }
         }
     }
