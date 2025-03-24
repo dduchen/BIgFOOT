@@ -48,7 +48,8 @@ if [[ ${input_aln} == *"gam" ]]; then
                 vg paths -Fv ${allele_fasta} | seqkit grep -r -p "IG|TR" >> ${sample_id}.${graph}.alleles.fasta
             done
             mv ${outdir}/*vcf ${sample_id}.${graph}_vcf
-            rm $outdir/*plines; rm $outdir/*paths
+            rm $outdir/*plines; rm $outdir/*paths;
+            rm -rf ${outdir}/tmp;
             Rscript ${bigfoot_dir}/clean_genewise_results.R
             tar -czvf ${sample_id}.${graph}_allelic_inference.tar.gz -T ${sample_id}.${graph}_allelic_inference.txt --remove-files
             ls ${outdir}/* > ${sample_id}.${graph}_other_materials.txt

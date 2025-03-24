@@ -168,7 +168,8 @@ if [ -s ${sorted_gam} ]; then
     mkdir -p ${sample_id}.${graph}_vcf
 #    rm ${sample_id}.${graph}_vcf/*
     mv ${outdir}/*vcf ${sample_id}.${graph}_vcf
-    rm $outdir/*plines; rm $outdir/*paths
+    rm ${outdir}/*plines; rm ${outdir}/*paths;
+    rm -rf ${outdir}/tmp;
 #   update clean_genewise_results script to parse alleles
     Rscript ${bigfoot_dir}/clean_genewise_results.R
     tar -czvf ${sample_id}.${graph}_allelic_inference.tar.gz -T ${sample_id}.${graph}_allelic_inference.txt --remove-files
