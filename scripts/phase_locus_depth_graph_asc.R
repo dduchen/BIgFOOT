@@ -670,7 +670,11 @@ if(length(variant_paths)>0){
                             allele_seq_nodes_tmp<-strsplit(allele_graph_path_replace$V3,split=",")[[1]];
                             flank_node1_pos<-grep(paste0("^",gsub("\\+|-",".",flank_node1),"$"),allele_seq_nodes_tmp);
                             flank_node2_pos<-grep(paste0("^",gsub("\\+|-",".",flank_node2),"$"),allele_seq_nodes_tmp);
-                            if(flank_node1_pos<flank_node2_pos){
+                            if(all(length(flank_node1_pos)==0 & flank_node2_pos==1)){
+                                print("upstream of sequence")
+                            } else if(all(length(flank_node2_pos)==0 & flank_node1_pos==length(allele_seq_nodes_tmp))){
+                                print("upstream of sequence")
+                            } else if(flank_node1_pos<flank_node2_pos){
                                 if(flank_node1_pos==1){
                                     allele_seq_nodes_tmp_p1<-allele_seq_nodes_tmp[1];
                                 } else {
@@ -702,8 +706,9 @@ if(length(variant_paths)>0){
                                 seq_replace<-paste0(paste0(allele_seq_nodes_tmp_p1,collapse=","),",",paste0(rev(insert_me_clipped),collapse=","),",",paste0(allele_seq_nodes_tmp_p3,collapse=","),collapse=",")
                                 seq_replace<-gsub("^,","",seq_replace);seq_replace<-gsub(",$","",seq_replace);seq_replace<-gsub(",,",",",seq_replace);
                                 allele_graph_path_replace$V3<-seq_replace
+                            } else {
+                                print("Investigate me: ",new_nodes_iterate)
                             }
-                            next
                         }
                     }
                 }

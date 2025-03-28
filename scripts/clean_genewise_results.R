@@ -151,12 +151,12 @@ if(sample_id==colnames(depth)[1]){
         for(gene_id in unique(graph_results_wDels$gene)){
             if(length(list.files(path="familywise_pe_haplotype_inference",pattern=paste0(gene_id,".variant.coverage.tsv")))>0){
                 covdat<-fread(paste0("familywise_pe_haplotype_inference/",list.files(path="familywise_pe_haplotype_inference",pattern=paste0(gene_id,".variant.coverage.tsv"))))
-                covdat$bplen<-covdat$V3-covdat$V2
                 for(allele in unique(covdat$V1)){
                     print(allele)
                     if(length(grep("variant|:exact",allele))>0){
-                        allele_mincov<-min(covdat[covdat$V1==allele,]$V4)
-                        mincov_prop<-sum(covdat[covdat$V1==allele & covdat$V4==allele_mincov,]$bplen)/sum(covdat[covdat$V1==allele,]$bplen)
+                        allele_mincov<-min(covdat[covdat$V1==allele,]$V3)
+                        allele_bplen<-max(covdat[covdat$V1==allele,]$V2)
+                        mincov_prop<-nrow(covdat[covdat$V1==allele & covdat$V3==allele_mincov,])/allele_bplen
                         covindex_match<-grep(gsub("#.*$","",gsub("\\*","\\\\*",allele)),graph_results_wDels$novel)
                         if(length(covindex_match)>0){
                             graph_results_wDels[covindex_match,]$augmented_graph<-paste0(allele_mincov,":",round(mincov_prop*100,2))
