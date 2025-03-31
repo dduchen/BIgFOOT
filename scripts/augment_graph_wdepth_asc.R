@@ -101,10 +101,31 @@ if(length(novel_nodes)>0){
         newpline<-gfa[gfa$V1=="P",][1,]
         node_id<-gsub(".*_","",names(novel_nodes)[i])
         newpline[,2]<-paste0(sample_identifier,"#1#",gene_interest_prefix,"_variant_",node_id,"#",i)
-        # we care about direction:
+        # we care about direction - try match with adjacent nodes if they're in allele sequences:
         node_support<-aln_nodes[grep(paste0(",",novel_nodes[[i]],"\\+|,",novel_nodes[[i]],"\\-"),aln_nodes)]
         suffix_pos<-length(grep(paste0(",",novel_nodes[[i]],"\\+"),node_support))
+        local_read_pos<-node_support[grep(paste0(",",novel_nodes[[i]],"\\+"),node_support)]
+        local_read_pos<-strsplit(local_read_pos,",")
+        # checking allele paths for direction - if not then use the number of reads supporting the node as a proxy for the direction
+        for(j in seq_along(local_read_pos)){
+            local_read_pos[[j]]<-local_read_pos[[j]][c((grep(novel_nodes[[i]],local_read_pos[[j]])-1),(grep(novel_nodes[[i]],local_read_pos[[j]]))+1)]
+            if(all(local_read_pos[[j]] %in% unlist(strsplit(gene_nodes,",")))){
+                names(local_read_pos)[j]<-"1"
+            }
+        }
         suffix_neg<-length(grep(paste0(",",novel_nodes[[i]],"\\-"),node_support))
+        local_read_neg<-node_support[grep(paste0(",",novel_nodes[[i]],"\\-"),node_support)]
+        local_read_neg<-strsplit(local_read_neg,",")
+        for(j in seq_along(local_read_neg)){
+            local_read_neg[[j]]<-local_read_neg[[j]][c((grep(novel_nodes[[i]],local_read_neg[[j]])-1),(grep(novel_nodes[[i]],local_read_neg[[j]]))+1)]
+            if(all(local_read_neg[[j]] %in% unlist(strsplit(gene_nodes,",")))){
+                names(local_read_neg)[j]<-"1"
+            }
+        }
+        if(any(as.numeric(c(names(local_read_neg),names(local_read_pos)))>0)){
+            suffix_neg<-sum(as.numeric(names(local_read_neg)),na.rm=T)
+            suffix_pos<-sum(as.numeric(names(local_read_pos)),na.rm=T)
+        }
         if(suffix_pos>=suffix_neg){
             newpline[,3]<-paste0(novel_nodes[i],"+")
         } else {
@@ -140,14 +161,42 @@ if(length(novel_nodes)>0){
         } else {
             sign_in="-"
         }
-        sign_out_pos<-length(grep(paste0(",",gsub("\\+","\\\\+",newpline[,3]),",",node_to,"\\+"),node_support))
-        sign_out_neg<-length(grep(paste0(",",gsub("\\+","\\\\+",newpline[,3]),",",node_to,"-"),node_support))
+        sign_out_pos<-length(grep(paste0(",",gsub("\\+","\\\\+",newpline[,3]),",",node_from,"\\+"),node_support))
+        sign_out_neg<-length(grep(paste0(",",gsub("\\+","\\\\+",newpline[,3]),",",node_from,"-"),node_support))
         if(sign_out_pos>=sign_out_neg){
             sign_out="+"
         } else {
             sign_out="-"
         }
-        newpline$V3<-paste0(node_from,sign_in,",",newpline$V3,",",node_to,sign_out)
+ #      overwrite signs based on existing graph links
+        connector_match<-distinct(lline[c(grep(paste0("^",node_to,"$|^",node_from,"$"),lline$V2),grep(paste0("^",node_to,"$|^",node_from,"$"),lline$V4)),])
+        connector_match<-connector_match[connector_match$V2 %in% c(as.character(novel_nodes[i])) | connector_match$V4 %in% c(as.character(novel_nodes[i])),]
+        sign_in_pos<-nrow(connector_match[connector_match$V2==node_to & connector_match$V3=="+" | connector_match$V4==node_to & connector_match$V5=="+",])
+        sign_in_neg<-nrow(connector_match[connector_match$V2==node_to & connector_match$V3=="-" | connector_match$V4==node_to & connector_match$V5=="-",])
+        sign_out_pos<-nrow(connector_match[connector_match$V2==node_from & connector_match$V3=="+" | connector_match$V4==node_from & connector_match$V5=="+",])
+        sign_out_neg<-nrow(connector_match[connector_match$V2==node_from & connector_match$V3=="-" | connector_match$V4==node_from & connector_match$V5=="-",])
+        if(sign_out_pos>=sign_out_neg){
+            sign_out="+"
+            final_signs<-connector_match[connector_match$V2==node_from & connector_match$V3=="+" | connector_match$V4==node_from & connector_match$V5=="+",]            
+        } else {
+            sign_out="-"
+            final_signs<-connector_match[connector_match$V2==node_from & connector_match$V3=="-" | connector_match$V4==node_from & connector_match$V5=="-",]            
+        }
+        if(sign_in_pos>=sign_in_neg){
+            sign_in="+"
+            final_signs<-rbind(final_signs,connector_match[connector_match$V2==node_to & connector_match$V3=="+" | connector_match$V4==node_to & connector_match$V5=="+",])
+            final_signs<-distinct(final_signs)
+        } else {
+            sign_in="-"
+            final_signs<-rbind(final_signs,connector_match[connector_match$V2==node_to & connector_match$V3=="-" | connector_match$V4==node_to & connector_match$V5=="-",])
+            final_signs<-distinct(final_signs)
+        }
+        varnode_sign<-as.character(unique(rbind(final_signs[final_signs$V2 %in% c(as.character(novel_nodes[i])),V3],final_signs[final_signs$V4 %in% c(as.character(novel_nodes[i])),V5])))
+        if(length(varnode_sign)==1){
+            newpline$V3<-paste0(node_from,sign_in,",",as.character(novel_nodes[i]),varnode_sign,",",node_to,sign_out)
+        } else {
+            newpline$V3<-paste0(node_from,sign_in,",",newpline$V3,",",node_to,sign_out)
+        }
         pline<-rbind(pline,newpline)
         read_support<-pline[grep(gsub("\\+|\\-","",newpline$V3),gsub("\\+|\\-","",pline$V3)),]
         ref_convergence<-read_support[grep("grch|chm",read_support$V2),]
@@ -200,6 +249,7 @@ if(nrow(paths_to_prune)>0){
         # remove both/all L lines containing the node
         # edit read path associated with the node, simply excise it out -- edit read ID to indicate this
         paths_traversing_variant_path<-pline[grep(node,gsub("\\+|\\-","",pline$V3))]$V2
+        paths_traversing_variant_path<-unique(c(paths_traversing_variant_path,pline$V2[grep(paste0("^",variant_node,"\\+|^",variant_node,"-|,",variant_node,"\\+|,",variant_node,"-"), pline$V3)]))
         if(length(grep("grch|chm|^IG|^TR",paths_traversing_variant_path))>0){
             print("Important path also traverses the variant chunk - removing read path ID only - not topology")
             specific_path_to_remove<-paths_traversing_variant_path[grep("grch|chm|^IG|^TR",paths_traversing_variant_path,invert=T)]
@@ -214,7 +264,7 @@ if(nrow(paths_to_prune)>0){
             pline<-pline_filt
         }
         # remove paths containing filtered-out variant node provided they are just read paths
-        other_var_paths<-pline_filt[grep(variant_node,gsub("\\+|\\-","",pline_filt$V3),invert=F),]
+        other_var_paths<-pline_filt[grep(paste0("^",variant_node,"\\+|^",variant_node,"-|,",variant_node,"\\+|,",variant_node,"-"),pline_filt$V3,invert=F),]
         if(all(nrow(other_var_paths)>0 & length(grep("grch|chm|^IG|^TR",other_var_paths$V2))>0)){
             print("Important path also traverses the variant node - removing read path ID only - not topology")
             specific_path_to_remove<-other_var_paths[grep("grch|chm|^IG|^TR",other_var_paths$V2,invert=T)]
