@@ -80,6 +80,11 @@ else
                 cp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.succinct_locus.pg ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.pg
                 cp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.succinct_locus.gcsa ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa
                 cp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.succinct_locus.gcsa.lcp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa.lcp
+                cp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.succinct_pancluster.gbwt ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gbwt
+                cp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.succinct_pancluster.xg ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg
+                cp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.succinct_pancluster.pg ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.pg
+                cp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.succinct_pancluster.gcsa ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gcsa
+                cp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.succinct_pancluster.gcsa.lcp ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gcsa.lcp
             fi
             # ensure P lines are at bottom of gfa file:
             grep "^P" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa.plines
@@ -253,6 +258,7 @@ else
                 # final inference step after filtering out spurious reads - consolidated gene-specific graph when alleles spread across clusters:
                 # --> add something during inference: if [ $(echo "${asc_cluster[@]}" | wc -l) -gt 1 ]; then
                 cat ${outdir}/${gene}.alleles.exact.fasta ${outdir}/${gene}.haps.fasta > ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.fasta
+                cat ${outdir}/${gene}.alleles.exact.fasta ${outdir}/${gene}.alleles.offtarget.fasta ${outdir}/${gene}.haps.fasta > ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.fasta
                 # progressive alignment approach:
                 if [ $(grep ">" ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.fasta | wc -l ) -gt 2 ]; then
                     vg msga -f ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.fasta -w 500 | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.rough.gfa;
@@ -260,12 +266,24 @@ else
                     rm ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.rough.gfa;
                     gfaffix ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gfa.tmp;
                     mv ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gfa.tmp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gfa
+                    # for read filtering - rough version including off-target alleles
+                    vg msga -f ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.fasta -w 500 | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.rough.gfa;
+                    odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.rough.gfa --threads 16 -p Ygs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa;
+                    rm ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.rough.gfa;
+                    gfaffix ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa.tmp;
+                    mv ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa.tmp ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa;
+                    #
                 else 
                     # all-to-all graph induction (can lead to multi-component subgraphs)
                     minimap2 -x asm20 -t 16 -c -X ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.fasta ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.fasta > ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.paf
                     seqwish -s ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.fasta -p ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.paf -g ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gfa -b ${outdir}/seqwish_${sample_id}.${graph}
                     gfaffix ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gfa.tmp;
                     mv ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gfa.tmp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gfa
+                    # for read filtering - rough version including off-target alleles
+                    minimap2 -x asm20 -t 16 -c -X ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.fasta ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.fasta > ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.paf
+                    seqwish -s ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.fasta -p ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.paf -g ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa -b ${outdir}/seqwish_${sample_id}.${graph}
+                    gfaffix ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa.tmp;
+                    mv ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa.tmp ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa
                 fi
                 # indexes for vg map
                 vg convert -g ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gfa -p > ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.pg
@@ -282,6 +300,21 @@ else
                 cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.pg ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.succinct_locus.pg
                 cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.succinct_locus.gcsa
                 cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa.lcp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.succinct_locus.gcsa.lcp
+                #
+                vg convert -g ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa -p > ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.pg
+                vg mod -n -U 10 -c ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.pg -X 256 > ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.vg
+                vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.vg > ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa
+                vg convert -g ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa -p > ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.pg
+                vg index -t 16 -L -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.pg;
+                vg gbwt -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg -o ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gbwt -P --pass-paths
+                vg prune -u -g ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gbwt -k 31 -m ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.node_mapping ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.pg > ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.pruned.vg
+                vg index -g ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gcsa -f ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.node_mapping ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.pruned.vg
+                cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.succinct_pancluster.gfa
+                cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gbwt ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.succinct_pancluster.gbwt
+                cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.succinct_pancluster.xg
+                cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.pg ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.succinct_pancluster.pg
+                cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gcsa ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.succinct_pancluster.gcsa
+                cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gcsa.lcp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.succinct_pancluster.gcsa.lcp
                 #delete temp files
                 xargs rm < ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt
                 rm ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.og;rm ${outdir}/${sample_id}.${graph}.${gene}.graphs_to_squeeze.txt
@@ -402,13 +435,25 @@ else
                     vg view -X ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam | seqkit grep -v -n -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq
 #                    vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
 #                    vg filter -r 0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
-                    vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg -g ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
-                    vg filter -r 0.0 -P -q 0 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+                    # redo read-based filtering using succinct version of the graph
+                    vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg -g ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
+                    vg filter -r 0.0 -P -q 0 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+                    rm ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes;
+                    vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa;
+                    sed -n '/^#1:/p;/^P/p' ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes
+                    Rscript ${bigfoot_dir}/identify_non_gene_nodes_complex_locus.R ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes
+                    vg find -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg -c 0 -N ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.vg
+                    vg gamsort ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -i ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.gai -p > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+                    vg find -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg -l ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -A ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.vg | vg view -X - | seqkit seq -n - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt
+                    vg view -X ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam | seqkit grep -v -n -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq
+                    # realign to locus-specific + succinct version of the graph
                     cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg
                     cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.pg ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg
                     cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gbwt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt
                     cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa
                     cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa.lcp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa.lcp
+                    vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
+                    vg filter -r 0.0 -P -q 0 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
                 else
                     if [ -s ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg ]; then
                         echo "Complex locus detected for ${gene} - multiple ASC clusters of target gene - realigning to succinct graph and retaining all reads"
@@ -517,29 +562,35 @@ else
             if [ "${complex_gene}" = true ]; then
                 echo "Complex gene: performing sequence to valid allele-specific graph-based filtering"
                 ############################
-                vg paths -Fx ${outdir}/${sample_id}.${graph}.${gene}.vg | seqkit seq -g '-' > ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta;
-                if [ $(grep ">" ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta  | wc -l ) -gt 2 ]; then
-                    vg msga -f ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta -N -a | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.gfa
-                    odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.gfa --threads 16 -p Ygs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.alleles.gfa;
-                    rm ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.gfa;
+                allele_graph_filt=false
+                if [ "${allele_graph_filt}" = true ]; then
+                    vg paths -Fx ${outdir}/${sample_id}.${graph}.${gene}.vg | seqkit seq -g '-' > ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta;
+                    if [ $(grep ">" ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta  | wc -l ) -gt 2 ]; then
+                        vg msga -f ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta -N -a | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.gfa
+                        odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.gfa --threads 16 -p Ygs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.alleles.gfa;
+                        rm ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.gfa;
+                    else
+                        minimap2 -x asm20 -t 16 -c -X ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta > ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.paf
+                        seqwish -s ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta -p ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.paf -g ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.gfa -b ${outdir}/seqwish_${sample_id}.${graph}
+                        gfaffix ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.alleles.gfa;
+                        rm ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.gfa;
+                    fi
+                    vg convert -g -p ${outdir}/${sample_id}.${graph}.${gene}.alleles.gfa > ${outdir}/${sample_id}.${graph}.${gene}.alleles.pg;
+                    # augment ids before mapping - otherwise gaf is off by 1!
+        #            vg ids -i -1 ${outdir}/${sample_id}.${graph}.${gene}.alleles.pg > ${outdir}/${sample_id}.${graph}.${gene}.alleles.base0.pg;
+        #            mv ${outdir}/${sample_id}.${graph}.${gene}.alleles.base0.pg ${outdir}/${sample_id}.${graph}.${gene}.alleles.pg;
+                    vg index -t 16 -L -x ${outdir}/${sample_id}.${graph}.${gene}.alleles.xg ${outdir}/${sample_id}.${graph}.${gene}.alleles.pg;
+                    vg gbwt -x ${outdir}/${sample_id}.${graph}.${gene}.alleles.xg -o ${outdir}/${sample_id}.${graph}.${gene}.alleles.gbwt -P --pass-paths
+                    vg index -g ${outdir}/${sample_id}.${graph}.${gene}.alleles.gcsa ${outdir}/${sample_id}.${graph}.${gene}.alleles.pg
+                    vg map -N ${sample_id}.${graph}.${gene} -G ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -x ${outdir}/${sample_id}.${graph}.${gene}.alleles.xg -g ${outdir}/${sample_id}.${graph}.${gene}.alleles.gcsa -t 4 -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.alleles.gam
+                    vg filter -r 0 -P -s 1 -q 0 -x ${outdir}/${sample_id}.${graph}.${gene}.alleles.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.alleles.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam;
+                    vg map -N ${sample_id}.${graph}.${gene} -G ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam;
+                    vg filter -r 0.95 -P -q 0 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam;
+                    mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam
                 else
-                    minimap2 -x asm20 -t 16 -c -X ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta > ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.paf
-                    seqwish -s ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta -p ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.paf -g ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.gfa -b ${outdir}/seqwish_${sample_id}.${graph}
-                    gfaffix ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.alleles.gfa;
-                    rm ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.gfa;
+                    echo "sequence to graph alignment filtering (95% pairwise identity) - for strict allele graph filtering set allele_graph_filt=true"
+                    vg filter -r 0.95 -P -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam
                 fi
-                vg convert -g -p ${outdir}/${sample_id}.${graph}.${gene}.alleles.gfa > ${outdir}/${sample_id}.${graph}.${gene}.alleles.pg;
-                # augment ids before mapping - otherwise gaf is off by 1!
-    #            vg ids -i -1 ${outdir}/${sample_id}.${graph}.${gene}.alleles.pg > ${outdir}/${sample_id}.${graph}.${gene}.alleles.base0.pg;
-    #            mv ${outdir}/${sample_id}.${graph}.${gene}.alleles.base0.pg ${outdir}/${sample_id}.${graph}.${gene}.alleles.pg;
-                vg index -t 16 -L -x ${outdir}/${sample_id}.${graph}.${gene}.alleles.xg ${outdir}/${sample_id}.${graph}.${gene}.alleles.pg;
-                vg gbwt -x ${outdir}/${sample_id}.${graph}.${gene}.alleles.xg -o ${outdir}/${sample_id}.${graph}.${gene}.alleles.gbwt -P --pass-paths
-                vg index -g ${outdir}/${sample_id}.${graph}.${gene}.alleles.gcsa ${outdir}/${sample_id}.${graph}.${gene}.alleles.pg
-                vg map -N ${sample_id}.${graph}.${gene} -G ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -x ${outdir}/${sample_id}.${graph}.${gene}.alleles.xg -g ${outdir}/${sample_id}.${graph}.${gene}.alleles.gcsa -t 4 -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.alleles.gam
-                vg filter -r 0 -P -s 1 -q 0 -x ${outdir}/${sample_id}.${graph}.${gene}.alleles.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.alleles.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam;
-                vg map -N ${sample_id}.${graph}.${gene} -G ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam;
-                vg filter -r 0.95 -P -q 0 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam;
-                mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam
                 #vg ids -i -1 ${outdir}/${sample_id}.${graph}.${gene}.alleles.pg | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa # ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa #
             else
                 echo "sequence to graph alignment-based filtering (95% pairwise identity to local haplotype graph)"
@@ -550,7 +601,8 @@ else
             #vg convert -G ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam ${outdir}/${sample_id}.${graph}.${gene}.alleles.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf
             # or 
             #vg convert -G ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf
-            vg convert -G ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf
+            vg filter -r 0.95 -P -s 1 -q 5 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam -v | vg convert -G - ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf
+            #vg convert -G ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf
             ############################################################################################################################
             vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.vg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
             gafpack -g ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa -a ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf -lc | grep -v "#" | awk '{print NR-1 ":" $0}' > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt
