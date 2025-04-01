@@ -97,6 +97,7 @@ else
         echo "Custom bed exists";
     else
         echo -e "chr2\t179424038\t179441143" | cat ${immunovar_bed} ${bigfoot_dir}/../custom_beds/grch38_FCGR_loci.bed - | bedtools sort -i - | bedtools merge -i - -d 100 > ${bigfoot_dir}/../custom_beds/custom_bed.bed
+        echo -e "chrM\t0\t16569" | cat ${bigfoot_dir}/../custom_beds/custom_bed.bed - | bedtools sort -i - | bedtools merge -i - -d 100 > ${bigfoot_dir}/../custom_beds/custom_bed.tmp.bed && mv ${bigfoot_dir}/../custom_beds/custom_bed.tmp.bed ${bigfoot_dir}/../custom_beds/custom_bed.bed
     fi
 
     if [ -s ${input_aln%%\.*}*combined.sorted.gam ]; then
@@ -116,7 +117,31 @@ else
             fi
             input_aln=${i##*/}
             aln_linear=$(echo ${input_aln} | sed s/.*\\.//g)
-            samtools index ${input_aln}
+            if [ -s ${input_aln}.bai ]; then
+                echo "${input_aln} already indexed"
+            else
+                echo "indexing ${input_aln}"
+                samtools index ${input_aln}
+            fi
+            ref_build=grch38
+            if [[ ${input_aln} == *.cram ]];then
+                if [[ $ref_build == "grch38" ]]; then
+                    ref=${ref};
+                    if [ -s $ref ]; then
+                        echo "using GRCh38 reference";
+                    else 
+                        echo "Parsing CRAM require an indexed reference"
+                        wget -P ${bigfoot_source} ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/GRCh38_reference_genome/GRCh38_full_analysis_set_plus_decoy_hla.fa;
+                        ref=${bigfoot_source}/GRCh38_full_analysis_set_plus_decoy_hla.fa
+                        samtools faidx ${ref};
+                    fi
+                elif [[ $ref_build == "chm13" ]]; then
+                    ref="${ref}";
+                    immunovar_bed="${bigfoot_dir}/../custom_beds/chm13_custom_immunovar_coords.bed";
+                else
+                    echo "Currently BIgFOOT only supports GRCh38-based BAM input. Future release will have CHM13 as an option"
+                fi
+            fi
             bazam_path=$(which bazam);bazam_path=${bazam_path%bin/*}share/bazam*;bazam_path=${bazam_path}"/bazam.jar"
             time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L ${bigfoot_dir}/../custom_beds/custom_bed.bed | gzip > ${input_aln%.${aln_linear}}.bazam.fastq.gz
     #        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L ${immunovar_bed} | gzip > ${input_aln%.${aln_linear}}.bazam.fastq.gz
