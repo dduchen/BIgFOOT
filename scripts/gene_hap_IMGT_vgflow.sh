@@ -119,7 +119,7 @@ if [ "${asc_inference}" = true ]; then
         fi' :::: <(cat ${outdir}/asc_gene_list.txt );
 else
     parallel -j 6 'export each={}; \
-        . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(cat ${outdir}/gene_list.txt ); #IGHE / IGHG3 / IGHV3-30-52
+        . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(cat ${outdir}/gene_list.txt ); #IGHE / IGHV2-70D / IGHV3-30-22 / 3-30-5 / IGHV4-30-2
 fi
 #    . ${bigfoot_dir}/gene_asc_allele_calling_parallel.sh' :::: <(cat ${outdir}/asc_gene_list.txt );
 #parallel -j 6 'export each={}; \
