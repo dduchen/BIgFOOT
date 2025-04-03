@@ -693,6 +693,12 @@ else
                 fi
             done
             rm -rf ${outdir}/${gene}_allele_inference
+            if [ -s ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta ];then
+                echo "test";
+            else
+                echo "No alleles > depth threshold"
+                assoc_testing=false
+            fi
             if [ "${assoc_testing}" = true ]; then
                 echo "2) Augmenting annotated post-flow inference graph with reads for association testing";
                 sed s/' '/_/g ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.fasta > ${outdir}/${sample_id}.${graph}.${gene}.rel.haps.final.annot.adding.fasta
@@ -881,7 +887,10 @@ else
                         vg convert -g -p ${variant_graph}.gfa > ${variant_graph}.pg;
                         vg index -t 16 -L -x ${variant_graph}.xg ${variant_graph}.pg;
                         vg gbwt -x ${variant_graph}.xg -o ${variant_graph}.gbwt -P --pass-paths;
-                        vg index -g ${variant_graph}.gcsa ${variant_graph}.pg;
+                        vg prune -u -g ${variant_graph}.gbwt -k 31 -m ${variant_graph}.node_mapping ${variant_graph}.pg > ${variant_graph}.pruned.vg
+                        vg index -g ${variant_graph}.gcsa -f ${variant_graph}.node_mapping ${variant_graph}.pruned.vg
+                        rm ${variant_graph}.pruned.vg;
+                        rm ${variant_graph}.node_mapping;
                     #   #retain only 100% identity aligned reads
                         # this one likely the best - low segment abundance for decent proportion of allele 
                         #vg map -G ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.exact.gam -x ${variant_graph}.xg -g ${variant_graph}.gcsa -1 ${variant_graph}.gbwt -t 4 -M 1 > ${variant_graph}.gam;
