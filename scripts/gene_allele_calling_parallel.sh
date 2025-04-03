@@ -215,7 +215,7 @@ else
                             fi
                             if [ $(grep ">" ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta | wc -l ) -gt 2 ]; then
                                 vg msga -f ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta -w 500 | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.${clust}.${chr_graph_tmp}.rough.gfa
-                                odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.${clust}.${chr_graph_tmp}.rough.gfa --threads 16 -p Ygs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.${clust}.${chr_graph_tmp}.gfa;
+                                odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.${clust}.${chr_graph_tmp}.rough.gfa --threads 16 -p bgs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.${clust}.${chr_graph_tmp}.gfa;
                                 gfaffix ${outdir}/${sample_id}.${graph}.${gene}.${clust}.${chr_graph_tmp}.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.${clust}.${chr_graph_tmp}.tmp.gfa;
                                 mv ${outdir}/${sample_id}.${graph}.${gene}.${clust}.${chr_graph_tmp}.tmp.gfa ${outdir}/${sample_id}.${graph}.${gene}.${clust}.${chr_graph_tmp}.gfa
                                 rm ${outdir}/${sample_id}.${graph}.${gene}.${clust}.${chr_graph_tmp}.rough.gfa;
@@ -240,7 +240,7 @@ else
                         fi
                         if [ $(grep ">" ${outdir}/${sample_id}.${graph}.${gene}.${clust}.fasta  | wc -l ) -gt 2 ]; then
                             vg msga -f ${outdir}/${sample_id}.${graph}.${gene}.${clust}.fasta -w 500 | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotypes.rough.gfa
-                            odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotypes.rough.gfa --threads 16 -p Ygs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotypes.gfa;
+                            odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotypes.rough.gfa --threads 16 -p bgs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotypes.gfa;
                             gfaffix ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotypes.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotypes.gfa.tmp;
                             mv ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotypes.gfa.tmp ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotypes.gfa;
                             rm ${outdir}/${sample_id}.${graph}.${gene}.${clust}.haplotypes.rough.gfa;
@@ -262,13 +262,13 @@ else
                 # progressive alignment approach:
                 if [ $(grep ">" ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.fasta | wc -l ) -gt 2 ]; then
                     vg msga -f ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.fasta -w 500 | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.rough.gfa;
-                    odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.rough.gfa --threads 16 -p Ygs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gfa;
+                    odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.rough.gfa --threads 16 -p bgs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gfa;
                     rm ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.rough.gfa;
                     gfaffix ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gfa.tmp;
                     mv ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gfa.tmp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gfa
                     # for read filtering - rough version including off-target alleles
                     vg msga -f ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.fasta -w 500 | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.rough.gfa;
-                    odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.rough.gfa --threads 16 -p Ygs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa;
+                    odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.rough.gfa --threads 16 -p bgs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa;
                     rm ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.rough.gfa;
                     gfaffix ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa.tmp;
                     mv ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa.tmp ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gfa;
@@ -354,7 +354,7 @@ else
                     #seqkit grep -f ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.haplotype_assignments.patterns.txt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta >> ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta
                 if [ $(grep ">" ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta | wc -l ) -gt 2 ]; then
                     vg msga -f ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta -w 500 | vg convert -fW - >${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.rough.gfa;
-                    odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.rough.gfa --threads 16 -p Ygs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa
+                    odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.rough.gfa --threads 16 -p bgs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa
                     rm ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.rough.gfa;
                     gfaffix ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.tmp; mv ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.tmp ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa
                 else
@@ -567,7 +567,7 @@ else
                     vg paths -Fx ${outdir}/${sample_id}.${graph}.${gene}.vg | seqkit seq -g '-' | seqkit sort --quiet - > ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta;
                     if [ $(grep ">" ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta  | wc -l ) -gt 2 ]; then
                         vg msga -f ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta -N -a | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.gfa
-                        odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.gfa --threads 16 -p Ygs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.alleles.gfa;
+                        odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.gfa --threads 16 -p bgs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.alleles.gfa;
                         rm ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.gfa;
                     else
                         minimap2 -x asm20 -t 16 -c -X ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta > ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.paf
@@ -718,7 +718,7 @@ else
                             if [ $(grep ">" ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.fasta  | wc -l ) -gt 2 ]; then
                                 echo "Progressive graph"
                                 vg msga -f ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.fasta -w 500 | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.rough.gfa;
-                                odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.rough.gfa --threads 16 -p Ygs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.gfa
+                                odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.rough.gfa --threads 16 -p bgs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.gfa
                                 rm ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.rough.gfa;
                                 gfaffix ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.gfa.tmp; mv ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.gfa.tmp ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.genome_graph_ref.gfa
                             else
@@ -748,7 +748,7 @@ else
                         seqkit sort --quiet ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.fasta > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.fasta.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.fasta.tmp ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.fasta
                         if [ $(grep ">" ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.fasta  | wc -l ) -gt 2 ]; then
                             vg msga -f ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.fasta -w 500 | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.rough.gfa;
-                            odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.rough.gfa --threads 16 -p Ygs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.gfa;
+                            odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.rough.gfa --threads 16 -p bgs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.gfa;
                             rm ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.rough.gfa;
                             gfaffix ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.gfa.tmp; mv ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.gfa.tmp ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.rough.gfa;
                         else

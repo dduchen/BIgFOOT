@@ -152,6 +152,7 @@ if(length(novel_nodes)>0){
             var_seq=paste0(seq_from,gsub("_.*","",names(novel_nodes[i])),seq_to)
         } else {
             print(paste0("Tricky local sequence for variant @ node:",novel_nodes[i],":",names(novel_nodes)[i]," - look at graph"))
+            next
         }
         # append local region to graph
         sign_in_pos<-length(grep(paste0(node_to,"\\+,",newpline[,3]),node_support))
