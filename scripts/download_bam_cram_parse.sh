@@ -79,7 +79,26 @@ if [[ ${input_aln} == *"gam" ]]; then
         fi
     fi
 else
-    echo "processing ${input_aln}"
+    echo "Processing (B/CR)AM: ${input_aln}"
+    #
+    if [[ $graph == "minimal" ]]; then
+        echo "Using minimal SV-graph - Deprecated"
+    elif [[ $graph == "hirh" ]]; then
+        echo "Using minimal SV-graph - Deprecated"
+    elif [[ $graph == "franken" ]]; then
+        echo "Using IGenotyper GRCh38 + CHM13 + HIRH-embedded graph - Deprecated"
+    elif [[ $graph == "wg_immunovar" ]]; then
+        echo "Using IGenotyper GRCh38 + CHM13 + IG/MHC Haplotypes + IMGT/OGRDB/IPD alleles"
+        graphdir=${bigfoot_source}
+        graph_base=${graphdir}/whole_genome_ig_hla_kir_immunovar
+        immune_graph=${graph_base}".subgraph"
+    elif [[ $graph == "ig_hla_kir" ]]; then
+        echo "Using IGenotyper GRCh38 + CHM13 + IG Haplotypes + IMGT-IPD alleles - Deprecated"
+    else
+        echo "Forgot to define a graph"
+        exit
+    fi
+    #
     if [ -s ${bigfoot_dir}/../custom_beds/custom_bed.bed ]; then
         echo "Custom bed exists";
     else
@@ -132,7 +151,12 @@ else
     #        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L ${immunovar_bed} | gzip > ${input_aln%.${aln_linear}}.bazam.fastq.gz
     #        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L chr2:179424038-179441143 | gzip > ${input_aln%.${aln_linear}}.bazam.TTN.fastq.gz
     #        time java -Xmx36g -Dsamjdk.reference_fasta=${ref} -jar ${bazam_path} -bam ${input_aln} -L ${bigfoot_dir}/../custom_beds/grch38_FCGR_loci.bed | gzip > ${input_aln%.${aln_linear}}.bazam.FCGR.fastq.gz
-            samtools view -@8 -C ${input_aln} -T ${ref} -f 4 | samtools fastq | gzip > ${input_aln%.${aln_linear}}.unmapped.fastq.gz;
+            if [[ ${input_aln} == *.cram ]];then
+                echo "Cram input - ref required"
+                samtools view -@8 -b ${input_aln} -T ${ref} -f 4 | samtools fastq | gzip > ${input_aln%.${aln_linear}}.unmapped.fastq.gz;
+            else 
+                samtools view -@8 -b ${input_aln} -f 4 | samtools fastq | gzip > ${input_aln%.${aln_linear}}.unmapped.fastq.gz;
+            fi
             rm ${input_aln};
         fi
     #    cat ${input_aln%.${aln_linear}}.bazam.TTN.fastq.gz ${input_aln%.${aln_linear}}.bazam.FCGR.fastq.gz ${input_aln%.${aln_linear}}.bazam.fastq.gz > ${input_aln%.${aln_linear}}.mapped.fastq.gz

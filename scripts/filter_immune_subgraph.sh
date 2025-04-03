@@ -87,7 +87,6 @@ if [ -s ${sorted_gam} ]; then
     # don't need prep_graph_for_vgflow - performing analysis at gene-level
     # uncomment line below to construct whole locus flow graph
     #sbatch --export=i=${sample_immune_graph}.gam,outdir=${PWD},graph=$graph /home/dd392/project/prep_graph_for_vgflow.sh;
-
     # depth estimates for whole locus + start gene-level inference
     sample_immune_aln=${sample}.${graph}.${aln_type}
     immune_graph=${graph_base}.subgraph
@@ -159,23 +158,20 @@ if [ -s ${sorted_gam} ]; then
     fi
     #
     cd ${workdir}/${sample_id}_${graph}_genotyping/
-    echo "Checking for de-novo allelic inference"
-    ls ./familywise_pe_haplotype_inference/*depth_cleaned.gfa > ${sample_id}.${graph}_allelic_inference.txt
+    mkdir -p ${sample_id}.${graph}_vcf;
+    ls ./familywise_pe_haplotype_inference/*depth_cleaned.gfa > ${sample_id}.${graph}_allelic_inference.txt;
     rm ${sample_id}.${graph}.alleles.fasta;
-    for allele_fasta in $(cat ${sample_id}.${graph}_allelic_inference.txt); do echo "Extracting alleles: ${allele_fasta}"
-        vg paths -Fv ${allele_fasta} | seqkit grep -r -p "IG|TR" >> ${sample_id}.${graph}.alleles.fasta
+    for allele_fasta in $(cat ${sample_id}.${graph}_allelic_inference.txt); do echo "Extracting alleles: ${allele_fasta}";
+        vg paths -Fv ${allele_fasta} | seqkit grep -r -p "IG|TR" >> ${sample_id}.${graph}.alleles.fasta;
     done
-    mkdir -p ${sample_id}.${graph}_vcf
-#    rm ${sample_id}.${graph}_vcf/*
-    mv ${outdir}/*vcf ${sample_id}.${graph}_vcf
-    rm ${outdir}/*plines; rm ${outdir}/*paths;
+    mv ${outdir}/*vcf ${sample_id}.${graph}_vcf;
+    rm $outdir/*plines; rm $outdir/*paths;
     rm -rf ${outdir}/tmp;
-#   update clean_genewise_results script to parse alleles
-    Rscript ${bigfoot_dir}/clean_genewise_results.R
-    tar -czvf ${sample_id}.${graph}_allelic_inference.tar.gz -T ${sample_id}.${graph}_allelic_inference.txt --remove-files
-    ls ./familywise_pe_haplotype_inference/* > ${sample_id}.${graph}_other_materials.txt
-    tar -czvf ${sample_id}.${graph}_other_materials.tar.gz -T ${sample_id}.${graph}_other_materials.txt --remove-files
-    cd ${workdir}
+    Rscript ${bigfoot_dir}/clean_genewise_results.R;
+    tar -czvf ${sample_id}.${graph}_allelic_inference.tar.gz -T ${sample_id}.${graph}_allelic_inference.txt --remove-files;
+    ls ${outdir}/* > ${sample_id}.${graph}_other_materials.txt;
+    tar -czvf ${sample_id}.${graph}_other_materials.tar.gz -T ${sample_id}.${graph}_other_materials.txt --remove-files;
+    cd ${workdir};
     echo "fin!"
     ###########################
     # -- association explo -- #
