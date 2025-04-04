@@ -149,10 +149,12 @@ if(sample_id==colnames(depth)[1]){
         }
     # Use coverage.tsv to obtain confidence result - based on minimum node depth
         for(gene_id in unique(graph_results_wDels$gene)){
-            if(length(list.files(path="familywise_pe_haplotype_inference",pattern=paste0(gene_id,".variant.coverage.tsv")))>0){
-                covdat<-fread(paste0("familywise_pe_haplotype_inference/",list.files(path="familywise_pe_haplotype_inference",pattern=paste0(gene_id,".variant.coverage.tsv"))))
+            #print(gene_id)
+            file_tmp<-list.files(path="familywise_pe_haplotype_inference",pattern=paste0(gene_id,".variant.coverage.tsv"))
+            if(length(file_tmp)>0 && file.size(paste0("familywise_pe_haplotype_inference/",file_tmp))>0){
+                covdat<-fread(paste0("familywise_pe_haplotype_inference/",file_tmp),header=F,sep="\t")
                 for(allele in unique(covdat$V1)){
-                    print(allele)
+                    #print(allele)
                     if(length(grep("variant|:exact",allele))>0){
                         allele_mincov<-min(covdat[covdat$V1==allele,]$V3)
                         allele_bplen<-max(covdat[covdat$V1==allele,]$V2)
@@ -163,6 +165,8 @@ if(sample_id==colnames(depth)[1]){
                         }
                     }
                 }
+            } else {
+                print(paste0("No coverage file for: ",gene_id))
             }
         }
     }
