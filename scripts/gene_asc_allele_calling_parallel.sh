@@ -475,7 +475,7 @@ else
                     grep "^S" ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.slines
                     grep "^L" ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.llines
 #                    cat ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.noplines ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.plines > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa
-                    gafpack -g ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa -a ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gaf -l > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.coverage
+                    gafpack -g ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa --gaf ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gaf -l > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.coverage
                     Rscript ${bigfoot_dir}/augment_graph_wdepth_asc.R ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.coverage >> ${outdir}/${sample_id}.putative_variants.csv
                     sed -i 's/^[ \t]*//;s/[ \t]*$//' ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.gfa
                     sed -i 's/^[ \t]*//;s/[ \t]*$//' ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.filt.gfa
