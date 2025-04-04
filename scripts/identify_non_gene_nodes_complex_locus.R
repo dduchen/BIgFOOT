@@ -6,7 +6,7 @@ suppressMessages(suppressWarnings(library(stringr)))
 args<-commandArgs(TRUE)
 graph_paths_file=args[1]
 #graph_paths_file="/home/dduchen/Documents/bigfoot/1kgenomes/HG00438_wg_immunovar_genotyping/familywise_pe_haplotype_inference/HG00438.wg_immunovar.IGHV4-4.haplotypes.pathnodes"
-graph_paths=fread(graph_paths_file,header=F)
+graph_paths=fread(graph_paths_file,header=F,sep="\t")
 dat<-graph_paths[,c(2,3)]
 dat<-dat[unique(grep("^IM|^IGv|^OGR|^KIR|^HLA",dat$V2))]
 dat$V3<-gsub("\\+","",dat$V3)
