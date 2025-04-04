@@ -167,6 +167,8 @@ if(sample_id==colnames(depth)[1]){
                 }
             } else {
                 print(paste0("No coverage file for: ",gene_id))
+                graph_results_wDels[graph_results_wDels$gene==gene_id & graph_results_wDels$coverage=="0",]$augmented_graph<-"0:100"
+                #graph_results_wDels[graph_results_wDels$gene==gene_id & graph_results_wDels$coverage!="0",]$augmented_graph<-"troubleshoot"
             }
         }
     }

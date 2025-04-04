@@ -273,8 +273,8 @@ if(length(variant_paths)>0){
 #                phasing_df[allele,names(variant_paths)[variant]]<-length(phasing_reads_tmp)
                 # update the phasing_df_alleles table
                 if(length(intersect(var_ids_temp,phasing_df_alleles$phased_variant))==0){
-                    phasing_df[allele,var_ids_temp]<-length(phasing_reads_tmp)
-                    colindex<-which(colnames(phasing_df) %in% var_ids_temp)
+                    phasing_df[allele,unique(var_ids_temp)]<-length(phasing_reads_tmp);
+                    colindex<-which(colnames(phasing_df) %in% var_ids_temp);
                     if(nrow(phasing_df)>1 & any(phasing_df[,colindex]>0)){
 #                        allele_w_max_vardepth <- rownames(phasing_df)[which.max(phasing_df[,colindex])]
                         subset_data<-as.matrix(phasing_df[, colindex])
@@ -302,16 +302,22 @@ if(length(variant_paths)>0){
                     }
 #                    colindex<-which(colnames(phasing_df) %in% var_ids_temp)
                     colindex<-which(colnames(phasing_df) %in% names(variant_paths)[variant])
-                    if(nrow(phasing_df)>1 & any(phasing_df[,colindex]>0)){
+                    if(all(nrow(phasing_df)>1 & any(phasing_df[,colindex]>0))){
                         subset_data<-as.matrix(phasing_df[, colindex])
                         max_row_col <- arrayInd(which.max(subset_data), dim(subset_data))
                         max_row_index <- max_row_col[1]
                         allele_w_max_vardepth <- rownames(phasing_df)[max_row_index]
-                        matching_hap<-unique(phasing_df_alleles[phasing_df_alleles$phased_variants %in% var_ids_temp,]$hap)
+#                        if(max(phasing_df_alleles$hap)==0){
+#                            # initialize hap
+#                            hap=hap+1
+#                            matching_hap=hap
+#                        } else {
+                           matching_hap<-unique(phasing_df_alleles[phasing_df_alleles$phased_variants %in% var_ids_temp,]$hap)
+#                        }
                         vartemp_phased<-data.frame(phased_variants = var_ids_temp, allele_path = allele_w_max_vardepth, indep=0,hap=matching_hap)
                         vartemp_phased<-vartemp_phased[vartemp_phased$phased_variants %in% names(variant_paths)[variant],]
                         phasing_df_alleles <- data.frame(rbind(phasing_df_alleles, vartemp_phased),check.names=F)
-                    } else if(nrow(phasing_df)==1 & any(phasing_df[,colindex]>0)){
+                    } else if(all(nrow(phasing_df)==1 & any(phasing_df[,colindex]>0))){
                         allele_w_max_vardepth <- rownames(phasing_df)
                         matching_hap<-unique(phasing_df_alleles[phasing_df_alleles$phased_variants %in% var_ids_temp,]$hap)
                         vartemp_phased<-data.frame(phased_variants = var_ids_temp, allele_path = allele_w_max_vardepth, indep=0,hap=matching_hap)
@@ -320,7 +326,7 @@ if(length(variant_paths)>0){
                     } else {
                         matching_hap<-unique(phasing_df_alleles[phasing_df_alleles$phased_variants %in% var_ids_temp,]$hap)
                     }
-                    if(any(phasing_df[,colindex]>0) & length(matching_hap)>1){
+                    if(all(any(phasing_df[,colindex]>0) & length(matching_hap)>1)){
                         print("error - multiple haplotypes tagged for the same variant")
                         vartemp_phased<-data.frame(phased_variants = var_ids_temp, allele_path = "ambiguous", indep=0,hap=matching_hap)
                         vartemp_phased<-vartemp_phased[vartemp_phased$phased_variants %in% names(variant_paths)[variant],]
