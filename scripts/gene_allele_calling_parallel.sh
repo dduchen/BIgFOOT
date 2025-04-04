@@ -920,7 +920,7 @@ else
             ls ${outdir}/${sample_id}.${graph}.${gene}\.* | grep -v "${gene}.genome_graph_ref.augmented.*gfa\|coverage.tsv\|pack.tsv\|${gene}.genome_graph_ref.gfa\|${gene}.haplotypes.xg\|${gene}.haplotypes.gam\|annot.fasta\|annot.gfa\|final.gfa\|.vcf\|node_abundance\|depth" > ${outdir}/${sample_id}_${gene}_files.txt
             #ls ${outdir}/${gene}\.*  | grep "haps.fasta\|alleles" >> ${outdir}/${sample_id}_${gene}_files.txt
             ls ${outdir}/*${gene}* | grep "asc_" >> ${outdir}/${sample_id}_${gene}_files.txt;
-            ls ${outdir}/*${gene}.alleles*fasta >> ${outdir}/${sample_id}_${gene}_files.txt;
+            #ls ${outdir}/*${gene}.alleles*fasta >> ${outdir}/${sample_id}_${gene}_files.txt;
             xargs rm < ${outdir}/${sample_id}_${gene}_files.txt;
         else 
             echo "No reads aligning for ${gene}"
