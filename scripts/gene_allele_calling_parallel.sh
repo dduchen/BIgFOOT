@@ -605,7 +605,7 @@ else
             #vg convert -G ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf
             ############################################################################################################################
             vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.vg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
-            gafpack -g ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa --gaf ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf -lc | grep -v "#" | awk '{print NR-1 ":" $0}' > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt
+            gafpack --gfa ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa --gaf ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf -lc | grep -v "#" | awk '{print NR-1 ":" $0}' > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt
             #vg ids -i -1 ${outdir}/${sample_id}.${graph}.${gene}.vg | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa #need to increase by -1, cant decrease by 1 lol
 #            vg view -a ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.aln.json
 #            vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.vg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa
@@ -813,7 +813,7 @@ else
                     grep "^S" ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.slines
                     grep "^L" ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.llines
 #                    cat ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.noplines ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa.plines > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa
-                    gafpack -g ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa --gaf ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gaf -l > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.coverage
+                    gafpack --gfa ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gfa --gaf ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gaf -l > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.coverage
                     #Rscript ${bigfoot_dir}/augment_graph_wdepth.R ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.coverage >> ${outdir}/${sample_id}.putative_variants.csv
                     Rscript ${bigfoot_dir}/augment_graph_wdepth_asc.R ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.coverage >> ${outdir}/${sample_id}.putative_variants.csv;
                     sed -i 's/^[ \t]*//;s/[ \t]*$//' ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.depth.gfa;
