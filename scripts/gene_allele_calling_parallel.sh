@@ -888,7 +888,7 @@ else
                         vg index -t 16 -L -x ${variant_graph}.xg ${variant_graph}.pg;
                         vg gbwt -x ${variant_graph}.xg -o ${variant_graph}.gbwt -P --pass-paths;
                         vg prune -u -g ${variant_graph}.gbwt -k 31 -m ${variant_graph}.node_mapping ${variant_graph}.pg > ${variant_graph}.pruned.vg
-                        vg index -g ${variant_graph}.gcsa -f ${variant_graph}.node_mapping ${variant_graph}.pruned.vg
+                        vg index -g ${variant_graph}.gcsa -X 2 -f ${variant_graph}.node_mapping ${variant_graph}.pruned.vg
                         rm ${variant_graph}.pruned.vg;
                         rm ${variant_graph}.node_mapping;
                     #   #retain only 100% identity aligned reads
