@@ -788,12 +788,12 @@ else
                         augment_cov=3
                     fi
                     echo "Minimum coverage to add breakpoint: ${augment_cov} (3 <--> 10% of strain depth)"
-                    vg augment -m ${augment_cov} -q 5 -Q 60 ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.pg ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.filt.gam -A ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gam > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.vg;
+                    vg augment -m ${augment_cov} -q 5 -Q 20 ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.pg ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.filt.gam -A ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gam > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.vg;
                     vg convert -p ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.vg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pg
                     #
                     vg index -t 16 -L -x ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.xg ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pg;
                     vg gbwt -x ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.xg -o ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gbwt -P --pass-paths
-                    vg gbwt -x ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.xg -g ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gbz --gbz-format -P --pass-paths;
+                    #vg gbwt -x ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.xg -g ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gbz --gbz-format -P --pass-paths;
                     vg prune -u -g ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gbwt -k 31 -m ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.node_mapping ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pg > ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pruned.vg
                     vg index -g ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.gcsa -f ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.node_mapping ${outdir}/${sample_id}.${graph}.${gene}.genome_graph_ref.augmented.pruned.vg
                 #   retain only 100% identity aligned reads
