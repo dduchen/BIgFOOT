@@ -127,10 +127,18 @@ else
             cat ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.match.fasta ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.unmatch.fasta > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta
             seqkit rmdup -s < ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta
             seqkit grep -r -p "IMG|IGv|OGR" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${gene}.alleles.fasta
+            # could be many more alleles outside the genes we're most focused on - constrain to specific alleles spanning the relevant ASC clusters
+            asc_cluster=$(grep "${gene}\*" ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv | cut -f4 | sed s/'\*.*'//g | sort | uniq);
+            if [[ -n ${asc_cluster} ]]; then
+                echo "limiting candidate alleles to ASC-constrained set"
+                seqkit grep -r -n -f <(cut -f4 ${outdir}/potential_asc_for_${gene} | sed s/".*#1#"/""/g | sed s/"\\*"/"\\\\*"/g) ${outdir}/${gene}.alleles.fasta > ${outdir}/${gene}.alleles.fasta.tmp && mv ${outdir}/${gene}.alleles.fasta.tmp ${outdir}/${gene}.alleles.fasta
+            else 
+                echo "No ASC table entry for ${gene}"
+            fi
             seqkit grep -r -p ${gene}"\*" ${outdir}/${gene}.alleles.fasta > ${outdir}/${gene}.alleles.exact.fasta
             seqkit grep -r -v -p ${gene}"\*" ${outdir}/${gene}.alleles.fasta > ${outdir}/${gene}.alleles.offtarget.fasta
             # set min length of haplotypes = 100, max length should scale with allele length --> then downsample haplotypes
-            seqkit stats ${outdir}/${gene}.alleles.fasta > ${outdir}/${gene}.alleles.stats
+            seqkit stats ${outdir}/${gene}.alleles.exact.fasta > ${outdir}/${gene}.alleles.stats
             gene_min_len=$(sed -n 2p ${outdir}/${gene}.alleles.stats | tr -s ' ' | cut -f6 -d' ' | sed s/","//g)
             gene_max_len=$(sed -n 2p ${outdir}/${gene}.alleles.stats | tr -s ' ' | cut -f8 -d' ')
             ##############################
@@ -588,8 +596,8 @@ else
                     vg filter -r 0.95 -P -q 0 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam;
                     mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam
                 else
-                    echo "sequence to graph alignment filtering (95% pairwise identity) - for strict allele graph filtering set allele_graph_filt=true"
-                    vg filter -r 0.95 -P -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam
+                    echo "Complex gene - sequence to graph alignment filtering (98% pairwise identity) - for allele graph-based filtering set allele_graph_filt=true"
+                    vg filter -r 0.98 -P -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam
                 fi
                 #vg ids -i -1 ${outdir}/${sample_id}.${graph}.${gene}.alleles.pg | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa # ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa #
             else
