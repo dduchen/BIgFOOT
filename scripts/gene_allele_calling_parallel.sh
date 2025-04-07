@@ -131,7 +131,15 @@ else
             asc_cluster=$(grep "${gene}\*" ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv | cut -f4 | sed s/'\*.*'//g | sort | uniq);
             if [[ -n ${asc_cluster} ]]; then
                 echo "limiting candidate alleles to ASC-constrained set"
-                seqkit grep -r -n -f <(cut -f4 ${outdir}/potential_asc_for_${gene} | sed s/".*#1#"/""/g | sed s/"\\*"/"\\\\*"/g) ${outdir}/${gene}.alleles.fasta > ${outdir}/${gene}.alleles.fasta.tmp && mv ${outdir}/${gene}.alleles.fasta.tmp ${outdir}/${gene}.alleles.fasta
+                for asc_specific in ${asc_cluster[@]}; do echo ${asc_specific};
+                    grep "${asc_specific}\*" ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv | cut -f1 | sed s/'*'/'\\*'/g >> ${outdir}/asc_relevant_allele_for_${gene}
+                done
+                seqkit grep -r -n -f <(cut -f1 ${outdir}/asc_relevant_allele_for_${gene} | sed s/".*#1#"/""/g | sort | uniq) ${outdir}/${gene}.alleles.fasta > ${outdir}/${gene}.alleles.fasta.tmp 
+                if [ $(grep ">" ${outdir}/${gene}.alleles.fasta.tmp | wc -l) -gt 1 ]; then
+                    mv ${outdir}/${gene}.alleles.fasta.tmp ${outdir}/${gene}.alleles.fasta
+                else 
+                    rm ${outdir}/${gene}.alleles.fasta.tmp
+                fi
             else 
                 echo "No ASC table entry for ${gene}"
             fi
