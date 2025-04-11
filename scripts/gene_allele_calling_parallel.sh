@@ -550,8 +550,11 @@ else
                 if [ $(echo ${gene} | grep -v "/" | wc -l) -gt 0 ] && [ $(grep "/" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes | wc -l) -gt 0 ]; then
                     echo "Gene is not an orphon gene - and orphon alleles present - adding orphon nodes to filtering list";
                     complex_gene=true
-                    grep "/" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes | cut -f3 | sed s/"\\+\|-"//g | tr ',' '\n' | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.orphon.filteringnodes
-                    cat ${outdir}/${sample_id}.${graph}.${gene}.orphon.filteringnodes ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes
+                    grep "/" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes | cut -f3 | sed s/"\\+\|-"//g | tr ',' '\n' | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.orphon.filteringnodes;
+                    cat ${outdir}/${sample_id}.${graph}.${gene}.orphon.filteringnodes ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes;
+                    # ensure relevant gene-specific nodes are not used to filter out reads (if orphon alleles in same component)
+                    grep -v "/" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes | grep ${gene} - | cut -f3 | sed s/"\\+\|-"//g | tr ',' '\n' | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.nonorphon.filteringnodes;
+                    grep -Fvx -f ${outdir}/${sample_id}.${graph}.${gene}.nonorphon.filteringnodes ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes;
                 fi
                 if [ -s ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes ]; then
                     echo "Filtering out reads aligning to non-gene nodes"
