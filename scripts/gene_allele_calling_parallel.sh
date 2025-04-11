@@ -493,6 +493,8 @@ else
             cp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
             # extra read filtering for complex genes
             if [ $(echo "${asc_cluster[@]}" | wc -l) -gt 1 ]; then
+                vg filter -r 0.0 -P -q 0 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+                cp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
                 complex_gene=true
                 if [ $(vg paths -Lv  ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa | grep -v "${gene}\*" | grep "IMGT\|IGv2\|OGRDB" | wc -l) -gt 0 ]; then
                     echo "Complex locus detected for ${gene} - with multiple other genes in overlapping ASC clusters - filtering out reads aligning to non-gene nodes"
@@ -508,7 +510,8 @@ else
                     secondary_filtering=false
                     if [ "${secondary_filtering}" = true ]; then
                         vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg -g ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
-                        vg filter -r 0.0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+                        vg filter -r 0.0 -P -q 0 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+                        vg view -X ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq
                         rm ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes;
                         rm ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt;
                         vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa;
@@ -526,7 +529,7 @@ else
                     cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa
                     cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa.lcp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa.lcp
                     vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
-                    vg filter -r 0.0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+                    vg filter -r 0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
                 else
                     if [ -s ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg ]; then
                         echo "Complex locus detected for ${gene} - multiple ASC clusters of target gene - realigning to succinct graph and retaining all reads"
@@ -686,21 +689,21 @@ else
             cd ${outdir};
             # allele inference:
             mkdir -p ${outdir}/${gene}_allele_inference;
-          #  vg ids -i -1 ${outdir}/${sample_id}.${graph}.${gene}.vg | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa #need to increase by -1, cant decrease by 1 lol
-          #  vg view -a ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.aln.json;
-          #  vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.vg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa;
-          #  python3 ${bigfoot_dir}/parse_graph_vgflow.py --sample ${outdir}/${sample_id}.${graph}.${gene}.vgflow -m 0;
-          #  vg paths -Ev ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa > vgflow_paths.txt;
-          #  orig_len=$(cut -f2 vgflow_paths.txt | sort | uniq);
-          #  vg paths -Ev ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa > vgflow_paths.final.txt;
-          #  parsed_len=$(cut -f2 vgflow_paths.final.txt | sort | uniq);
-          #  if [ $(printf "%d\n" ${orig_len} | sort -n | head -1) -gt $(printf "%d\n" ${parsed_len} | sort -n | head -1) ]; then
+            #vg ids -i -1 ${outdir}/${sample_id}.${graph}.${gene}.vg | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa #need to increase by -1, cant decrease by 1 lol
+            #vg view -a ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.aln.json;
+            #vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.vg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa;
+            #python3 ${bigfoot_dir}/parse_graph_vgflow.py --sample ${outdir}/${sample_id}.${graph}.${gene}.vgflow -m 0;
+            #vg paths -Ev ${outdir}/${sample_id}.${graph}.${gene}.vgflow.gfa > vgflow_paths.txt;
+            #orig_len=$(cut -f2 vgflow_paths.txt | sort | uniq);
+            #vg paths -Ev ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa > vgflow_paths.final.txt;
+            #parsed_len=$(cut -f2 vgflow_paths.final.txt | sort | uniq);
+            #if [ $(printf "%d\n" ${orig_len} | sort -n | head -1) -gt $(printf "%d\n" ${parsed_len} | sort -n | head -1) ]; then
                 vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.vg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
                 echo "Compress graph bug - allele truncated - using alternative graph prep"
                 vg filter -r 0 -P -s 1 -q 5 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam -v | vg convert -G - ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf
                 vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.vg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
                 gafpack --gfa ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa --gaf ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf -lc | grep -v "#" | awk '{print NR-1 ":" $0}' > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt
-          #  fi
+            #fi
             for opt in {2..2}; do #relative difference performs best on average
                 echo "basing inference on haplotypes + alleles embedded in graph"
                 cd ${outdir}/${gene}_allele_inference
