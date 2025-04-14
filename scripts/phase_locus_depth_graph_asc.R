@@ -32,7 +32,7 @@ deletion_paths<-pathref[grep("deletion",names(pathref))]
 #
 aln_nodes<-graph_paths[grep("IG|TR|grch38|chm13",graph_paths$V2,invert=T),c(2,3)]
 #
-variant_paths_filt<-variant_paths[grep(":f:1#|:f:2#|:f:1\\.|:f:2\\.",names(variant_paths),invert=T)]
+variant_paths_filt<-variant_paths[grep(":f:1#|:f:2#|:f:0\\.|:f:1\\.|:f:2\\.",names(variant_paths),invert=T)]
 if(length(setdiff(names(variant_paths),names(variant_paths_filt)))>0){
     path_remove<-setdiff(names(variant_paths),names(variant_paths_filt))
     graph_paths<-graph_paths[grep(paste(path_remove,collapse="|"),graph_paths$V2,invert=T),]
@@ -262,7 +262,7 @@ if(length(variant_paths)>0){
                 }
             }
             for(allele in candidate_alleles){
-                #print(paste0("Candidate allele: ", allele));
+                print(paste0("Candidate allele: ", allele));
                 phasing_reads_tmp<-phasing_reads[sapply(phasing_reads, function(vec) any(unname(unlist(allele_paths_phasing_nodes[allele])[grep(",",unlist(allele_paths_phasing_nodes[allele]),invert=T)]) %in% vec))]
                 for(node_pairs in unname(unlist(allele_paths_phasing_nodes[allele])[grep(",",unlist(allele_paths_phasing_nodes[allele]),invert=F)])){
                     node_pairs<-strsplit(node_pairs,split=",")[[1]]
@@ -347,7 +347,9 @@ if(length(variant_paths)>0){
                     allele_w_max_vardepth <- rownames(phasing_df)
                     if(nrow(phasing_df)>1){
                         if(sum(phasing_df[,colindex],na.rm=T)>1){
-                            allele_w_max_vardepth <- rownames(phasing_df)[which.max(phasing_df[,colindex])]
+                            # use highest depth to solve phased variant ties (or the first one)
+                            depths_tmp<-which.max(gsub("#.*","",gsub(".*:f:","",colnames(phasing_df[,colindex]))))
+                            allele_w_max_vardepth <- rownames(phasing_df)[which.max(phasing_df[,colindex[depths_tmp]])]
                         } else {
                             allele_w_max_vardepth<-"ambiguous";
                         }
@@ -364,14 +366,21 @@ if(length(variant_paths)>0){
             reqd_nodes<-unique(c(in_node,out_node))
             candidate_alleles<-vector()
             for(allele in names(allele_paths_phasing_nodes)){
-                print(allele)
-#                allele_paths[allele]
+#                print(allele)
                 if(all(reqd_nodes %in% unlist(allele_paths[allele]))){
                     candidate_alleles<-unique(c(candidate_alleles,allele))
                     print(paste0("Candidate allele: ", allele," contains topology consistent with variant call"));
                 }
             }
             phasing_reads<-read_paths[sapply(read_paths, function(vec) any(variant_nodes %in% vec))]
+            if(length(phasing_reads)==0){
+                var_ids_temp<-var_df[var_df$node %in% c(paste0(variant_nodes,collapse=","),variant_nodes),]$variant
+                print(paste0("No allele-tagging read support for: ", names(variant_paths)[variant]))
+                allele_w_max_vardepth<-"ambiguous";
+                hap=hap+1
+                phasing_df_alleles <- data.frame(rbind(phasing_df_alleles, data.frame(phased_variants = var_ids_temp, allele_path = allele_w_max_vardepth, indep=0,hap=hap)),check.names=F)
+                next
+            }
             if(length(candidate_alleles)>0){
                 for(allele in candidate_alleles){
                     phasing_reads_tmp<-phasing_reads[sapply(phasing_reads, function(vec) any(unname(unlist(allele_paths_phasing_nodes[allele])[grep(",",unlist(allele_paths_phasing_nodes[allele]),invert=T)]) %in% vec))]
