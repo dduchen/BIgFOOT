@@ -24,7 +24,7 @@ I plan to expand this workflow to enable genome-to-genome analyses/genetic assoc
 
 1) Clone me! <code>git clone https://github.com/dduchen/BIgFOOT.git</code>
 2) set up conda/mamba environment we'll be needing -- can move some of these after the '#' if they're already in your path (e.g., samtools, we assume you have R)<br>
-<code>mamba create --name bigfoot -c bioconda -c conda-forge -c gurobi python=3 fastp graph-tool bazam minimap2 gurobi biopython numpy odgi gfaffix seqkit bbmap minimap2 seqwish blend-bio wfmash samtools pyseer unitig-caller parallel #fastq-dl kmc r-base cd-hit
+<code>mamba create --name bigfoot -c bioconda -c conda-forge -c gurobi python=3 fastp graph-tool bazam minimap2 gurobi biopython numpy odgi gfaffix seqkit bbmap minimap2 seqwish blend-bio wfmash samtools pyseer unitig-caller parallel tr-trimmer #fastq-dl kmc r-base cd-hit
 conda activate bigfoot </code><br>
 Ensure you have an active gurobi licence:<br>
 <code>gurobi_cl</code><br>

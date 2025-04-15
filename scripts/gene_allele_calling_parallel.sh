@@ -157,6 +157,9 @@ else
             # use local haplotypes #
             ##############################
             seqkit grep -v -r -p "${gene}|IMGT|OGRDB|IGv2" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${gene}.haps.fasta
+            # trim terminal repeats in the local haplotype sequences
+            tr-trimmer -i ${outdir}/${gene}.haps.fasta > ${outdir}/${gene}.haps.trimmed.fasta;
+            mv ${outdir}/${gene}.haps.trimmed.fasta ${outdir}/${gene}.haps.fasta
             if [ -s ${outdir}/${gene}.haps.fasta ]; then
                 echo "Local haplotypes found for: ${gene_actual}"
 #                seqkit seq --min-len $(bc -l <<< "scale=2;${gene_min_len}*0.9"| awk '{printf("%d\n",$1 + 0.5)}') --max-len 15000  ${outdir}/${gene}.haps.fasta > ${outdir}/${gene}.haps.fasta.tmp && mv ${outdir}/${gene}.haps.fasta.tmp ${outdir}/${gene}.haps.fasta
@@ -413,7 +416,7 @@ else
                     #grep -r ${chr_graph_tmp} ${outdir}/${sample_id}.${graph}.${gene}.chr_assignments.txt | grep -v "${gene}\|IMGT\|OGRDB\|IGv2" - | cut -f1 | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.haplotype_assignments.patterns.txt
                     #seqkit grep -f ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.haplotype_assignments.patterns.txt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta >> ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta
                     if [ $(grep ">" ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta | wc -l ) -gt 2 ]; then
-                        vg msga -f ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.rough.gfa;
+                        vg msga -f ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta -w 5000 | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.rough.gfa;
                         odgi sort -i ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.rough.gfa --threads 16 -p bgs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa
                         rm ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.rough.gfa;
                         gfaffix ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.tmp; mv ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.tmp ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa
@@ -423,10 +426,12 @@ else
                         gfaffix ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.tmp; mv ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.tmp ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa
                     fi
                     vg paths -Lv ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa > ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.paths
+                    vg paths -Fv ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa | seqkit grep -s -p 'N' - > ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.paths.fasta
                     paths_count=$(wc -l < ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.paths | awk '{print $1}')
                     fasta_count=$(grep ">" ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta | wc -l | awk '{print $1}')
-                    if [ "$paths_count" -lt "$fasta_count" ]; then
-                        echo "paths missing - retrying minimap2 all-to-all construction"
+                    fasta_N_count=$(grep ">" ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.paths.fasta | wc -l | awk '{print $1}')
+                    if [ "$paths_count" -lt "$fasta_count" ] || [ "$fasta_N_count" -gt 0 ]; then
+                        echo "paths missing or contain ambiguous bases - retrying minimap2 all-to-all construction"
                         minimap2 -x asm20 -t 16 -c -X ${outdir}/${sample_id}.${graph}.${gene}.${chr_graph_tmp}.fasta ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.fasta > ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.paf
                         seqwish -s ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.fasta -p ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.paf -g ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa -b ${outdir}/seqwish_${sample_id}.${graph}
                         gfaffix ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa -o ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.tmp; mv ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.tmp ${outdir}/${sample_id}.${graph}.${gene}.$chr_graph_tmp.gfa
@@ -552,7 +557,7 @@ else
 #                    vg filter -r 0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
                     # redo read-based filtering using succinct version of the graph
                     
-                    secondary_filtering=true
+                    secondary_filtering=false
                     if [ "${secondary_filtering}" = true ]; then
                         vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg -g ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
                         vg filter -r 0.0 -P -q 0 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
