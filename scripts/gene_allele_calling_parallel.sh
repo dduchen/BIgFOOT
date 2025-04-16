@@ -189,14 +189,16 @@ else
             # set min length of haplotypes = 100, max length should scale with allele length --> then downsample haplotypes
             seqkit stats ${outdir}/${gene}.alleles.exact.fasta > ${outdir}/${gene}.alleles.stats
             gene_min_len=$(sed -n 2p ${outdir}/${gene}.alleles.stats | tr -s ' ' | cut -f6 -d' ' | sed s/","//g)
-            gene_max_len=$(sed -n 2p ${outdir}/${gene}.alleles.stats | tr -s ' ' | cut -f8 -d' ')
+            gene_max_len=$(sed -n 2p ${outdir}/${gene}.alleles.stats | tr -s ' ' | cut -f8 -d' ' | sed s/","//g)
             ##############################
             # use local haplotypes #
             ##############################
             seqkit grep -v -r -p "${gene}|IMGT|OGRDB|IGv2" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${gene}.haps.fasta
             # trim terminal repeats in the local haplotype sequences
             tr-trimmer -i ${outdir}/${gene}.haps.fasta > ${outdir}/${gene}.haps.trimmed.fasta;
-            mv ${outdir}/${gene}.haps.trimmed.fasta ${outdir}/${gene}.haps.fasta
+            if [ -s ${outdir}/${gene}.haps.trimmed.fasta ]; then
+               mv ${outdir}/${gene}.haps.trimmed.fasta ${outdir}/${gene}.haps.fasta
+            fi
             if [ -s ${outdir}/${gene}.haps.fasta ]; then
                 echo "Local haplotypes found for: ${gene_actual}"
 #                seqkit seq --min-len $(bc -l <<< "scale=2;${gene_min_len}*0.9"| awk '{printf("%d\n",$1 + 0.5)}') --max-len 15000  ${outdir}/${gene}.haps.fasta > ${outdir}/${gene}.haps.fasta.tmp && mv ${outdir}/${gene}.haps.fasta.tmp ${outdir}/${gene}.haps.fasta
