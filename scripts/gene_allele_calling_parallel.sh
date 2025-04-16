@@ -1,6 +1,43 @@
 #!/bin/bash
 
 cd ${datadir}
+if [ "${prep_locus_graphs}" = "parse_complex" ]; then
+    echo "Parsing local graphs across complex genes - ensuring graphs contain unique/gene-specific local haplotypes"
+    if [ -s ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.complex_genes.succinct_fix.txt ]; then
+        echo "Complex local graphs already parsed - skipping";
+    else
+        ls ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.*.succinct_locus.xg | grep -v "custom" | grep -f ${bigfoot_dir}/../custom_beds/complex_genes.txt > ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.complex_genes.txt;
+        for compgene in $(cat ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.complex_genes.txt);do vg convert -fW ${compgene} > ${compgene%.xg}.gfa; 
+        done
+        sed -i s/".xg$"/".gfa"/g ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.complex_genes.txt;
+        odgi squeeze -f ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.complex_genes.txt -O -o ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.complex_genes.og;
+        odgi paths -fi ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.complex_genes.og | seqkit grep -v -n -rp "IMGT|OGRDB|HLA|KIR" | seqkit rmdup -n -D ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.complex_genes.dup_haps.txt > test_tmp.fasta;
+        rm test_tmp.fasta;
+        cut -f2 ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.complex_genes.dup_haps.txt | sed 's/ //' | tr , '\n' | sort | uniq > ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.complex_genes.dup_haps.txt.tmp && mv ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.complex_genes.dup_haps.txt.tmp ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.complex_genes.dup_haps.txt;
+        sed s/".*wg_immunovar."//g ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.complex_genes.txt | sed s/".succinct.*"/""/g > ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.complex_genes.succinct_fix.txt;
+        for tmp_graph in $(ls ${genotyping_nodes_dir}/gene_graphs/*.xg | grep -f ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.complex_genes.succinct_fix.txt | grep -v "custom");do vg convert -fW ${tmp_graph} > ${tmp_graph%.xg}.tmp.gfa;
+            vg paths -Lx ${tmp_graph%.xg}.tmp.gfa | grep -f ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.complex_genes.dup_haps.txt > ${tmp_graph%.xg}.dup_paths.txt;
+            if [[ $(wc -l <${tmp_graph%.xg}.dup_paths.txt) -ge 1 ]]; then
+                cp ${tmp_graph%.xg}.tmp.gfa ${tmp_graph%.xg}_legacy.gfa;
+                gfaffix ${tmp_graph%.xg}.tmp.gfa -o ${tmp_graph%.xg}.gfa;
+                echo "removing duplicate paths from $(echo ${tmp_graph%.xg} | sed s/".*wg_immunovar."//g)";
+                vg paths -x ${tmp_graph%.xg}.gfa -d -p ${tmp_graph%.xg}.dup_paths.txt | vg mod -N -nU 10 -X 32 - > ${tmp_graph%.xg}.vg;
+                vg convert -p ${tmp_graph%.xg}.vg > ${tmp_graph%.xg}.pg;
+                vg convert -fW ${tmp_graph%.xg}.pg > ${tmp_graph%.xg}.gfa;
+                vg index -t 16 -L -x ${tmp_graph} ${tmp_graph%.xg}.pg;
+                vg gbwt -x ${tmp_graph%.xg}.xg -o ${tmp_graph%.xg}.gbwt -P --pass-paths;
+                vg prune -u -g ${tmp_graph%.xg}.gbwt -k 31 -m ${tmp_graph%.xg}.node_mapping ${tmp_graph%.xg}.pg > ${tmp_graph%.xg}.pruned.vg;
+                vg index -g ${tmp_graph%.xg}.gcsa -f ${tmp_graph%.xg}.node_mapping ${tmp_graph%.xg}.pruned.vg;
+                rm ${tmp_graph%.xg}.node_mapping; rm ${tmp_graph%.xg}.pruned.vg;
+                rm ${tmp_graph%.xg}.tmp.gfa;
+            else
+                rm ${tmp_graph%.xg}.tmp.gfa;
+            fi
+        done
+    fi
+    return
+fi
+#
 gene=${each%.nodes.txt}
 gene=${gene%.immune_subset}
 gene_actual=$(echo $gene | sed 's!__!/!g')
@@ -475,49 +512,84 @@ else
             rm ${outdir}/${gene}.alleles.stats
             rm ${outdir}/${gene}.haps.fasta
         fi
-      # testing a combined succinct locus graph for most complex genes
-      # IGHV4-61 poor performance
-        if [[ $(echo $gene | grep "IGHV4-4$\|IGHV4-61$\|IGHV4-59$" | wc -l) -ge 1 ]]; then
-            ls ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGH*.succinct_locus.gfa | grep -v "custom" | grep "V4-4.s\|V4-59.s\|V4-61.s" > ${genotyping_nodes_dir}/gene_graphs/ighv44_459_461_graphs.txt
-            if [ -s ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}_custom.succinct_locus.gcsa ];then
-                echo "Trying cross-complex gene succinct graph for ${gene}"
-                cp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}_custom.succinct_locus.gbwt ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gbwt
-                # cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gbwt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt
-                cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gbwt ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gbwt
-                cp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}_custom.succinct_locus.xg ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg
-                # cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg
-                cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg
-                cp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}_custom.succinct_locus.pg ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.pg
-                # cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.pg ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg
-                cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.pg ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.pg
-                cp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}_custom.succinct_locus.gcsa ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa
-                # cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa
-                cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gcsa
-                cp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}_custom.succinct_locus.gcsa.lcp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa.lcp
-                # cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa.lcp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa.lcp
-                cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa.lcp ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gcsa.lcp
-            elif [[ $(wc -l <${genotyping_nodes_dir}/gene_graphs/ighv44_459_461_graphs.txt) -ge 3 ]]; then
-                odgi squeeze -f ${genotyping_nodes_dir}/gene_graphs/ighv44_459_461_graphs.txt -O -o ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.og;  
-                odgi sort -i ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.og --threads 16 -p bgs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.gfa
-                grep "^P" ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.gfa | cut -f2 | sort | grep -v "IGHV" | uniq -c | grep " 2 " | sed s/".* 2 "//g > ${genotyping_nodes_dir}/gene_graphs/dup_paths.txt
-                grep "^P"  ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV4-4.succinct_locus.gfa | cut -f2 | sort | grep -v "IGHV" > ${genotyping_nodes_dir}/gene_graphs/ighv44_hap_paths.txt
-                grep "^P"  ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV4-59.succinct_locus.gfa | cut -f2 | sort | grep -v "IGHV" > ${genotyping_nodes_dir}/gene_graphs/ighv459_hap_paths.txt
-                grep "^P"  ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV4-61.succinct_locus.gfa | cut -f2 | sort | grep -v "IGHV" > ${genotyping_nodes_dir}/gene_graphs/ighv461_hap_paths.txt
-                vg paths -x ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.gfa -d -p ${genotyping_nodes_dir}/gene_graphs/dup_paths.txt | vg mod -N -nU 10 -X 32 - > ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.vg
-                vg paths -x ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.vg -d -p <(cat ${genotyping_nodes_dir}/gene_graphs/ighv459_hap_paths.txt ${genotyping_nodes_dir}/gene_graphs/ighv44_hap_paths.txt) | vg mod -N -nU 10 -X 32 - > ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV4-61_custom_pancluster.vg
-                vg paths -x ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.vg -d -p <(cat ${genotyping_nodes_dir}/gene_graphs/ighv459_hap_paths.txt ${genotyping_nodes_dir}/gene_graphs/ighv461_hap_paths.txt) | vg mod -N -nU 10 -X 32 - > ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV4-4_custom_pancluster.vg
-                vg paths -x ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.vg -d -p <(cat ${genotyping_nodes_dir}/gene_graphs/ighv44_hap_paths.txt ${genotyping_nodes_dir}/gene_graphs/ighv461_hap_paths.txt) | vg mod -N -nU 10 -X 32 - > ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV4-59_custom_pancluster.vg
-                for tmp_graph in $(ls ${genotyping_nodes_dir}/gene_graphs/*custom_pancluster.vg);do echo ${tmp_graph}; 
-                    vg convert -p ${tmp_graph} > ${tmp_graph%_pancluster*}.succinct_locus.pg
-                    vg convert -fW ${tmp_graph%_pancluster*}.succinct_locus.pg > ${tmp_graph%_pancluster*}.succinct_locus.gfa
-                    vg index -t 16 -L -x ${tmp_graph%_pancluster*}.succinct_locus.xg ${tmp_graph%_pancluster*}.succinct_locus.pg;
-                    vg gbwt -x ${tmp_graph%_pancluster*}.succinct_locus.xg -o ${tmp_graph%_pancluster*}.succinct_locus.gbwt -P --pass-paths
-                    vg prune -u -g ${tmp_graph%_pancluster*}.succinct_locus.gbwt -k 31 -m ${tmp_graph%_pancluster*}.succinct_locus.node_mapping ${tmp_graph%_pancluster*}.succinct_locus.pg > ${tmp_graph%_pancluster*}.succinct_locus.pruned.vg
-                    vg index -g ${tmp_graph%_pancluster*}.succinct_locus.gcsa -f ${tmp_graph%_pancluster*}.succinct_locus.node_mapping ${tmp_graph%_pancluster*}.succinct_locus.pruned.vg
-                done
-            else
-                echo "Need existing graphs for all members of ${gene} co-cluster - make and then rerun"
-            fi    
+      # Combined succinct locus graph for most complex genes - remove haplotypes containing exact matches to more than a single gene - could odgi squeeze all the complex gene succinct files to detect multiply occurring local haplotype sequences (seqkit rmdup)
+      # If this improves things incorporate for other multi-asc genes (IGHV4-34/4-30-4, IGKV1-17, IGLV2-14/2-23)
+        #if [[ $(echo $gene | grep "IGHV4-4$\|IGHV4-61$\|IGHV4-59$" | wc -l) -ge 1 ]]; then
+        #    ls ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGH*.succinct_locus.gfa | grep -v "custom" | grep "V4-4.s\|V4-59.s\|V4-61.s" > ${genotyping_nodes_dir}/gene_graphs/ighv44_459_461_graphs.txt
+        #    if [[ $(wc -l <${genotyping_nodes_dir}/gene_graphs/ighv44_459_461_graphs.txt) -ge 3 ]]; then
+#       #         if [ -s ${genotyping_nodes_dir}/gene_graphs/*${gene}_custom_pancluster.vg ]; then
+        #            echo "Custom pancluster graph already exists for ${gene}"
+#                else
+#                    odgi squeeze -f ${genotyping_nodes_dir}/gene_graphs/ighv44_459_461_graphs.txt -O -o ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.og;  
+#                    odgi sort -i ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.og --threads 16 -p bgs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.gfa
+#                    grep "^P" ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.gfa | cut -f2 | sort | grep -v "IGHV" | uniq -c | grep " 2 " | sed s/".* 2 "//g > ${genotyping_nodes_dir}/gene_graphs/dup_paths.txt
+#                    grep "^P"  ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV4-4.succinct_locus.gfa | cut -f2 | sort | grep -v "IGHV" > ${genotyping_nodes_dir}/gene_graphs/ighv44_hap_paths.txt
+#                    grep "^P"  ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV4-59.succinct_locus.gfa | cut -f2 | sort | grep -v "IGHV" > ${genotyping_nodes_dir}/gene_graphs/ighv459_hap_paths.txt
+#                    grep "^P"  ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV4-61.succinct_locus.gfa | cut -f2 | sort | grep -v "IGHV" > ${genotyping_nodes_dir}/gene_graphs/ighv461_hap_paths.txt
+#                    vg paths -x ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.gfa -d -p ${genotyping_nodes_dir}/gene_graphs/dup_paths.txt | vg mod -N -nU 10 -X 32 - > ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.vg
+#                    vg paths -x ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.vg -d -p <(cat ${genotyping_nodes_dir}/gene_graphs/ighv459_hap_paths.txt ${genotyping_nodes_dir}/gene_graphs/ighv44_hap_paths.txt) | vg mod -N -nU 10 -X 32 - > ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV4-61_custom_pancluster.vg
+#                    vg paths -x ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.vg -d -p <(cat ${genotyping_nodes_dir}/gene_graphs/ighv459_hap_paths.txt ${genotyping_nodes_dir}/gene_graphs/ighv461_hap_paths.txt) | vg mod -N -nU 10 -X 32 - > ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV4-4_custom_pancluster.vg
+#                    vg paths -x ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.vg -d -p <(cat ${genotyping_nodes_dir}/gene_graphs/ighv44_hap_paths.txt ${genotyping_nodes_dir}/gene_graphs/ighv461_hap_paths.txt) | vg mod -N -nU 10 -X 32 - > ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV4-59_custom_pancluster.vg
+#                    for tmp_graph in $(ls ${genotyping_nodes_dir}/gene_graphs/*custom_pancluster.vg);do echo ${tmp_graph}; 
+#                        vg convert -p ${tmp_graph} > ${tmp_graph%_pancluster*}.succinct_locus.pg
+#                        vg convert -fW ${tmp_graph%_pancluster*}.succinct_locus.pg > ${tmp_graph%_pancluster*}.succinct_locus.gfa
+#                        vg index -t 16 -L -x ${tmp_graph%_pancluster*}.succinct_locus.xg ${tmp_graph%_pancluster*}.succinct_locus.pg;
+#                        vg gbwt -x ${tmp_graph%_pancluster*}.succinct_locus.xg -o ${tmp_graph%_pancluster*}.succinct_locus.gbwt -P --pass-paths
+#                        vg prune -u -g ${tmp_graph%_pancluster*}.succinct_locus.gbwt -k 31 -m ${tmp_graph%_pancluster*}.succinct_locus.node_mapping ${tmp_graph%_pancluster*}.succinct_locus.pg > ${tmp_graph%_pancluster*}.succinct_locus.pruned.vg
+#                        vg index -g ${tmp_graph%_pancluster*}.succinct_locus.gcsa -f ${tmp_graph%_pancluster*}.succinct_locus.node_mapping ${tmp_graph%_pancluster*}.succinct_locus.pruned.vg
+#                    done
+#                fi
+#                unset tmp_graph
+#                for tmp_graph in $(ls ${genotyping_nodes_dir}/gene_graphs/*${gene}*.xg | grep -v "custom");do vg convert -fW ${tmp_graph} > ${tmp_graph%.xg}.tmp.gfa;
+#                    vg paths -Lx ${tmp_graph%.xg}.tmp.gfa | grep -f ${genotyping_nodes_dir}/gene_graphs/dup_paths.txt > ${genotyping_nodes_dir}/gene_graphs/dup_paths_${gene}.txt;
+#                    if [[ $(wc -l <${genotyping_nodes_dir}/gene_graphs/dup_paths_${gene}.txt) -ge 1 ]]; then
+#                        cp ${tmp_graph%.xg}.gfa ${tmp_graph%.xg}_legacy.gfa;
+#                        gfaffix ${tmp_graph%.xg}.tmp.gfa -o ${tmp_graph%.xg}.gfa;
+#                        echo "removing duplicate paths from ${tmp_graph%.xg}"
+#                        vg paths -x ${tmp_graph%.xg}.gfa -d -p ${genotyping_nodes_dir}/gene_graphs/dup_paths.txt | vg mod -N -nU 10 -X 32 - > ${tmp_graph%.xg}.vg;
+#                        vg convert -p ${tmp_graph%.xg}.vg > ${tmp_graph%.xg}.pg;
+#                        vg convert -fW ${tmp_graph%.xg}.pg > ${tmp_graph%.xg}.gfa;
+#                        vg index -t 16 -L -x ${tmp_graph} ${tmp_graph%.xg}.pg;
+#                        vg gbwt -x ${tmp_graph%.xg}.xg -o ${tmp_graph%.xg}.gbwt -P --pass-paths;
+#                        vg prune -u -g ${tmp_graph%.xg}.gbwt -k 31 -m ${tmp_graph%.xg}.node_mapping ${tmp_graph%.xg}.pg > ${tmp_graph%.xg}.pruned.vg;
+#                        vg index -g ${tmp_graph%.xg}.gcsa -f ${tmp_graph%.xg}.node_mapping ${tmp_graph%.xg}.pruned.vg;
+#                    else
+#                        rm ${tmp_graph%.xg}.tmp.gfa;
+#                    fi
+#                done
+#            fi
+#            custom_succinct=false
+#            if [ "${custom_succinct}" = true ]; then
+#                if [[ $(echo $gene | grep "IGHV4-4$\|IGHV4-61$\|IGHV4-59$" | wc -l) -ge 1 ]]; then
+#                    ls ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGH*.succinct_locus.gfa | grep -v "custom" | grep "V4-4.s\|V4-59.s\|V4-61.s" > ${genotyping_nodes_dir}/gene_graphs/ighv44_459_461_graphs.txt
+#                    vg paths -x ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.gfa -d -p ${genotyping_nodes_dir}/gene_graphs/dup_paths.txt | vg mod -N -nU 10 -X 32 - > ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44_459_461_graphs.vg
+#                    if [ -s ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}_custom.succinct_locus.gcsa ];then
+#                        echo "Trying cross-complex gene succinct graph for ${gene}"
+#                        cp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}_custom.succinct_locus.gbwt ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gbwt
+#                        # cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gbwt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt
+#                        cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gbwt ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gbwt
+#                        cp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}_custom.succinct_locus.xg ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg
+#                        # cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg
+#                        cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg
+#                        cp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}_custom.succinct_locus.pg ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.pg
+#                        # cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.pg ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg
+#                        cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.pg ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.pg
+#                        cp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}_custom.succinct_locus.gcsa ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa
+#                        # cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa
+#                        cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gcsa
+#                        cp ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}_custom.succinct_locus.gcsa.lcp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa.lcp
+#                        # cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa.lcp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa.lcp
+#                        cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa.lcp ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gcsa.lcp
+#                    else
+#                        echo "Need existing graphs for all members of ${gene} co-cluster - rerun inference on all genes"
+#                    fi    
+#                fi
+ #           fi
+        #    fi
+        #fi
+        if [ "${prep_locus_graphs}" = true ]; then
+            echo "$gene graphs already prepped"
+            return
         fi
         # parse alignments - probably too permissive currently with ..genotyping.immune_subset.vg for read extraction for complex genes e.g. 3-30
         vg find -x ${graph_base}.xg -l ${workdir}/${gam_file%.gam}.sorted.gam -A ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.vg > ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.gam
@@ -556,8 +628,7 @@ else
 #                    vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
 #                    vg filter -r 0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
                     # redo read-based filtering using succinct version of the graph
-                    
-                    secondary_filtering=false
+                    secondary_filtering=false;
                     if [ "${secondary_filtering}" = true ]; then
                         vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg -g ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
                         vg filter -r 0.0 -P -q 0 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
@@ -593,7 +664,7 @@ else
                         vg filter -r 0.0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
                     else
                         echo "Complex locus detected for ${gene} - multiple ASC clusters of target gene - retaining all reads"
-                        vg filter -r 0.0 -P -s 1 -q 5 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+                        vg filter -r 0.0 -P -s 1 -q 0 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
                     fi
                 fi
             elif [ $(vg paths -Lv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa | grep "IMGT\|IGv2\|OGRDB" | grep -v "${gene}\*\|${gene}_\|${gene}" | wc -l) -gt 0 ]; then
@@ -617,13 +688,13 @@ else
                     vg find -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -l ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -A ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.vg | vg view -X - | seqkit seq -n - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt
                     vg view -X ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam | seqkit grep -v -n -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq
                     vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
-                    vg filter -r 0.0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+                    vg filter -r 0.0 -P -q 0 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
 #                else
 #                    Rscript ${bigfoot_dir}/identify_non_haplotype_nodes_complex_locus.R ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.haps.matching.exact.txt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes
                 fi
             else
                 echo "Non-ASC-based analysis for ${gene}"
-                vg filter -r 0.0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+                vg filter -r 0.0 -P -q 0 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
             fi
             vg depth --gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg > ${outdir}/${sample_id}.${graph}.${gene}.filtered.depth;
             echo "1) Performing inference on haplotype graph labled only with alleles of interest";
@@ -708,9 +779,9 @@ else
                     vg gbwt -x ${outdir}/${sample_id}.${graph}.${gene}.alleles.xg -o ${outdir}/${sample_id}.${graph}.${gene}.alleles.gbwt -P --pass-paths
                     vg index -g ${outdir}/${sample_id}.${graph}.${gene}.alleles.gcsa ${outdir}/${sample_id}.${graph}.${gene}.alleles.pg
                     vg map -N ${sample_id}.${graph}.${gene} -G ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -x ${outdir}/${sample_id}.${graph}.${gene}.alleles.xg -g ${outdir}/${sample_id}.${graph}.${gene}.alleles.gcsa -t 4 -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.alleles.gam
-                    vg filter -r 0 -P -s 1 -q 5 -x ${outdir}/${sample_id}.${graph}.${gene}.alleles.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.alleles.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam;
+                    vg filter -r 0 -P -s 1 -q 0 -x ${outdir}/${sample_id}.${graph}.${gene}.alleles.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.alleles.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam;
                     vg map -N ${sample_id}.${graph}.${gene} -G ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam;
-                    vg filter -r 0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam;
+                    vg filter -r 0 -P -q 0 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam;
                     mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam
                 else
                     echo "Complex gene - sequence to graph alignment filtering (90% pairwise identity) - for allele graph-based filtering set allele_graph_filt=true"
@@ -719,14 +790,14 @@ else
                 #vg ids -i -1 ${outdir}/${sample_id}.${graph}.${gene}.alleles.pg | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa # ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa #
             else
                 echo "sequence to graph alignment-based filtering (95% pairwise identity to local haplotype graph)"
-                vg filter -r 0.95 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam
+                vg filter -r 0.95 -P -q 0 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam
             fi
             ############################################################################################################################
             #vg map --gaf -G ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf
             #vg convert -G ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.strict.gam ${outdir}/${sample_id}.${graph}.${gene}.alleles.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf
             # or 
 #            vg filter -r 0.95 -P -s 1 -q 5 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam -v | vg convert -G - ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf
-            vg filter -r 0 -P -s 1 -q 5 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+            vg filter -r 0.9 -P -s 1 -q 0 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
             ############################################################################################################################
             # gene-specific read depth for minimum strain-level coverage
             depth_locus=$(awk -F ' ' '{print $1}' ${outdir}/${sample_id}.${graph}.${gene}.filtered.depth)
@@ -751,7 +822,7 @@ else
             #if [ $(printf "%d\n" ${orig_len} | sort -n | head -1) -gt $(printf "%d\n" ${parsed_len} | sort -n | head -1) ]; then
                 vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.vg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
                 echo "Compress graph bug - allele truncated - using alternative graph prep"
-                vg filter -r 0 -P -s 1 -q 5 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam -v | vg convert -G - ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf
+                vg filter -r 0.9 -P -s 1 -q 0 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filt.gam -v | vg convert -G - ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf
                 vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.vg > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa
                 gafpack --gfa ${outdir}/${sample_id}.${graph}.${gene}.vgflow.final.gfa --gaf ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gaf -lc | grep -v "#" | awk '{print NR-1 ":" $0}' > ${outdir}/${sample_id}.${graph}.${gene}.vgflow.node_abundance.txt
             #fi

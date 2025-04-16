@@ -96,6 +96,7 @@ mkdir -p ${genotyping_nodes_dir}/ig_asc/gene_graphs/
 # potentially save this as script - run in parallel #https://stackoverflow.com/questions/25158583/exporting-the-full-environment-to-gnu-parallel
 # parallel!
 export assoc_testing=true
+#
 # should tie number of parallel jobs to the number of compute nodes + memory
 ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV\|TR" | grep -v "__\|IGHD\|IGHJ\|TR.J\|TR.D" > ${outdir}/gene_list.txt;
 # asc cluster-based approach vs. gene-based approach
@@ -103,9 +104,18 @@ ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV\|TR" | 
 ls ${genotyping_nodes_dir}/ig_asc/ | grep "nodes.txt" | grep "^IGHV_\|^IGLV_\|^IGKV_" >> ${outdir}/asc_gene_list.txt;
 #
 export asc_inference=false
+#if [[ $(ls ${genotyping_nodes_dir}/gene_graphs/*xg | wc -l) -ge $(wc -l <${outdir}/gene_list.txt) ]]; then
+#    echo "Locus graphs prepped"
+#    export prep_locus_graphs=false
+#else
+#    echo "Prepping locus graphs for inference"
+#    export prep_locus_graphs=true
+#fi
+export prep_locus_graphs=true
 export de_novo=true
 mkdir -p ${outdir}/tmp
 #export TMPDIR=${outdir}/tmp
+
 #export TEMPDIR=${outdir}/tmp
 #
 if [ "${asc_inference}" = true ]; then
@@ -118,8 +128,15 @@ if [ "${asc_inference}" = true ]; then
             . ${bigfoot_dir}/gene_allele_calling_parallel.sh
         fi' :::: <(cat ${outdir}/asc_gene_list.txt );
 else
-    parallel -j 6 'export each={}; \
-        . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(cat ${outdir}/gene_list.txt ); #IGHE / IGHV2-70D / IGHV3-30-22 / 3-30-5 / IGHV4-30-2
+    if [ "${prep_locus_graphs}" = true ]; then
+        parallel -j 6 'export each={}; export prep_locus_graphs=${prep_locus_graphs}; \
+            . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(cat ${outdir}/gene_list.txt );
+        parallel -j 1 'export export prep_locus_graphs="parse_complex"; \
+            . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(echo "parsing complex genes" );
+        export prep_locus_graphs=false
+    fi
+    parallel -j 6 'export each={}; export prep_locus_graphs=${prep_locus_graphs}; \
+        . ${bigfoot_dir}/gene_allele_calling_parallel.sh' :::: <(cat ${outdir}/gene_list.txt );
 fi
 #    . ${bigfoot_dir}/gene_asc_allele_calling_parallel.sh' :::: <(cat ${outdir}/asc_gene_list.txt );
 #parallel -j 6 'export each={}; \
