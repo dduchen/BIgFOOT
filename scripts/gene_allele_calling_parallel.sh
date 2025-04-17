@@ -646,8 +646,8 @@ else
                         vg view -X ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam | seqkit grep -v -n -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq
                     fi
                     # realign to locus-specific + succinct version of the graph
-                    cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg
-                    vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa;
+            #        cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg
+            #        vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa;
             #        cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.pg ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg
             #        cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gbwt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt
             #        cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa
