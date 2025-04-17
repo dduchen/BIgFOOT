@@ -104,14 +104,14 @@ ls ${genotyping_nodes_dir} | grep "nodes.txt" | grep "^IGH\|^IGLV\|^IGKV\|TR" | 
 ls ${genotyping_nodes_dir}/ig_asc/ | grep "nodes.txt" | grep "^IGHV_\|^IGLV_\|^IGKV_" >> ${outdir}/asc_gene_list.txt;
 #
 export asc_inference=false
-#if [[ $(ls ${genotyping_nodes_dir}/gene_graphs/*xg | wc -l) -ge $(wc -l <${outdir}/gene_list.txt) ]]; then
-#    echo "Locus graphs prepped"
-#    export prep_locus_graphs=false
-#else
-#    echo "Prepping locus graphs for inference"
-#    export prep_locus_graphs=true
-#fi
-export prep_locus_graphs=true
+if [[ $(ls ${genotyping_nodes_dir}/gene_graphs/*xg | wc -l) -ge $(wc -l <${outdir}/gene_list.txt) ]]; then
+    echo "Locus graphs prepped"
+    export prep_locus_graphs=false
+else
+    echo "Prepping locus graphs for inference"
+    export prep_locus_graphs=true
+fi
+#export prep_locus_graphs=true
 export de_novo=true
 mkdir -p ${outdir}/tmp
 #export TMPDIR=${outdir}/tmp
