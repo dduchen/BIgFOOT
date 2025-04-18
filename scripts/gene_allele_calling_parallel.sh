@@ -616,33 +616,22 @@ else
             cp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
             # extra read filtering for complex genes
             if [ $(echo "${asc_cluster[@]}" | wc -l) -gt 1 ]; then
-                vg filter -r 0.0 -P -q 0 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
-                cp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
-                complex_gene=true
+                vg filter -r 0.0 -P -q 0 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam;
+                cp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam;
+                complex_gene=true;
                 #if [ $(vg paths -Lv  ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa | grep -v "${gene}\*" | grep "IMGT\|IGv2\|OGRDB" | wc -l) -gt 0 ]; then
                 if [ -s ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg ]; then
-                    echo "Complex locus detected for ${gene} - with multiple other genes in overlapping ASC clusters - filtering out reads aligning to non-gene nodes"
-                    vg map -G ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg -g ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
-                    vg filter -r 0.0 -P -q 0 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
-                    vg view -X ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq
-                    rm ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes;
-                    rm ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt;
-                    vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa;
-                    sed -n '/^#1:/p;/^P/p' ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes
-                    Rscript ${bigfoot_dir}/identify_non_gene_nodes_complex_locus.R ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes
-                    vg find -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg -c 0 -N ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.vg
-                    vg gamsort ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -i ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.gai -p > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
-                    vg find -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_pancluster.xg -l ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -A ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.vg | vg view -X - | seqkit seq -n - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt
-                    vg view -X ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam | seqkit grep -v -n -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq
-                    vg convert -fW ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa;
- #                    sed -n '/^#1:/p;/^P/p' ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes
-#                    Rscript ${bigfoot_dir}/identify_non_gene_nodes_complex_locus.R ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes
-#                    vg find -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -c 0 -N ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.vg
-#                    vg gamsort ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -i ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.gai -p > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
-#                    vg find -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -l ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -A ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.vg | vg view -X - | seqkit seq -n - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt
-#                    vg view -X ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam | seqkit grep -v -n -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq
-#                    vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
-#                    vg filter -r 0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+                    echo "Complex locus detected for ${gene} - with multiple other genes in overlapping ASC clusters - filtering out reads aligning to non-gene nodes";
+                    sed -n '/^#1:/p;/^P/p' ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes;
+                    Rscript ${bigfoot_dir}/identify_non_gene_nodes_complex_locus.R ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes;
+                    vg find -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -c 0 -N ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filteringnodes > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.vg;
+                    vg gamsort ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -i ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.gai -p > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam;
+                    vg find -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -l ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -A ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.vg | vg view -X - | seqkit seq -n - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt;
+                    vg view -X ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam | seqkit grep -v -n -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq;
+                    # obvious off-target reads removed - pairwise similarity filtering to succinct locus graph now
+                    vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg -g ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.prefilt.gam;
+                    vg filter -r 0.9 -P -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gam;
+                    vg view -X ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gam > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq;
                     # redo read-based filtering using succinct version of the graph
                     secondary_filtering=false;
                     if [ "${secondary_filtering}" = true ]; then
@@ -669,19 +658,8 @@ else
                     vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
                     vg filter -r 0 -P -q 0 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
                 else
-            #        if [ -s ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg ]; then
-            #            echo "Complex locus detected for ${gene} - multiple ASC clusters of target gene - realigning to succinct graph and retaining all reads"
-            #            cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg
-            #            cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.pg ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg
-            #            cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gbwt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt
-            #            cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa
-            #            cp ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.gcsa.lcp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa.lcp
-            #            vg map -G ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.gam -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
-            #            vg filter -r 0.0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.succinct_locus.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
-            #        else
-                        echo "Complex locus detected for ${gene} - multiple ASC clusters of target gene - retaining all reads"
-                        vg filter -r 0.0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
-            #        fi
+                    echo "Complex locus detected for ${gene} - multiple ASC clusters of target gene - retaining all reads"
+                    vg filter -r 0.0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
                 fi
             elif [ $(vg paths -Lv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gfa | grep "IMGT\|IGv2\|OGRDB" | grep -v "${gene}\*\|${gene}_\|${gene}" | wc -l) -gt 0 ]; then
                 echo "Complex locus detected for ${gene} - single ASC cluster but additional genes present - filtering out reads aligning to non-gene nodes"
@@ -704,9 +682,9 @@ else
                     vg find -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -l ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam -A ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.vg | vg view -X - | seqkit seq -n - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt
                     vg view -X ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam | seqkit grep -v -n -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.txt - > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq
                     vg map -f ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.filter.fastq -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -g ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gcsa -1 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gbwt -M 1 > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam
-                    vg filter -r 0.0 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
-#                else
-#                    Rscript ${bigfoot_dir}/identify_non_haplotype_nodes_complex_locus.R ${genotyping_nodes_dir}/gene_graphs/${graph}.${gene}.haps.matching.exact.txt ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pathnodes
+                    vg filter -r 0.9 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
+                else
+                    vg filter -r 0.9 -P -q 5 -s 1 -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.xg -D 0 -fu -t 4 ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.prefilt.gam -v > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.gam
                 fi
             else
                 echo "Non-ASC-based analysis for ${gene}"
