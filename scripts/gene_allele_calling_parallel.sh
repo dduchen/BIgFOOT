@@ -596,6 +596,8 @@ else
         if [ "${prep_locus_graphs}" = false ]; then
             # custom graphs
             if [ -s ${genotyping_nodes_dir}/gene_graphs/${graph}.IGHV44-459-461_custom.succinct_locus.gcsa ];then
+            else 
+                echo "Need to parse IGHV4-4, IGHV4-59, and IGHV4-61 graphs for custom locus graph"
                 ls ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGH*.succinct_locus.gfa | grep -v "custom" | grep "V4-4.s\|V4-59.s\|V4-61.s" > ${genotyping_nodes_dir}/gene_graphs/ighv44_459_461_graphs.txt;
                 odgi squeeze -f ${genotyping_nodes_dir}/gene_graphs/ighv44_459_461_graphs.txt -O -o ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44-459-461_custom.succinct_locus.og;
                 odgi sort -i ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44-459-461_custom.succinct_locus.og --threads 16 -p bgs -O -o - -P | odgi chop -i - -c 32 -o - | odgi view -i - -g > ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44-459-461_custom.succinct_locus.gfa;
@@ -607,7 +609,6 @@ else
                 vg index -g ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44-459-461_custom.succinct_locus.gcsa -f ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44-459-461_custom.succinct_locus.node_mapping ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44-459-461_custom.succinct_locus.pruned.vg;
                 rm ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44-459-461_custom.succinct_locus.og; rm ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44-459-461_custom.succinct_locus.node_mapping; rm ${genotyping_nodes_dir}/gene_graphs/wg_immunovar.IGHV44-459-461_custom.succinct_locus.pruned.vg;
             fi
-            #
         fi
         # parse alignments - probably too permissive currently with ..genotyping.immune_subset.vg for read extraction for complex genes e.g. 3-30
         vg find -x ${graph_base}.xg -l ${workdir}/${gam_file%.gam}.sorted.gam -A ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.vg > ${outdir}/${sample_id}.${graph}.${gene}.genotyping.immune_subset.gam
