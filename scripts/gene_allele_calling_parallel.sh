@@ -789,14 +789,31 @@ else
                 echo "Retaining path labels only for IMGT-derived ${gene_actual} If you want to limit variable gene inference to OGRDB set - set 'valid_alleles=true'"
                 grep "${gene}\*" ${outdir}/${sample_id}.${graph}.${gene}.alleles | grep "IMGT" > ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp ${outdir}/${sample_id}.${graph}.${gene}.alleles
             fi
+            # remove duplicates - IMGT vs. OGRDB -- keep OGRDB version
+            # for each allele - retain OGRDB if both IMGT + OGRDB versions exist at this point
+            rm ${outdir}/${sample_id}.${graph}.${gene}.alleles.replace
+            if [ $(cat ${outdir}/${sample_id}.${graph}.${gene}.alleles | wc -l) -gt 1 ]; then
+                for allele_tmp in $(cat ${outdir}/${sample_id}.${graph}.${gene}.alleles | sed s/".*\*"/""/g | sed s/"#.*"//g | sort | uniq); do echo "";
+                    if [ $(grep "\\*${allele_tmp}#" ${outdir}/${sample_id}.${graph}.${gene}.alleles | wc -l) -gt 1 ]; then
+                        echo "Found duplicate allele ${allele_tmp} - hierarchy: OGRDB > IMGT version";
+                        grep "\\*${allele_tmp}#" ${outdir}/${sample_id}.${graph}.${gene}.alleles | grep "OGRDB" >  ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp
+                        grep "\\*${allele_tmp}#" ${outdir}/${sample_id}.${graph}.${gene}.alleles | grep "IMGT" >>  ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp
+                        grep "\\*${allele_tmp}#" ${outdir}/${sample_id}.${graph}.${gene}.alleles | grep -v "OGRDB\|IMGT" >>  ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp
+                        head -1 ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp >> ${outdir}/${sample_id}.${graph}.${gene}.alleles.replace
+                    else 
+                        grep "\\*${allele_tmp}#" ${outdir}/${sample_id}.${graph}.${gene}.alleles >> ${outdir}/${sample_id}.${graph}.${gene}.alleles.replace
+                    fi
+                    mv ${outdir}/${sample_id}.${graph}.${gene}.alleles.replace ${outdir}/${sample_id}.${graph}.${gene}.alleles
+                done
+            fi
             vg paths -r -p ${outdir}/${sample_id}.${graph}.${gene}.alleles -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg > ${outdir}/${sample_id}.${graph}.${gene}.vg;
             # Avoid parse_graph_vgflow.py  script completely - bug compressing duplicate nodes of the same sequence content, and not needed - or update script to just use tmp1.gfa
             ############################
             if [ "${complex_gene}" = true ]; then
-                echo "Complex gene: performing sequence to valid allele-specific graph-based filtering"
                 ############################
                 allele_graph_filt=false
                 if [ "${allele_graph_filt}" = true ]; then
+                    echo "Complex gene: performing sequence to valid allele-specific graph-based filtering"
                     vg paths -Fx ${outdir}/${sample_id}.${graph}.${gene}.vg | seqkit seq -g '-' | seqkit sort --quiet - > ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta;
 #                    if [ $(grep ">" ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta  | wc -l ) -gt 2 ]; then
 #                        vg msga -f ${outdir}/${sample_id}.${graph}.${gene}.alleles.fasta -N -a | vg convert -fW - > ${outdir}/${sample_id}.${graph}.${gene}.alleles.rough.gfa
