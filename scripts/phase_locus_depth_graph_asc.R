@@ -604,11 +604,33 @@ if(length(variant_paths)>0){
                 old_nodes<-allele_graph_path_replace$V3
                 old_nodes<-gsub("\\+|\\-","",allele_graph_path_replace$V3)
                 old_nodes<-as.numeric((strsplit(paste0(old_nodes,collapse=","),split=",")[[1]]))
+                orig_old_nodes<-as.numeric(unlist(strsplit(gsub("\\+|\\-","",graph_paths[grep(allele_backbone_pattern,graph_paths$V2),]$V3),split=",")))
                 if(all(c(new_nodes[1],new_nodes[length(new_nodes)]) %in% old_nodes)){
                     old_nodes_replace<-old_nodes[which(old_nodes==new_nodes[1]):which(old_nodes==new_nodes[length(new_nodes)])]
                 } else if(all(c(new_nodes[1],new_nodes[length(new_nodes)]) %in% as.numeric(unlist(strsplit(gsub("\\+|\\-","",graph_paths[grep(allele_backbone_pattern,graph_paths$V2),]$V3),split=","))))){
-                    orig_old_nodes<-as.numeric(unlist(strsplit(gsub("\\+|\\-","",graph_paths[grep(allele_backbone_pattern,graph_paths$V2),]$V3),split=",")))
-                    old_nodes_replace<-orig_old_nodes[which(orig_old_nodes==new_nodes[1]):which(orig_old_nodes==new_nodes[length(new_nodes)])]
+                    if(length(which(orig_old_nodes==new_nodes[1]))==1 && length(which(orig_old_nodes==new_nodes[length(new_nodes)]))==1){
+                        old_nodes_replace<-orig_old_nodes[which(orig_old_nodes==new_nodes[1]):which(orig_old_nodes==new_nodes[length(new_nodes)])]
+                    } else {
+                        oldpos1<-which(orig_old_nodes==new_nodes[1]);
+                        oldpos2<-which(orig_old_nodes==new_nodes[length(new_nodes)])
+                        if(length(oldpos1)>1 && length(oldpos2)==1){
+                            if(any(abs(oldpos1-oldpos2[1])==2)){
+                                oldpos1<-oldpos1[which(abs(oldpos1-oldpos2)==2)]
+                            } else {
+                                oldpos1<-oldpos1[which.max(oldpos1-oldpos2)]
+                            }
+                            old_nodes_replace<-orig_old_nodes[oldpos1:oldpos2]
+                        } else if(length(oldpos1)==1 && length(oldpos2)>1){
+                            if(any(abs(oldpos2-oldpos1)==2)){
+                                oldpos2<-oldpos2[which(abs(oldpos2-oldpos1)==2)]
+                            } else {
+                                oldpos2<-oldpos2[which.max(oldpos2-oldpos1)]
+                            }
+                            old_nodes_replace<-orig_old_nodes[oldpos1:oldpos2]
+                        } else {
+                            old_nodes_replace<-orig_old_nodes[which(orig_old_nodes==new_nodes[1])[which.min(which(orig_old_nodes==new_nodes[1]))]:which(orig_old_nodes==new_nodes[length(new_nodes)])[which.max(which(orig_old_nodes==new_nodes[length(new_nodes)]))]]
+                        }
+                    }
                 } else if(any(c(new_nodes[1],new_nodes[length(new_nodes)]) %in% c(old_nodes[1],old_nodes[length(old_nodes)]))){
                     print("Variant at tip of allele sequence - not currently supported - later versions will add nodes upstream/downstream of locus");
                     #reset graph path
@@ -622,7 +644,7 @@ if(length(variant_paths)>0){
                     }
                 }
                 old_nodes_replace<-setdiff(old_nodes_replace,new_nodes)
-                new_nodes_replace<-setdiff(new_nodes,old_nodes)
+                new_nodes_replace<-setdiff(new_nodes,c(old_nodes,orig_old_nodes))
                 old_pattern_pos<-paste0(",",old_nodes_replace,"\\+|^",old_nodes_replace,"\\+")
                 old_pattern_neg<-paste0(",",old_nodes_replace,"\\-|^",old_nodes_replace,"\\-")
                 #print(paste0(new_nodes_iterate,": part 2"))
