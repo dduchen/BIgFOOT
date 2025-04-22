@@ -803,8 +803,12 @@ else
                     else 
                         grep "\\*${allele_tmp}#" ${outdir}/${sample_id}.${graph}.${gene}.alleles >> ${outdir}/${sample_id}.${graph}.${gene}.alleles.replace
                     fi
-                    mv ${outdir}/${sample_id}.${graph}.${gene}.alleles.replace ${outdir}/${sample_id}.${graph}.${gene}.alleles
                 done
+                if [ $(cat ${outdir}/${sample_id}.${graph}.${gene}.alleles.replace | wc -l) -lt $(cat ${outdir}/${sample_id}.${graph}.${gene}.alleles | wc -l) ]; then
+                    echo "Redundant allele(s) removed - using OGRDB > IMHT > other hierarchy";
+                    cat ${outdir}/${sample_id}.${graph}.${gene}.alleles.replace | sort | uniq > ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.alleles.tmp ${outdir}/${sample_id}.${graph}.${gene}.alleles.replace
+                fi
+                cp ${outdir}/${sample_id}.${graph}.${gene}.alleles.replace ${outdir}/${sample_id}.${graph}.${gene}.alleles
             fi
             vg paths -r -p ${outdir}/${sample_id}.${graph}.${gene}.alleles -x ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.pg > ${outdir}/${sample_id}.${graph}.${gene}.vg;
             # Avoid parse_graph_vgflow.py  script completely - bug compressing duplicate nodes of the same sequence content, and not needed - or update script to just use tmp1.gfa
