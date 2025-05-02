@@ -193,18 +193,33 @@ else
             ##############################
             # use local haplotypes #
             ##############################
-            seqkit grep -v -r -p "${gene}|IMGT|OGRDB|IGv2" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${gene}.haps.fasta
+            seqkit grep -v -r -p "${gene}|IMGT|OGRDB|IGv2" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${gene}.haps.fasta;
             # trim terminal repeats in the local haplotype sequences
             tr-trimmer -i ${outdir}/${gene}.haps.fasta > ${outdir}/${gene}.haps.trimmed.fasta;
             if [ -s ${outdir}/${gene}.haps.trimmed.fasta ]; then
-               mv ${outdir}/${gene}.haps.trimmed.fasta ${outdir}/${gene}.haps.fasta
+               mv ${outdir}/${gene}.haps.trimmed.fasta ${outdir}/${gene}.haps.fasta;
             fi
             if [ -s ${outdir}/${gene}.haps.fasta ]; then
                 echo "Local haplotypes found for: ${gene_actual}"
 #                seqkit seq --min-len $(bc -l <<< "scale=2;${gene_min_len}*0.9"| awk '{printf("%d\n",$1 + 0.5)}') --max-len 15000  ${outdir}/${gene}.haps.fasta > ${outdir}/${gene}.haps.fasta.tmp && mv ${outdir}/${gene}.haps.fasta.tmp ${outdir}/${gene}.haps.fasta
                 seqkit seq --min-len $(bc -l <<< "scale=2;${gene_min_len}*0.9"| awk '{printf("%d\n",$1 + 0.5)}') --max-len $(bc -l <<< "scale=2;${gene_max_len}*3"| awk '{printf("%d\n",$1 + 0.5)}')  ${outdir}/${gene}.haps.fasta > ${outdir}/${gene}.haps.fasta.tmp && mv ${outdir}/${gene}.haps.fasta.tmp ${outdir}/${gene}.haps.fasta
-                # retain haplotypes with perfect match to one of our alleles
-                mkdir -p $outdir/${gene}_haps
+                # retain haplotypes with perfect match to one of our alleles + reverse complement if necessary:
+                minimap2 -x sr --secondary=no -c ${outdir}/${gene}.alleles.fasta ${outdir}/${gene}.haps.fasta | cut -f1,5 > ${gene}.haps_strandcheck.txt;
+                cp ${outdir}/${gene}.haps.fasta ${outdir}/${gene}.haps.precheck.fasta;
+                for hapstrand in $(cut -f1 ${gene}.haps_strandcheck.txt | sort | uniq); do
+                    if [ $(grep -P ${hapstrand}'\t-' ${gene}.haps_strandcheck.txt | wc -l) -gt 0 ]; then
+                        echo "Reverse complement of ${hapstrand} required";
+                        seqkit grep -r -p ${hapstrand} ${outdir}/${gene}.haps.fasta | seqkit seq -pr -t dna > ${outdir}/${gene}.haps_strandcheck.tmp.fasta;
+                        minimap2 -x sr --secondary=no -c ${outdir}/${gene}.alleles.fasta ${outdir}/${gene}.haps_strandcheck.tmp.fasta | cut -f1,5 > ${outdir}/${gene}.haps_strandcheck.tmp.check;
+                        if [ $(grep -P ${hapstrand}'\t\+' ${outdir}/${gene}.haps_strandcheck.tmp.check | wc -l) -gt 0 ]; then
+                            seqkit grep -v -r -p ${hapstrand} ${outdir}/${gene}.haps.fasta > ${outdir}/${gene}.haps.fasta.tmp;
+                            cat ${outdir}/${gene}.haps.fasta.tmp ${outdir}/${gene}.haps_strandcheck.tmp.fasta > ${outdir}/${gene}.haps.fasta;
+                            seqkit grep -v -r -p ${hapstrand} ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.tmp.fasta 
+                            cat ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.tmp.fasta ${outdir}/${gene}.haps_strandcheck.tmp.fasta > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta;
+                        fi
+                    fi
+                done
+                mkdir -p ${outdir}/${gene}_haps
                 if [[ ${gene} == *["VJ"]* ]]; then
                     echo "Exact allele:haplotype matching"
                     minimap2 -x sr --secondary=no -c ${outdir}/${gene}.alleles.fasta ${outdir}/${gene}.haps.fasta | grep "NM:i:0" | cut -f1 | sort | uniq > ${outdir}/${gene}_haps/haps.matching.txt
