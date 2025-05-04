@@ -13,11 +13,11 @@
 export graphdir=${bigfoot_source}
 export graph_base=whole_genome_ig_hla_kir_immunovar
 
-bf_env_load=$(conda info --envs | grep "bigfoot" | awk '{print $NF}')
 curenv=$(declare -p -x)
 source ${HOME}/.bashrc;
 eval "$curenv"
-conda activate ${bf_env_load};
+bf_env_load=$(conda info --envs | grep "bigfoot" | awk '{print $NF}')
+source activate ${bf_env_load};
 
 PATH=${tools_dir}:$PATH
 
@@ -63,9 +63,12 @@ if [[ ${input_aln} == *"gam" ]]; then
             done
             mv ${outdir}/*vcf ${sample_id}.${graph}_vcf
             rm $outdir/*plines; rm $outdir/*paths
+            rm -rf ${outdir}/tmp;
+            rm -rf ${outdir}/*tmp;
+            rm ${outdir}/*strandcheck*;
             Rscript ${bigfoot_dir}/clean_genewise_results.R
             tar -czvf ${sample_id}.${graph}_allelic_inference.tar.gz -T ${sample_id}.${graph}_allelic_inference.txt --remove-files
-            ls ${outdir}/* > ${sample_id}.${graph}_other_materials.txt
+            ls ./familywise_pe_haplotype_inference/* > ${sample_id}.${graph}_other_materials.txt
             tar -czvf ${sample_id}.${graph}_other_materials.tar.gz -T ${sample_id}.${graph}_other_materials.txt --remove-files
             cd ${workdir}
             echo "fin!"

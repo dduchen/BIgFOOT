@@ -50,9 +50,11 @@ if [[ ${input_aln} == *"gam" ]]; then
             mv ${outdir}/*vcf ${sample_id}.${graph}_vcf
             rm $outdir/*plines; rm $outdir/*paths;
             rm -rf ${outdir}/tmp;
+            rm -rf ${outdir}/*tmp;
+            rm ${outdir}/*strandcheck*;
             Rscript ${bigfoot_dir}/clean_genewise_results.R
             tar -czvf ${sample_id}.${graph}_allelic_inference.tar.gz -T ${sample_id}.${graph}_allelic_inference.txt --remove-files
-            ls ${outdir}/* > ${sample_id}.${graph}_other_materials.txt
+            ls ./familywise_pe_haplotype_inference/* > ${sample_id}.${graph}_other_materials.txt
             tar -czvf ${sample_id}.${graph}_other_materials.tar.gz -T ${sample_id}.${graph}_other_materials.txt --remove-files
             cd ${workdir}
             echo "fin!"
