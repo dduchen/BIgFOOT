@@ -164,18 +164,21 @@ else
             cat ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.match.fasta ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.unmatch.fasta > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta
             seqkit rmdup -s < ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta.tmp && mv ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta.tmp ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta
             seqkit grep -r -p "IMG|IGv|OGR" ${outdir}/${sample_id}.${graph}.${gene}.haplotypes.fasta > ${outdir}/${gene}.alleles.fasta
-            # could be many more alleles outside the genes we're most focused on - constrain to specific alleles spanning the relevant ASC clusters
+            # could be many more alleles outside the genes we're most focused on - use initial set of alleles to search ASC clusters for alleles of the included genes - then retain all alleles of those tagged ASC clusters (allele mode, gene mode would potentially recruit even more alleles)
             asc_cluster=$(grep "${gene}\*" ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv | cut -f4 | sed s/'\*.*'//g | sort | uniq);
             if [[ -n ${asc_cluster} ]]; then
                 echo "limiting candidate alleles to ASC-constrained set"
                 for asc_specific in ${asc_cluster[@]}; do echo ${asc_specific};
                     grep "${asc_specific}\*" ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv | cut -f1 | sed s/'*'/'\\*'/g >> ${outdir}/asc_relevant_allele_for_${gene}
-                    grep "${asc_specific}\*" ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv | cut -f1 | sed s/'*.*'/''/g | sed s/".*#1#"/""/g >> ${outdir}/asc_relevant_genes_for_${gene}
+                    grep "${asc_specific}\*" ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv | cut -f1 | sed s/'*.*'/''/g | sed s/".*#1#"/""/g | sort | uniq >> ${outdir}/asc_relevant_genes_for_${gene}
                 done
-                # retain alleles from specific genes
-                seqkit grep -r -n -f <(cut -f1 ${outdir}/asc_relevant_genes_for_${gene} | sort | uniq) ${outdir}/${gene}.alleles.fasta > ${outdir}/${gene}.alleles.fasta.tmp 
-                # retain specific alleles
-                #seqkit grep -r -n -f <(cut -f1 ${outdir}/asc_relevant_allele_for_${gene} | sed s/".*#1#"/""/g | sort | uniq) ${outdir}/${gene}.alleles.fasta > ${outdir}/${gene}.alleles.fasta.tmp 
+                grep -f ${outdir}/asc_relevant_genes_for_${gene} ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv | cut -f4 | sed s/'\*.*'//g | sort | uniq > ${outdir}/asc_expanded_for_${gene}
+                grep -f ${outdir}/asc_expanded_for_${gene} ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv | cut -f1 | sed s/'*.*'/''/g | sed s/".*#1#"/""/g | sort | uniq > ${outdir}/asc_relevant_genes_for_${gene}
+                grep -f ${outdir}/asc_expanded_for_${gene} ${bigfoot_dir}/../custom_beds/ASC_metadata.matching.tsv | cut -f1 | sed s/'*'/'\\*'/g | sort | uniq > ${outdir}/asc_relevant_alleles_for_${gene}
+                # retain alleles from all unique genes in search space
+#                seqkit grep -r -n -f <(cut -f1 ${outdir}/asc_relevant_genes_for_${gene} | sort | uniq) ${outdir}/${gene}.alleles.fasta > ${outdir}/${gene}.alleles.fasta.tmp
+                # retain specific alleles included in the ASC cluster search space
+                seqkit grep -r -n -f <(cut -f1 ${outdir}/asc_relevant_alleles_for_${gene} | sort | uniq) ${outdir}/${gene}.alleles.fasta > ${outdir}/${gene}.alleles.fasta.tmp
                 if [ $(grep ">" ${outdir}/${gene}.alleles.fasta.tmp | wc -l) -gt 1 ]; then
                     mv ${outdir}/${gene}.alleles.fasta.tmp ${outdir}/${gene}.alleles.fasta
                 else 
@@ -223,8 +226,11 @@ else
                 if [[ ${gene} == *["VJ"]* ]]; then
                     echo "Exact allele:haplotype matching"
                     minimap2 -x sr --secondary=no -c ${outdir}/${gene}.alleles.fasta ${outdir}/${gene}.haps.fasta | grep "NM:i:0" | cut -f1 | sort | uniq > ${outdir}/${gene}_haps/haps.matching.txt
-                    minimap2 -x sr --secondary=no -c ${outdir}/${gene}.alleles.exact.fasta ${outdir}/${gene}.haps.fasta | grep "NM:i:0" | cut -f1 | sort | uniq > ${outdir}/${gene}_haps/haps.matching.exact.txt
+                    # get exact matches to alleles - and require haplotypes to only have 1 exact match
+                    minimap2 -x sr --secondary=no -c ${outdir}/${gene}.alleles.exact.fasta ${outdir}/${gene}.haps.fasta | grep "NM:i:0" | cut -f1 | sort | uniq -c | awk '{$1=$1};1' | grep "^1" | cut -f2 -d' '> ${outdir}/${gene}_haps/haps.matching.exact.txt
                     minimap2 -x sr --secondary=no -c ${outdir}/${gene}.alleles.offtarget.fasta ${outdir}/${gene}.haps.fasta | grep "NM:i:0" | cut -f1 | sort | uniq > ${outdir}/${gene}_haps/haps.matching.offtarget.txt
+                    # ensure exact matching alleles also dont contain an exact match to an off-target allele
+                    grep -v -f  ${outdir}/${gene}_haps/haps.matching.offtarget.txt ${outdir}/${gene}_haps/haps.matching.exact.txt > ${outdir}/${gene}_haps/haps.matching.exact.txt.tmp && mv ${outdir}/${gene}_haps/haps.matching.exact.txt.tmp ${outdir}/${gene}_haps/haps.matching.exact.txt
                     cp ${outdir}/${gene}_haps/haps.matching.exact.txt ${outdir}/${sample_id}.${graph}.${gene}_haps.matching.exact.txt
                     cp ${outdir}/${gene}_haps/haps.matching.offtarget.txt ${outdir}/${sample_id}.${graph}.${gene}_haps.matching.offtarget.txt
                 else
